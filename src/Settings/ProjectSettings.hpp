@@ -6,7 +6,6 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QMap>
 #include <QStringList>
 
 struct ColumnInfo {
@@ -24,7 +23,7 @@ struct ProjectSettings {
     QString sourceDirectory;
 
     QString projectContext;
-    QVariantMap fileContexts;
+    HashMap<QString, QString> fileContexts;
 
     u16 sourceColumnWidth = DEFAULT_COLUMN_WIDTH;
     u16 lineLengthHint = 0;

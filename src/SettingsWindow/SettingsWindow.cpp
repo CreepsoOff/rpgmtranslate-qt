@@ -250,9 +250,9 @@ SettingsWindow::SettingsWindow(
             const QString context = ui->fileContextInput->toPlainText();
 
             if (context.isEmpty()) {
-                projectSettings->fileContexts.remove(prevTab);
+                projectSettings->fileContexts.erase(prevTab);
             } else {
-                projectSettings->fileContexts.insert(prevTab, context);
+                projectSettings->fileContexts.insert({ prevTab, context });
             }
         }
 
@@ -260,7 +260,7 @@ SettingsWindow::SettingsWindow(
 
         if (projectSettings->fileContexts.contains(currentTab)) {
             ui->fileContextInput->setPlainText(
-                projectSettings->fileContexts[currentTab].toString()
+                projectSettings->fileContexts[currentTab]
             );
         } else {
             ui->fileContextInput->setPlainText(QString());
@@ -521,13 +521,10 @@ void SettingsWindow::closeEvent(QCloseEvent* const event) {
     const QModelIndex currentIndex = ui->fileContextList->currentIndex();
     if (currentIndex.isValid()) {
         if (context.isEmpty()) {
-            projectSettings->fileContexts.remove(
-                currentIndex.data().toString()
-            );
+            projectSettings->fileContexts.erase(currentIndex.data().toString());
         } else {
             projectSettings->fileContexts.insert(
-                currentIndex.data().toString(),
-                context
+                { currentIndex.data().toString(), context }
             );
         }
     }

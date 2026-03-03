@@ -17,6 +17,12 @@ auto tou128(const string& str) -> u128 {
         hashes.append(QString::fromLatin1(std::format("{}", hash)));
     }
 
+    QJsonArray contexts;
+
+    for (const auto& [key, value] : fileContexts) {
+        contexts.append(QJsonArray{ key, value });
+    }
+
     return { {
         { u"engineType"_s, u8(engineType) },
         { u"sourceLang"_s, i8(sourceLang) },
@@ -30,7 +36,7 @@ auto tou128(const string& str) -> u128 {
         { u"translationColumns"_s, serializeTranslationColumns() },
         { u"sourceDirectory"_s, sourceDirectory },
         { u"projectContext"_s, projectContext },
-        { u"fileContexts"_s, QJsonObject::fromVariantMap(fileContexts) },
+        { u"fileContexts"_s, contexts },
     } };
 }
 
@@ -58,7 +64,16 @@ auto ProjectSettings::fromJSON(const QJsonObject& obj) -> ProjectSettings {
     settings.sourceDirectory = obj["sourceDirectory"_L1].toString();
     settings.projectContext = obj["projectContext"_L1].toString();
 
-    settings.fileContexts = obj["fileContexts"_L1].toObject().toVariantMap();
+    auto contextsArray = obj["fileContexts"_L1].toArray();
+    settings.fileContexts.reserve(contextsArray.size());
+
+    for (const auto& pair : contextsArray) {
+        const auto pairArray = pair.toArray();
+
+        settings.fileContexts.insert(
+            { pairArray[0].toString(), pairArray[1].toString() }
+        );
+    }
 
     const auto columns = obj["translationColumns"_L1].toArray();
     settings.columns.reserve(columns.size());
