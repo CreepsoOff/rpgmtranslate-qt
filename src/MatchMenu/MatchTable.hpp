@@ -35,6 +35,8 @@ class MatchTableDelegate final : public QStyledItemDelegate {
 };
 
 class MatchTableModel final : public QAbstractTableModel {
+    Q_OBJECT
+
    public:
     enum Column : u8 {
         Filename,
