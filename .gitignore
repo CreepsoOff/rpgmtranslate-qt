@@ -2,6 +2,7 @@
 /.clangd
 /.cache
 /.vscode
+/.zed
 /dist
 /docs/mkdocs/site
 /rust/Cargo.lock
