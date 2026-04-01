@@ -191,7 +191,7 @@
              <item>
               <widget class="QLabel" name="label_6">
                <property name="text">
-                <string>Backup Period</string>
+                <string>Backup period</string>
                </property>
               </widget>
              </item>
@@ -235,7 +235,7 @@
              <item>
               <widget class="QLabel" name="label_5">
                <property name="text">
-                <string>Max Backups</string>
+                <string>Max backups</string>
                </property>
               </widget>
              </item>
@@ -342,7 +342,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>Translation Table Font</string>
+                <string>Translation table font</string>
                </property>
               </widget>
              </item>
@@ -353,7 +353,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QWidget" name="translationTableFontSizeWidget" native="true">
+           <widget class="CBSLIWidget" name="translationTableFontSizeWidget" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_7">
              <property name="spacing">
               <number>8</number>
@@ -370,23 +370,6 @@
              <property name="bottomMargin">
               <number>0</number>
              </property>
-             <item>
-              <widget class="QLabel" name="label_4">
-               <property name="text">
-                <string>Font Size</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="fontSizeInput">
-               <property name="text">
-                <string/>
-               </property>
-               <property name="placeholderText">
-                <string>Range from 8 to 96 px</string>
-               </property>
-              </widget>
-             </item>
             </layout>
            </widget>
           </item>
@@ -892,7 +875,7 @@
             <x>0</x>
             <y>0</y>
             <width>811</width>
-            <height>1436</height>
+            <height>1538</height>
            </rect>
           </property>
           <property name="sizePolicy">
@@ -991,10 +974,23 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLabel" name="endpointDescriptionLabel">
-                   <property name="text">
-                    <string/>
-                   </property>
+                  <widget class="QWidget" name="widget" native="true">
+                   <layout class="QHBoxLayout" name="horizontalLayout_20">
+                    <item>
+                     <widget class="QPushButton" name="addEndpointButton">
+                      <property name="text">
+                       <string>+</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="removeEndpointButton">
+                      <property name="text">
+                       <string>-</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
                   </widget>
                  </item>
                 </layout>
@@ -1018,6 +1014,135 @@
                  <property name="bottomMargin">
                   <number>0</number>
                  </property>
+                 <item>
+                  <widget class="QWidget" name="widget_6" native="true">
+                   <layout class="QHBoxLayout" name="horizontalLayout_30">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="label_16">
+                      <property name="text">
+                       <string>Type</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QComboBox" name="typeSelect">
+                      <item>
+                       <property name="text">
+                        <string>Google</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Yandex</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>DeepL</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Aliyun</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Anthropic</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>DeepSeek</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Gemini</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Koboldcpp</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Longcat</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Moonshot</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Mistral</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Ollama</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>OpenAI</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>OpenAI-compatible</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Volcengine</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Xiaomi</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Xinference</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Zhipu</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="typeDescriptionLabel">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
                  <item>
                   <widget class="QCheckBox" name="singleTranslationCheckbox">
                    <property name="text">
@@ -1046,12 +1171,12 @@
                     <item>
                      <widget class="QLabel" name="label_13">
                       <property name="text">
-                       <string>API Key</string>
+                       <string>API key</string>
                       </property>
                      </widget>
                     </item>
                     <item>
-                     <widget class="QLineEdit" name="apiKeyInput">
+                     <widget class="PasswordLineEdit" name="apiKeyInput">
                       <property name="placeholderText">
                        <string notr="true">sk-...</string>
                       </property>
@@ -1081,12 +1206,12 @@
                     <item>
                      <widget class="QLabel" name="label_14">
                       <property name="text">
-                       <string>Yandex Folder ID</string>
+                       <string>Yandex folder ID</string>
                       </property>
                      </widget>
                     </item>
                     <item>
-                     <widget class="QLineEdit" name="yandexFolderIDInput">
+                     <widget class="PasswordLineEdit" name="yandexFolderIDInput">
                       <property name="placeholderText">
                        <string notr="true">ID</string>
                       </property>
@@ -1121,9 +1246,19 @@
                      </widget>
                     </item>
                     <item>
-                     <widget class="QLineEdit" name="baseURLInput">
+                     <widget class="PasswordLineEdit" name="baseURLInput">
                       <property name="placeholderText">
                        <string>https://localhost:8000</string>
+                      </property>
+                      <property name="unfocusSignalEnabled" stdset="0">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="defaultBaseURLButton">
+                      <property name="text">
+                       <string>Default</string>
                       </property>
                      </widget>
                     </item>
@@ -1182,126 +1317,30 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QWidget" name="tokenLimitWidget" native="true">
-                   <layout class="QHBoxLayout" name="horizontalLayout_18">
-                    <property name="spacing">
-                     <number>8</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="label_16">
-                      <property name="text">
-                       <string>Input Token Limit</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLineEdit" name="tokenLimitInput">
-                      <property name="maxLength">
-                       <number>5</number>
-                      </property>
-                      <property name="placeholderText">
-                       <string>Range from 1000 to 65535</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
+                  <widget class="CBSLIWidget" name="temperatureWidget" native="true"/>
                  </item>
                  <item>
-                  <widget class="QWidget" name="outputLimitWidget" native="true">
-                   <layout class="QHBoxLayout" name="horizontalLayout_27">
-                    <property name="spacing">
-                     <number>8</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="label_30">
-                      <property name="text">
-                       <string>Output Token Limit</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLineEdit" name="outputLimitInput">
-                      <property name="maxLength">
-                       <number>5</number>
-                      </property>
-                      <property name="placeholderText">
-                       <string>Range from 1000 to 65535</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
+                  <widget class="CBSLIWidget" name="inputTokenLimitWidget" native="true"/>
                  </item>
                  <item>
-                  <widget class="QWidget" name="temperatureWidget" native="true">
-                   <layout class="QHBoxLayout" name="horizontalLayout_17">
-                    <property name="spacing">
-                     <number>8</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
-                    </property>
-                    <item>
-                     <widget class="QLabel" name="label_17">
-                      <property name="text">
-                       <string>Temperature</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLineEdit" name="temperatureInput">
-                      <property name="text">
-                       <string/>
-                      </property>
-                      <property name="maxLength">
-                       <number>6</number>
-                      </property>
-                      <property name="placeholderText">
-                       <string>Range from 0.0 to 2.0</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
+                  <widget class="CBSLIWidget" name="outputTokenLimitWidget" native="true"/>
+                 </item>
+                 <item>
+                  <widget class="CBSLIWidget" name="frequencyWidget" native="true"/>
+                 </item>
+                 <item>
+                  <widget class="CBSLIWidget" name="precenseWidget" native="true"/>
+                 </item>
+                 <item>
+                  <widget class="CBSLIWidget" name="thinkingBudgetWidget" native="true"/>
+                 </item>
+                 <item>
+                  <widget class="CBSLIWidget" name="topPWidget" native="true"/>
                  </item>
                  <item>
                   <widget class="QCheckBox" name="glossaryCheckbox">
                    <property name="text">
-                    <string>Use Glossary</string>
+                    <string>Use glossary</string>
                    </property>
                   </widget>
                  </item>
@@ -1413,15 +1452,21 @@
                 <zorder>yandexFolderWidget</zorder>
                 <zorder>checkKeyButton</zorder>
                 <zorder>baseURLWidget</zorder>
-                <zorder>singleTranslationCheckbox</zorder>
                 <zorder>modelWidget</zorder>
-                <zorder>tokenLimitWidget</zorder>
-                <zorder>temperatureWidget</zorder>
+                <zorder>precenseWidget</zorder>
+                <zorder>topPWidget</zorder>
                 <zorder>glossaryCheckbox</zorder>
                 <zorder>thinkingCheckbox</zorder>
                 <zorder>systemPromptWidget</zorder>
                 <zorder>singleSystemPromptWidget</zorder>
-                <zorder>outputLimitWidget</zorder>
+                <zorder>thinkingBudgetWidget</zorder>
+                <zorder>frequencyWidget</zorder>
+                <zorder>outputTokenLimitWidget</zorder>
+                <zorder>inputTokenLimitWidget</zorder>
+                <zorder>temperatureWidget</zorder>
+                <zorder>widget_6</zorder>
+                <zorder>singleTranslationCheckbox</zorder>
+                <zorder>typeDescriptionLabel</zorder>
                </widget>
               </item>
              </layout>
@@ -1476,7 +1521,7 @@
                  <item>
                   <widget class="QLabel" name="label_24">
                    <property name="text">
-                    <string>LanguageTool Base URL</string>
+                    <string>LanguageTool base URL</string>
                    </property>
                   </widget>
                  </item>
@@ -1515,7 +1560,7 @@
      <widget class="QWidget" name="projectSettings">
       <layout class="QVBoxLayout" name="verticalLayout_6">
        <property name="spacing">
-        <number>16</number>
+        <number>8</number>
        </property>
        <property name="leftMargin">
         <number>8</number>
@@ -1530,200 +1575,142 @@
         <number>8</number>
        </property>
        <item>
-        <widget class="QWidget" name="lineLengthHintWidget" native="true">
+        <widget class="QGroupBox" name="groupBox_6">
+         <property name="title">
+          <string>Settings</string>
+         </property>
          <layout class="QHBoxLayout" name="horizontalLayout_19">
           <property name="spacing">
            <number>8</number>
           </property>
           <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="label_19">
-            <property name="text">
-             <string>Line Length Hint</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="lineLengthHintInput">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="maxLength">
-             <number>3</number>
-            </property>
-            <property name="placeholderText">
-             <string>In characters. Allowed range: 0-255.</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QWidget" name="sourceLanguageWidget" native="true">
-         <layout class="QHBoxLayout" name="horizontalLayout_21">
-          <property name="spacing">
            <number>8</number>
           </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
           <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="label_20">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string>Source Language</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="sourceLanguageSelect"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QWidget" name="translationLanguageWidget" native="true">
-         <layout class="QHBoxLayout" name="horizontalLayout_20">
-          <property name="spacing">
            <number>8</number>
           </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
           <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="label_21">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string>Translation Language</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="translationLanguageSelect"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QWidget" name="projectContextWidget" native="true">
-         <layout class="QVBoxLayout" name="verticalLayout_15">
-          <property name="spacing">
-           <number>4</number>
-          </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="label_22">
-            <property name="text">
-             <string>Project Context</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPlainTextEdit" name="projectContextInput"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QWidget" name="widget" native="true">
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <property name="spacing">
            <number>8</number>
           </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
           <property name="bottomMargin">
-           <number>0</number>
+           <number>8</number>
           </property>
           <item>
-           <widget class="QWidget" name="fileContextWidget" native="true">
-            <layout class="QVBoxLayout" name="verticalLayout_16">
-             <property name="spacing">
+           <widget class="QWidget" name="widget_5" native="true">
+            <layout class="QFormLayout" name="formLayout">
+             <property name="horizontalSpacing">
               <number>4</number>
              </property>
+             <property name="verticalSpacing">
+              <number>8</number>
+             </property>
              <property name="leftMargin">
-              <number>0</number>
+              <number>4</number>
              </property>
              <property name="topMargin">
-              <number>0</number>
+              <number>4</number>
              </property>
              <property name="rightMargin">
-              <number>0</number>
+              <number>4</number>
              </property>
              <property name="bottomMargin">
-              <number>0</number>
+              <number>4</number>
              </property>
-             <item>
-              <widget class="QLabel" name="label">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_19">
                <property name="text">
-                <string>File Context</string>
+                <string>Line length hint</string>
                </property>
               </widget>
              </item>
-             <item>
-              <widget class="QPlainTextEdit" name="fileContextInput"/>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineLengthHintInput">
+               <property name="text">
+                <string/>
+               </property>
+               <property name="maxLength">
+                <number>3</number>
+               </property>
+               <property name="placeholderText">
+                <string>In characters. Allowed range: 0-255.</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_20">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Source language</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="sourceLanguageSelect"/>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_21">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Translation language</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QComboBox" name="translationLanguageSelect"/>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_31">
+               <property name="text">
+                <string>Spellcheck dictionary</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QComboBox" name="spellcheckDictionarySelect">
+               <item>
+                <property name="text">
+                 <string/>
+                </property>
+               </item>
+              </widget>
              </item>
             </layout>
            </widget>
           </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="title">
+          <string>Context</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_20">
+          <property name="spacing">
+           <number>8</number>
+          </property>
+          <property name="leftMargin">
+           <number>8</number>
+          </property>
+          <property name="topMargin">
+           <number>8</number>
+          </property>
+          <property name="rightMargin">
+           <number>8</number>
+          </property>
+          <property name="bottomMargin">
+           <number>8</number>
+          </property>
           <item>
            <widget class="QWidget" name="fileContextSelectWidget" native="true">
             <layout class="QVBoxLayout" name="verticalLayout_17">
@@ -1745,12 +1732,74 @@
              <item>
               <widget class="QLabel" name="label_23">
                <property name="text">
-                <string>File Context Select</string>
+                <string>File context select</string>
                </property>
               </widget>
              </item>
              <item>
               <widget class="QListView" name="fileContextList"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="fileContextWidget" native="true">
+            <layout class="QVBoxLayout" name="verticalLayout_16">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>File context</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPlainTextEdit" name="fileContextInput"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="projectContextWidget" native="true">
+            <layout class="QVBoxLayout" name="verticalLayout_15">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="label_22">
+               <property name="text">
+                <string>Project сontext</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPlainTextEdit" name="projectContextInput"/>
              </item>
             </layout>
            </widget>
@@ -1765,6 +1814,19 @@
   </layout>
  </widget>
  <layoutdefault spacing="0" margin="0"/>
+ <customwidgets>
+  <customwidget>
+   <class>CBSLIWidget</class>
+   <extends>QWidget</extends>
+   <header>CBSLIWidget.hpp</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>PasswordLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>PasswordLineEdit.hpp</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
  <designerdata>

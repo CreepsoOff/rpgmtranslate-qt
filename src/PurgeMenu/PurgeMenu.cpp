@@ -57,10 +57,10 @@ void PurgeMenu::clear() {
     fileSelectMenu->clear();
 }
 
-void PurgeMenu::addFile(const QString& file) {
-    fileSelectMenu->addFile(file);
-}
-
 auto PurgeMenu::selected(const bool skipped) const -> Selected {
     return fileSelectMenu->selected(skipped);
+}
+
+void PurgeMenu::setFiles(const vector<TabListItem>& files) {
+    fileSelectMenu->setFiles(files);
 }

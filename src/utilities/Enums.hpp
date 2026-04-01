@@ -8,7 +8,7 @@ using namespace magic_enum::bitwise_operators;
 
 #define ENUM_CONSTANT(EnumType, Member, NAME, SUFFIX) \
     constexpr auto NAME##_##SUFFIX = \
-        static_cast<std::underlying_type_t<EnumType>>(EnumType::Member)
+        as<std::underlying_type_t<EnumType>>(EnumType::Member)
 
 enum BaseFlags : u8 {
     Romanize = 1 << 0,
@@ -169,12 +169,22 @@ enum class TranslationEndpoint : u8 {
     Google,
     Yandex,
     DeepL,
-    OpenAI,
+
+    Aliyun,
     Anthropic,
     DeepSeek,
     Gemini,
+    Koboldcpp,
+    Longcat,
+    Moonshot,
+    Mistral,
+    Ollama,
+    OpenAI,
     OpenAICompatible,
-    Ollama
+    Volcengine,
+    Xiaomi,
+    Xinference,
+    Zhipu,
 };
 
 constexpr u8 TRANSLATION_ENDPOINT_COUNT =

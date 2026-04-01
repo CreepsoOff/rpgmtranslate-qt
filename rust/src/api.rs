@@ -140,6 +140,8 @@ pub(crate) enum Error {
     #[cfg(feature = "languagetool")]
     #[error(transparent)]
     LanguageTool(#[from] languagetool_rust::error::Error),
+    #[error(transparent)]
+    AssetDecrypt(#[from] rpgm_asset_decrypter_lib::Error),
 }
 
 #[repr(u8)]
@@ -148,12 +150,22 @@ pub enum TranslationEndpoint {
     Google,
     Yandex,
     DeepL,
-    OpenAI,
+
+    Aliyun,
     Anthropic,
     DeepSeek,
     Gemini,
-    OpenAICompatible,
+    Koboldcpp,
+    Longcat,
+    Moonshot,
+    Mistral,
     Ollama,
+    OpenAI,
+    OpenAICompatible,
+    Volcengine,
+    Xiaomi,
+    Xinference,
+    Zhipu,
 }
 
 impl Default for TranslationEndpoint {
@@ -295,32 +307,58 @@ pub(crate) async fn get_models(
     Ok(match endpoint {
         TranslationEndpoint::Google
         | TranslationEndpoint::Yandex
-        | TranslationEndpoint::DeepL => Vec::new(),
-        TranslationEndpoint::DeepSeek => {
-            LlmClient::deepseek(api_key)?.models().await?
-        }
-        TranslationEndpoint::OpenAI => {
-            LlmClient::openai(api_key)?.models().await?
+        | TranslationEndpoint::DeepL => unreachable!(),
+        TranslationEndpoint::OpenAI
+        | TranslationEndpoint::Longcat
+        | TranslationEndpoint::Moonshot
+        | TranslationEndpoint::DeepSeek
+        | TranslationEndpoint::Koboldcpp
+        | TranslationEndpoint::OpenAICompatible
+        | TranslationEndpoint::Xiaomi
+        | TranslationEndpoint::Mistral => {
+            LlmClient::openai_compatible(
+                api_key,
+                base_url,
+                match endpoint {
+                    TranslationEndpoint::OpenAI => "openai",
+                    TranslationEndpoint::Longcat => "longcat",
+                    TranslationEndpoint::DeepSeek => "deepseek",
+                    TranslationEndpoint::Moonshot => "moonshot",
+                    TranslationEndpoint::Mistral => "mistral",
+                    TranslationEndpoint::Koboldcpp => "koboldcpp",
+                    TranslationEndpoint::OpenAICompatible => "",
+                    TranslationEndpoint::Xiaomi => "xiaomi",
+                    _ => unreachable!(),
+                },
+            )?
+            .models()
+            .await?
         }
         TranslationEndpoint::Anthropic => {
-            LlmClient::openai(api_key)?.models().await?
+            LlmClient::anthropic(api_key, base_url)?.models().await?
         }
         TranslationEndpoint::Gemini => {
-            LlmClient::google(api_key)?.models().await?
-        }
-        TranslationEndpoint::OpenAICompatible => {
-            LlmClient::openai_with_base_url(api_key, base_url)?
-                .models()
-                .await?
+            LlmClient::google(api_key, base_url)?.models().await?
         }
         TranslationEndpoint::Ollama => {
-            LlmClient::ollama_with_base_url(base_url)?.models().await?
+            LlmClient::ollama(base_url)?.models().await?
+        }
+        TranslationEndpoint::Aliyun => {
+            LlmClient::aliyun(api_key, base_url)?.models().await?
+        }
+        TranslationEndpoint::Volcengine => {
+            LlmClient::volcengine(api_key, base_url)?.models().await?
+        }
+        TranslationEndpoint::Xinference => {
+            LlmClient::xinference(base_url)?.models().await?
+        }
+        TranslationEndpoint::Zhipu => {
+            LlmClient::zhipu(api_key, base_url)?.models().await?
         }
     })
 }
 
 pub(crate) async fn translate_single<'a>(
-    endpoint: TranslationEndpoint,
     endpoint_settings: &str,
     source_language: Algorithm,
     translation_language: Algorithm,
@@ -332,6 +370,14 @@ pub(crate) async fn translate_single<'a>(
     let source_language = to_bcp47(source_language);
     let translation_language = to_bcp47(translation_language);
 
+    let endpoint_settings: Value =
+        unsafe { serde_json::from_str(endpoint_settings).unwrap_unchecked() };
+    let endpoint = unsafe {
+        std::mem::transmute(
+            endpoint_settings["type"].as_u64().unwrap_unchecked() as u8,
+        )
+    };
+
     let translated = match endpoint {
         TranslationEndpoint::Google => {
             use translators::{GoogleTranslator, Translator};
@@ -342,10 +388,6 @@ pub(crate) async fn translate_single<'a>(
         }
 
         _ => {
-            let endpoint_settings: Value = unsafe {
-                serde_json::from_str(endpoint_settings).unwrap_unchecked()
-            };
-
             let api_key = unsafe {
                 endpoint_settings["apiKey"].as_str().unwrap_unchecked()
             };
@@ -394,36 +436,60 @@ pub(crate) async fn translate_single<'a>(
                 }
 
                 _ => {
+                    let base_url = unsafe {
+                        endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
+                    };
+
                     let client = match endpoint {
-                        TranslationEndpoint::OpenAI => {
-                            LlmClient::openai(api_key)?
+                        TranslationEndpoint::Google
+                        | TranslationEndpoint::Yandex
+                        | TranslationEndpoint::DeepL => unreachable!(),
+                        TranslationEndpoint::OpenAI
+                        | TranslationEndpoint::Longcat
+                        | TranslationEndpoint::Moonshot
+                        | TranslationEndpoint::Mistral
+                        | TranslationEndpoint::DeepSeek
+                        | TranslationEndpoint::Koboldcpp
+                        | TranslationEndpoint::OpenAICompatible
+                        | TranslationEndpoint::Xiaomi => {
+                            LlmClient::openai_compatible(
+                                api_key,
+                                base_url,
+                                match endpoint {
+                                    TranslationEndpoint::OpenAI => "openai",
+                                    TranslationEndpoint::Longcat => "longcat",
+                                    TranslationEndpoint::DeepSeek => "deepseek",
+                                    TranslationEndpoint::Moonshot => "moonshot",
+                                    TranslationEndpoint::Mistral => "moonshot",
+                                    TranslationEndpoint::Koboldcpp => {
+                                        "koboldcpp"
+                                    }
+                                    TranslationEndpoint::OpenAICompatible => "",
+                                    _ => unreachable!(),
+                                },
+                            )?
                         }
                         TranslationEndpoint::Anthropic => {
-                            LlmClient::anthropic(api_key)?
-                        }
-                        TranslationEndpoint::DeepSeek => {
-                            LlmClient::deepseek(api_key)?
+                            LlmClient::anthropic(api_key, base_url)?
                         }
                         TranslationEndpoint::Gemini => {
-                            LlmClient::google(api_key)?
-                        }
-                        TranslationEndpoint::OpenAICompatible => {
-                            let base_url = unsafe {
-                                endpoint_settings["baseUrl"]
-                                    .as_str()
-                                    .unwrap_unchecked()
-                            };
-                            LlmClient::openai_with_base_url(api_key, base_url)?
+                            LlmClient::google(api_key, base_url)?
                         }
                         TranslationEndpoint::Ollama => {
-                            let base_url = unsafe {
-                                endpoint_settings["baseUrl"]
-                                    .as_str()
-                                    .unwrap_unchecked()
-                            };
-                            LlmClient::ollama_with_base_url(base_url)?
+                            LlmClient::ollama(base_url)?
                         }
-                        _ => unreachable!(),
+                        TranslationEndpoint::Aliyun => {
+                            LlmClient::aliyun(api_key, base_url)?
+                        }
+                        TranslationEndpoint::Volcengine => {
+                            LlmClient::volcengine(api_key, base_url)?
+                        }
+                        TranslationEndpoint::Xinference => {
+                            LlmClient::xinference(base_url)?
+                        }
+                        TranslationEndpoint::Zhipu => {
+                            LlmClient::zhipu(api_key, base_url)?
+                        }
                     };
 
                     let prompt = SingleRequest {
@@ -473,7 +539,6 @@ pub(crate) async fn translate_single<'a>(
 }
 
 pub(crate) async fn translate<'a>(
-    endpoint: TranslationEndpoint,
     endpoint_settings: &str,
     source_language: Algorithm,
     translation_language: Algorithm,
@@ -487,6 +552,14 @@ pub(crate) async fn translate<'a>(
 
     let mut response: HashMap<String, Vec<String>> =
         HashMap::with_capacity(files.len());
+
+    let endpoint_settings: Value =
+        unsafe { serde_json::from_str(endpoint_settings).unwrap_unchecked() };
+    let endpoint = unsafe {
+        std::mem::transmute(
+            endpoint_settings["type"].as_u64().unwrap_unchecked() as u8,
+        )
+    };
 
     let result: HashMap<String, Vec<String>> = match endpoint {
         TranslationEndpoint::Google => {
@@ -516,10 +589,6 @@ pub(crate) async fn translate<'a>(
         }
 
         _ => {
-            let endpoint_settings: Value = unsafe {
-                serde_json::from_str(endpoint_settings).unwrap_unchecked()
-            };
-
             let api_key = unsafe {
                 endpoint_settings["apiKey"].as_str().unwrap_unchecked()
             };
@@ -619,36 +688,61 @@ pub(crate) async fn translate<'a>(
                 }
 
                 _ => {
+                    let base_url = unsafe {
+                        endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
+                    };
+
                     let client = match endpoint {
-                        TranslationEndpoint::OpenAI => {
-                            LlmClient::openai(api_key)?
+                        TranslationEndpoint::Google
+                        | TranslationEndpoint::Yandex
+                        | TranslationEndpoint::DeepL => unreachable!(),
+                        TranslationEndpoint::OpenAI
+                        | TranslationEndpoint::Longcat
+                        | TranslationEndpoint::Moonshot
+                        | TranslationEndpoint::Mistral
+                        | TranslationEndpoint::DeepSeek
+                        | TranslationEndpoint::Koboldcpp
+                        | TranslationEndpoint::OpenAICompatible
+                        | TranslationEndpoint::Xiaomi => {
+                            LlmClient::openai_compatible(
+                                api_key,
+                                base_url,
+                                match endpoint {
+                                    TranslationEndpoint::OpenAI => "openai",
+                                    TranslationEndpoint::Longcat => "longcat",
+                                    TranslationEndpoint::DeepSeek => "deepseek",
+                                    TranslationEndpoint::Moonshot => "moonshot",
+                                    TranslationEndpoint::Mistral => "mistral",
+                                    TranslationEndpoint::Koboldcpp => {
+                                        "koboldcpp"
+                                    }
+                                    TranslationEndpoint::OpenAICompatible => "",
+                                    TranslationEndpoint::Xiaomi => "xiaomi",
+                                    _ => unreachable!(),
+                                },
+                            )?
                         }
                         TranslationEndpoint::Anthropic => {
-                            LlmClient::anthropic(api_key)?
-                        }
-                        TranslationEndpoint::DeepSeek => {
-                            LlmClient::deepseek(api_key)?
+                            LlmClient::anthropic(api_key, base_url)?
                         }
                         TranslationEndpoint::Gemini => {
-                            LlmClient::google(api_key)?
-                        }
-                        TranslationEndpoint::OpenAICompatible => {
-                            let base_url = unsafe {
-                                endpoint_settings["baseUrl"]
-                                    .as_str()
-                                    .unwrap_unchecked()
-                            };
-                            LlmClient::openai_with_base_url(api_key, base_url)?
+                            LlmClient::google(api_key, base_url)?
                         }
                         TranslationEndpoint::Ollama => {
-                            let base_url = unsafe {
-                                endpoint_settings["baseUrl"]
-                                    .as_str()
-                                    .unwrap_unchecked()
-                            };
-                            LlmClient::ollama_with_base_url(base_url)?
+                            LlmClient::ollama(base_url)?
                         }
-                        _ => unreachable!(),
+                        TranslationEndpoint::Aliyun => {
+                            LlmClient::aliyun(api_key, base_url)?
+                        }
+                        TranslationEndpoint::Volcengine => {
+                            LlmClient::volcengine(api_key, base_url)?
+                        }
+                        TranslationEndpoint::Xinference => {
+                            LlmClient::xinference(base_url)?
+                        }
+                        TranslationEndpoint::Zhipu => {
+                            LlmClient::zhipu(api_key, base_url)?
+                        }
                     };
 
                     let token_limit = unsafe {
@@ -762,10 +856,11 @@ pub(crate) fn extract_archive(
 ) -> Result<(), Error> {
     debug!("Decrypting archive: {}", input_path.display());
 
-    let bytes = fs::read(input_path)
+    let mut bytes = fs::read(input_path)
         .map_err(|err| Error::Io(input_path.to_path_buf(), err))?;
 
-    let decrypted_entries = Decrypter::new().decrypt(&bytes)?;
+    let mut decrypter = Decrypter::new();
+    let decrypted_entries = decrypter.decrypt(&mut bytes)?;
 
     for file in decrypted_entries {
         let path = String::from_utf8_lossy(&file.path);
@@ -883,4 +978,27 @@ pub(crate) async fn language_tool_lint(
     let response = client.check(&request).await?;
 
     Ok(())
+}
+
+pub(crate) fn decrypt_asset(path: &Path) -> Result<Vec<u8>, Error> {
+    use rpgm_asset_decrypter_lib::{
+        FileType, MV_M4A_EXT, MV_OGG_EXT, MZ_M4A_EXT, MZ_OGG_EXT,
+        decrypt_in_place,
+    };
+
+    let mut file_content =
+        fs::read(path).map_err(|err| Error::Io(path.to_path_buf(), err))?;
+    let extension = unsafe { path.extension().unwrap_unchecked() };
+
+    let file_type = if extension == MV_M4A_EXT || extension == MZ_M4A_EXT {
+        FileType::M4A
+    } else if extension == MV_OGG_EXT || extension == MZ_OGG_EXT {
+        FileType::OGG
+    } else {
+        FileType::PNG
+    };
+
+    decrypt_in_place(&mut file_content, file_type)?;
+
+    return Ok(file_content);
 }

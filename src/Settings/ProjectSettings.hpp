@@ -13,14 +13,20 @@ struct ColumnInfo {
     u16 width;
 };
 
+enum class SourceDirectory : u8 {
+    None,
+    UppercaseData,
+    LowercaseData,
+};
+
 struct ProjectSettings {
     vector<u128> hashes;
-    QStringList completed;
+    QStringList completedFiles;
 
     vector<ColumnInfo> columns;
 
     QString projectPath;
-    QString sourceDirectory;
+    QString spellcheckDictionary;
 
     QString projectContext;
     HashMap<QString, QString> fileContexts;
@@ -36,12 +42,23 @@ struct ProjectSettings {
     DuplicateMode duplicateMode = DuplicateMode::Allow;
     BaseFlags flags = BaseFlags(0);
 
+    SourceDirectory sourceDirectory = SourceDirectory::None;
+
     [[nodiscard]] auto programDataPath() const -> QString {
         return projectPath + PROGRAM_DATA_DIRECTORY;
     }
 
     [[nodiscard]] auto sourcePath() const -> QString {
-        return projectPath + sourceDirectory;
+        switch (sourceDirectory) {
+            case SourceDirectory::None:
+                return {};
+            case SourceDirectory::UppercaseData:
+                return projectPath + u"/Data";
+                break;
+            case SourceDirectory::LowercaseData:
+                return projectPath + u"/data";
+                break;
+        }
     }
 
     [[nodiscard]] auto translationPath() const -> QString {

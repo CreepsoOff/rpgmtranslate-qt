@@ -22,7 +22,7 @@ class WriteMenu final : public QDialog {
     ~WriteMenu() override;
 
     void clear();
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
 
     [[nodiscard]] auto selected(bool skipped = false) const -> Selected;
 

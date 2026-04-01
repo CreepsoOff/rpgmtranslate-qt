@@ -22,6 +22,7 @@ class FileSelectMenu final : public PersistentMenu {
 
     ~FileSelectMenu() override;
 
+    void setFiles(const vector<TabListItem>& files);
     void addFile(const QString& filename, bool checked = false);
     void clear();
     auto selected(bool skipped = false) -> Selected;

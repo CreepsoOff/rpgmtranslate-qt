@@ -3,9 +3,9 @@
 #include "Aliases.hpp"
 #include "FWD.hpp"
 
-#include <QDialog>
+#include <QDockWidget>
 
-class TabPanel final : public QWidget {
+class TabPanel final : public QDockWidget {
     Q_OBJECT
 
    public:
@@ -31,6 +31,7 @@ class TabPanel final : public QWidget {
     void setProgressDisplay(bool percents) const;
 
     [[nodiscard]] auto tabs() const -> QStringList;
+    void setTabs(vector<TabListItem> tabs);
 
    signals:
     void tabChanged(const QString& tabName, const QString& previousTabName);
@@ -38,6 +39,5 @@ class TabPanel final : public QWidget {
     void displayToggled();
 
    private:
-    QVBoxLayout* layout;
     TabList* tabList;
 };

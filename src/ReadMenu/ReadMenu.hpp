@@ -6,6 +6,7 @@
 
 #include <QDialog>
 #include <QEventLoop>
+#include <QScreen>
 #include <QWidget>
 
 QT_BEGIN_NAMESPACE
@@ -24,7 +25,7 @@ class ReadMenu final : public QWidget {
     ~ReadMenu() override;
 
     void clear();
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
 
     [[nodiscard]] auto parseMapEvents() const -> bool;
     [[nodiscard]] auto readMode() const -> ReadMode;

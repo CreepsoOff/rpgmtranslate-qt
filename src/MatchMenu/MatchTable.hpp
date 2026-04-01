@@ -90,7 +90,7 @@ class MatchTableModel final : public QAbstractTableModel {
         -> QVariant override;
 
     [[nodiscard]] auto
-    headerData(int section, Qt::Orientation orientation, i32 role) const
+    headerData(i32 section, Qt::Orientation orientation, i32 role) const
         -> QVariant override;
 
     void appendRow(Row row);

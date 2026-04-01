@@ -27,7 +27,7 @@ class SearchPanelDock final : public QDockWidget {
     );
 
     void clear();
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
 
     void init(
         QComboBox* fileSelect,

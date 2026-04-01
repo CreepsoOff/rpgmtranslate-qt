@@ -44,10 +44,10 @@ void WriteMenu::clear() {
     fileSelectMenu->clear();
 }
 
-void WriteMenu::addFile(const QString& file) {
-    fileSelectMenu->addFile(file);
-}
-
 auto WriteMenu::selected(const bool skipped) const -> Selected {
     return fileSelectMenu->selected(skipped);
+}
+
+void WriteMenu::setFiles(const vector<TabListItem>& files) {
+    fileSelectMenu->setFiles(files);
 }

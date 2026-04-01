@@ -168,6 +168,6 @@ auto SearchMenu::replaceText() const -> QString {
     return ui->replaceInput->toPlainText();
 };
 
-void SearchMenu::addFile(const QString& file) {
-    fileSelectMenu->addFile(file, true);
+void SearchMenu::setFiles(const vector<TabListItem>& files) {
+    fileSelectMenu->setFiles(files);
 }

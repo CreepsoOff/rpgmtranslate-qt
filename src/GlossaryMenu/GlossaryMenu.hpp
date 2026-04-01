@@ -24,7 +24,7 @@ class GlossaryMenu final : public PersistentMenu {
     ~GlossaryMenu() override;
 
     void fill(const Glossary& glossary);
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
     [[nodiscard]] auto glossary() const -> Glossary;
     void clear();
 

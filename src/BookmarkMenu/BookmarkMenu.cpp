@@ -1,6 +1,7 @@
 #include "BookmarkMenu.hpp"
 
 #include "BookmarkList.hpp"
+#include "TabListModel.hpp"
 
 #include <QApplication>
 #include <QComboBox>
@@ -63,6 +64,7 @@ void BookmarkMenu::addBookmark(
     const QStringView file,
     const u32 row
 ) {
+    shiftIndices(file, row, true);
     bookmarkList->appendRow(description, file, row);
 }
 
@@ -86,14 +88,28 @@ void BookmarkMenu::removeBookmark(const u32 targetRow) {
     }
 }
 
-// TODO: Comment rows can be added, so repeat this for when the row is added
-void BookmarkMenu::shiftIndices(const QString& file, const u32 removedRow) {
-    for (const u32 row : range<u32>(0, bookmarkList->rowCount())) {
-        Bookmark& bookmark = bookmarkList->bookmark(row);
+void BookmarkMenu::shiftIndices(
+    const QStringView file,
+    const u32 row,
+    const bool rowAdded
+) {
+    if (rowAdded) {
+        for (const u32 idx : range<u32>(0, bookmarkList->rowCount())) {
+            Bookmark& bookmark = bookmarkList->bookmark(idx);
 
-        if (QLatin1StringView(bookmark.filename.data()) == file &&
-            bookmark.row > removedRow) {
-            bookmark.row -= 1;
+            if (QLatin1StringView(bookmark.filename.data()) == file &&
+                bookmark.row >= row) {
+                bookmark.row += 1;
+            }
+        }
+    } else {
+        for (const u32 idx : range<u32>(0, bookmarkList->rowCount())) {
+            Bookmark& bookmark = bookmarkList->bookmark(idx);
+
+            if (QLatin1StringView(bookmark.filename.data()) == file &&
+                bookmark.row > row) {
+                bookmark.row -= 1;
+            }
         }
     }
 };
@@ -104,6 +120,8 @@ void BookmarkMenu::clear() {
     fileSelect->addItem(tr("- Filter by file -"));
 }
 
-void BookmarkMenu::addFile(const QString& file) {
-    fileSelect->addItem(file);
+void BookmarkMenu::setFiles(const vector<TabListItem>& files) {
+    for (const auto& file : files) {
+        fileSelect->addItem(file.name);
+    }
 }

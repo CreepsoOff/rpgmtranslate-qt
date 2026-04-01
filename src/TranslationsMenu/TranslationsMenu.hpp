@@ -1,40 +1,32 @@
 #pragma once
 
 #include "Aliases.hpp"
-#include "Enums.hpp"
 #include "FWD.hpp"
 #include "PersistentMenu.hpp"
 
-QT_BEGIN_NAMESPACE
-
-namespace Ui {
-    class TranslationsMenu;
-}  // namespace Ui
-
-QT_END_NAMESPACE
+// TODO: Replace bare labels with scroll areas
 
 class TranslationsMenu final : public PersistentMenu {
     Q_OBJECT
 
    public:
     explicit TranslationsMenu(QWidget* parent = nullptr);
-    ~TranslationsMenu() override;
 
     void showTranslations(
-        const array<QString, TRANSLATION_ENDPOINT_COUNT>& translations
+        const vector<QString>& translations,
+        const shared_ptr<Settings>& projectSettings
     );
+
+    void showError(const QString& error);
 
     void clear();
 
    signals:
     void translationClicked(const QString& translation);
 
-   protected:
-    void changeEvent(QEvent* event) override;
-    auto eventFilter(QObject* obj, QEvent* event) -> bool override;
-
    private:
-    inline auto setupUi() -> Ui::TranslationsMenu*;
+    QVBoxLayout* layout;
 
-    Ui::TranslationsMenu* const ui;
+    QWidget* translationsWidget;
+    QVBoxLayout* translationsLayout;
 };

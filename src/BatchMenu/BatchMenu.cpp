@@ -8,6 +8,10 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 
+// TODO: Add button to use the value from settings for wrapping
+// TODO: Add some kind of safety mechanism to avoid wrapping to more of 4 lines
+// of text
+
 BatchMenu::BatchMenu(QWidget* const parent) :
     PersistentMenu(parent, Qt::FramelessWindowHint),
     ui(setupUi()),
@@ -94,7 +98,6 @@ BatchMenu::BatchMenu(QWidget* const parent) :
                         tr("Select the translation endpoint you want to use.")
                     );
                 }
-
                 break;
             }
             case BatchAction::Wrap:
@@ -119,8 +122,7 @@ BatchMenu::BatchMenu(QWidget* const parent) :
             return;
         }
 
-        std::variant<TrimFlags, std::tuple<TranslationEndpoint, QString>, u8>
-            variant;
+        std::variant<TrimFlags, std::tuple<u8, QString>, u8> variant;
 
         switch (action) {
             case BatchAction::None:
@@ -143,9 +145,7 @@ BatchMenu::BatchMenu(QWidget* const parent) :
                 break;
             case BatchAction::Translate: {
                 variant = std::tuple(
-                    TranslationEndpoint(
-                        ui->translationEndpointSelect->currentIndex() - 1
-                    ),
+                    u8(ui->translationEndpointSelect->currentIndex() - 1),
                     ui->contextInput->toPlainText()
                 );
                 break;
@@ -214,6 +214,14 @@ void BatchMenu::renameColumn(const u8 index, const QString& name) {
     ui->translationColumnSelect->setItemText(index, name);
 };
 
-void BatchMenu::addFile(const QString& file) {
-    fileSelectMenu->addFile(file);
+void BatchMenu::setFiles(const vector<TabListItem>& files) {
+    fileSelectMenu->setFiles(files);
+}
+
+void BatchMenu::setEndpoints(const vector<EndpointSettings>& endpoints) {
+    ui->translationEndpointSelect->clear();
+
+    for (const auto& endpoint : endpoints) {
+        ui->translationEndpointSelect->addItem(endpoint.name);
+    }
 }

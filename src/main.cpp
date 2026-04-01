@@ -124,7 +124,9 @@ auto main(i32 argCount, char* args[]) -> i32 {
 
     qSetMessagePattern("%{file}:%{line}: %{message}"_L1);
 
-    logFile.setFileName(qApp->applicationDirPath() + "/rpgmtranslate.log"_L1);
+    logFile.setFileName(
+        qApp->applicationDirPath() + u"/rpgmtranslate.log"_qssv
+    );
     if (!logFile.open(QFile::WriteOnly | QFile::Truncate | QFile::Append)) {
         std::println(stderr, "Failed to open log file");
         return 1;

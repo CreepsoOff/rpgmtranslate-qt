@@ -76,6 +76,10 @@ using std::vector;
 using std::wstring;
 using std::wstring_view;
 
+using std::clamp;
+using std::max;
+using std::min;
+
 using QSVList = QList<QStringView>;
 
 template <typename T, typename E>

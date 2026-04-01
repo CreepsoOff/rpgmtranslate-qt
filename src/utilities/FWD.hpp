@@ -60,9 +60,16 @@ class TranslationTableModel;
 class TranslationTableHeader;
 class TranslationTableDelegate;
 
+class GitChangesList;
+class GitCommitList;
+class SourceControlDock;
+
+struct TabListItem;
+class TabListModel;
 class TabListDelegate;
 class TabList;
 class TabPanel;
+
 class SearchPanelDock;
 
 class FileSelectMenu;
@@ -75,6 +82,7 @@ class ReadMenu;
 class WriteMenu;
 class PurgeMenu;
 class MatchMenu;
+class AssetMenu;
 
 struct MatchModeInfo;
 struct Term;

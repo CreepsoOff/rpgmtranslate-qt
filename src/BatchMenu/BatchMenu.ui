@@ -87,51 +87,6 @@
           <string>- Translation Endpoint -</string>
          </property>
         </item>
-        <item>
-         <property name="text">
-          <string notr="true">Google</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">Yandex</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">DeepL</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">ChatGPT</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">Claude</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">Gemini</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string notr="true">DeepSeek</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>OpenAI-compatible</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Ollama</string>
-         </property>
-        </item>
        </widget>
       </item>
       <item>

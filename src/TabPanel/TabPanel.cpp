@@ -1,6 +1,7 @@
 #include "TabPanel.hpp"
 
 #include "TabList.hpp"
+#include "TabListModel.hpp"
 
 #include <QApplication>
 #include <QDir>
@@ -12,14 +13,10 @@
 #include <QVBoxLayout>
 
 TabPanel::TabPanel(QWidget* const parent) :
-    QWidget(parent, Qt::FramelessWindowHint),
-
-    layout(new QVBoxLayout(this)),
+    QDockWidget(parent),
 
     tabList(new TabList(this)) {
-    hide();
-    layout->addWidget(tabList);
-    layout->setContentsMargins(0, 0, 0, 0);
+    setWidget(tabList);
 
     connect(
         tabList->selectionModel(),
@@ -32,16 +29,8 @@ TabPanel::TabPanel(QWidget* const parent) :
         }
 
         emit tabChanged(
-            current.isValid() ? tabList->model()
-                                    ->itemFromIndex(current)
-                                    ->data(TabList::Roles::NameRole)
-                                    .toString()
-                              : QString(),
-            previous.isValid() ? tabList->model()
-                                     ->itemFromIndex(previous)
-                                     ->data(TabList::Roles::NameRole)
-                                     .toString()
-                               : QString()
+            current.isValid() ? tabList->tab(current.row()).name : QString(),
+            previous.isValid() ? tabList->tab(previous.row()).name : QString()
         );
     }
     );
@@ -56,8 +45,7 @@ TabPanel::TabPanel(QWidget* const parent) :
         menu->addSeparator();
 
         const bool completed =
-            index.isValid() ? index.data(TabList::Roles::CompletedRole).toBool()
-                            : false;
+            !index.isValid() || tabList->tab(index.row()).completed;
 
         auto* const markCompletedAction = menu->addAction(
             completed ? tr("Unmark Completed") : tr("Mark as Completed")
@@ -72,10 +60,7 @@ TabPanel::TabPanel(QWidget* const parent) :
 
         if (selectedAction == markCompletedAction) {
             tabList->toggleCompleted(index);
-            emit completedToggled(
-                tabList->model()->itemFromIndex(index)->text(),
-                !completed
-            );
+            emit completedToggled(tabList->tab(index.row()).name, !completed);
         } else if (selectedAction == toggleProgressDisplayAction) {
             setProgressDisplay(!tabList->progressDisplay());
             emit displayToggled();
@@ -84,13 +69,8 @@ TabPanel::TabPanel(QWidget* const parent) :
     );
 }
 
-void TabPanel::addTab(
-    const QString& basename,
-    const u32 total,
-    const u32 translated,
-    const bool completed
-) {
-    tabList->addItem(basename, total, translated, completed);
+void TabPanel::setTabs(vector<TabListItem> tabs) {
+    tabList->setTabs(std::move(tabs));
     adjustSize();
 }
 
@@ -99,10 +79,7 @@ auto TabPanel::tabCount() const -> u16 {
 };
 
 auto TabPanel::tabName(const u16 tabIndex) const -> QString {
-    return tabList->model()
-        ->item(tabIndex, 0)
-        ->data(TabList::Roles::NameRole)
-        .toString();
+    return tabList->tab(tabIndex).name;
 };
 
 auto TabPanel::currentTabName() const -> QString {
@@ -112,19 +89,16 @@ auto TabPanel::currentTabName() const -> QString {
         return {};
     }
 
-    return tabList->model()
-        ->itemFromIndex(currentIndex)
-        ->data(TabList::Roles::NameRole)
-        .toString();
+    return tabList->tab(currentIndex.row()).name;
 }
 
 void TabPanel::clear() {
-    tabList->model()->clear();
+    tabList->clear();
 }
 
 [[nodiscard]] auto TabPanel::tabIndex(const QString& tabName) const -> u32 {
     for (const u16 tab : range<u16>(0, tabCount())) {
-        if (tabList->model()->item(tab)->data(TabList::NameRole) == tabName) {
+        if (tabList->tab(tab).name == tabName) {
             return tab;
         }
     }
@@ -139,10 +113,7 @@ void TabPanel::clear() {
         return 0;
     }
 
-    return tabList->model()
-        ->itemFromIndex(currentIndex)
-        ->data(TabList::Roles::TranslatedRole)
-        .toUInt();
+    return tabList->tab(currentIndex.row()).translated;
 };
 
 [[nodiscard]] auto TabPanel::currentTotal() const -> u32 {
@@ -152,31 +123,22 @@ void TabPanel::clear() {
         return 0;
     }
 
-    return tabList->model()
-        ->itemFromIndex(currentIndex)
-        ->data(TabList::Roles::TotalRole)
-        .toUInt();
+    return tabList->tab(currentIndex.row()).total;
 };
 
 [[nodiscard]] auto TabPanel::tabTotal(const u16 tabIndex) const -> u32 {
-    return tabList->model()->item(tabIndex)->data(TabList::TotalRole).toUInt();
+    return tabList->tab(tabIndex).total;
 };
 
 [[nodiscard]] auto TabPanel::tabTranslated(const u16 tabIndex) const -> u32 {
-    return tabList->model()
-        ->item(tabIndex)
-        ->data(TabList::TranslatedRole)
-        .toUInt();
+    return tabList->tab(tabIndex).translated;
 };
 
 void TabPanel::setTabTranslated(
     const u16 tabIndex,
     const u32 translated
 ) const {
-    tabList->model()->item(tabIndex)->setData(
-        translated,
-        TabList::TranslatedRole
-    );
+    tabList->tab(tabIndex).translated = translated;
 };
 
 void TabPanel::setCurrentTranslated(const u32 translated) const {
@@ -186,16 +148,9 @@ void TabPanel::setCurrentTranslated(const u32 translated) const {
         return;
     }
 
-    tabList->model()
-        ->itemFromIndex(currentIndex)
-        ->setData(
-            tabList->model()
-                    ->itemFromIndex(currentIndex)
-                    ->data(TabList::Roles::TranslatedRole)
-                    .toUInt() +
-                translated,
-            TabList::Roles::TranslatedRole
-        );
+    u32 currentTranslated = tabList->tab(currentIndex.row()).translated;
+    tabList->tab(currentIndex.row()).translated =
+        currentTranslated + translated;
 }
 
 void TabPanel::setCurrentTotal(const u32 total) const {
@@ -205,16 +160,8 @@ void TabPanel::setCurrentTotal(const u32 total) const {
         return;
     }
 
-    tabList->model()
-        ->itemFromIndex(currentIndex)
-        ->setData(
-            tabList->model()
-                    ->itemFromIndex(currentIndex)
-                    ->data(TabList::Roles::TotalRole)
-                    .toUInt() +
-                total,
-            TabList::Roles::TotalRole
-        );
+    u32 currentTotal = tabList->tab(currentIndex.row()).total;
+    tabList->tab(currentIndex.row()).total = currentTotal + total;
 }
 
 void TabPanel::setProgressDisplay(const bool percents) const {
@@ -228,7 +175,7 @@ void TabPanel::changeTab(const QString& filename) {
     }
 
     for (const u16 tab : range<u16>(0, tabCount())) {
-        if (tabList->model()->item(tab)->data(TabList::NameRole) == filename) {
+        if (tabList->tab(tab).name == filename) {
             tabList->setCurrentIndex(tabList->model()->index(tab, 0));
             return;
         }
@@ -242,10 +189,7 @@ auto TabPanel::tabs() const -> QStringList {
     tabs.reserve(rowCount);
 
     for (const u16 idx : range<u16>(0, rowCount)) {
-        tabs.append(tabList->model()
-                        ->item(idx, 0)
-                        ->data(TabList::Roles::NameRole)
-                        .toString());
+        tabs.append(tabList->tab(idx).name);
     }
 
     return tabs;

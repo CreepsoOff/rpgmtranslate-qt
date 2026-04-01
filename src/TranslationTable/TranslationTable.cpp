@@ -11,8 +11,6 @@
 #include <QMenu>
 #include <QMessageBox>
 
-// TODO: Syntax highlighting for some Yanfly Message Core sequences
-
 TranslationTable::TranslationTable(QWidget* const parent) :
     QTableView(parent),
 
@@ -266,11 +264,11 @@ void TranslationTable::insertTranslation(const QString& translation) {
 };
 
 void TranslationTable::init(
-    const Algorithm* const algorithm,
     const u16* const hint,
-    const bool* const enabled
+    const bool* const enabled,
+    const QString* const dictionaryPath
 ) const {
-    delegate->init(algorithm, hint, enabled);
+    delegate->init(hint, enabled, dictionaryPath);
 
 #ifdef ENABLE_NUSPELL
     delegate->initializeDictionary();
@@ -359,7 +357,7 @@ auto TranslationTable::copy() -> u32 {
 }
 
 auto TranslationTable::cut() -> u32 {
-    QModelIndexList indexes = selectionModel()->selectedIndexes();
+    const QModelIndexList indexes = selectionModel()->selectedIndexes();
 
     if (indexes.isEmpty()) {
         return 0;

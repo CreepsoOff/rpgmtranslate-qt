@@ -4,6 +4,7 @@
 #include "Constants.hpp"
 #include "ProjectSettings.hpp"
 #include "SearchResultList.hpp"
+#include "TabListModel.hpp"
 #include "Utils.hpp"
 
 #include <QComboBox>
@@ -110,10 +111,6 @@ void SearchPanelDock::clear() {
     fileSelect->addItem(tr("- Filter by file -"));
 }
 
-void SearchPanelDock::addFile(const QString& file) {
-    fileSelect->addItem(file);
-}
-
 void SearchPanelDock::init(
     QComboBox* const fileSelect,
     SearchResultList* const searchResultList,
@@ -163,7 +160,6 @@ void SearchPanelDock::init(
                 item
             );
         } else if (button == Qt::MiddleButton) {
-            // TODO: Not really clear
             if (item.cellMatch.colIndex() == 0) {
                 auto menu = QMenu(this);
 
@@ -262,4 +258,10 @@ void SearchPanelDock::clearList() {
 
     this->matches = {};
     searchResultList->clear();
+}
+
+void SearchPanelDock::setFiles(const vector<TabListItem>& files) {
+    for (const auto& file : files) {
+        fileSelect->addItem(file.name);
+    }
 }

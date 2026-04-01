@@ -4,6 +4,7 @@
 #include "Enums.hpp"
 #include "FWD.hpp"
 #include "PersistentMenu.hpp"
+#include "Settings.hpp"
 #include "Types.hpp"
 
 QT_BEGIN_NAMESPACE
@@ -27,16 +28,17 @@ class BatchMenu final : public PersistentMenu {
     ~BatchMenu() override;
 
     void clear();
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
     void addColumn(const QString& name);
     void renameColumn(u8 index, const QString& name);
+    void setEndpoints(const vector<EndpointSettings>& endpoints);
 
    signals:
     void actionRequested(
         Selected selected,
         BatchAction action,
         u8 columnIndex,
-        std::variant<TrimFlags, std::tuple<TranslationEndpoint, QString>, u8>
+        std::variant<TrimFlags, std::tuple<u8, QString>, u8>
     );
 
    protected:

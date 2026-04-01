@@ -24,7 +24,7 @@ class PurgeMenu final : public QWidget {
     ~PurgeMenu() override;
 
     void clear();
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
 
     [[nodiscard]] auto selected(bool skipped = false) const -> Selected;
     [[nodiscard]] auto createIgnore() const -> bool;

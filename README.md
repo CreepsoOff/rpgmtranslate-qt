@@ -20,7 +20,10 @@ A complete rewrite of the [original RPGMTranslate application](https://github.co
 - [x] Convenience-oriented user experience with bookmarks, shortcuts, and highly customizable features.
 - [x] Built-in batch processing of files, including batch translation, batch trim and batch text wrap.
 - [x] Integrated APIs for Google Translate, Yandex Translate, DeepL, ChatGPT, Claude, DeepSeek, Gemini, Ollama, and any OpenAI-compatible endpoints (e.g. koboldcpp).
-- [ ] **WIP** Integrated spell-checking and advanced linting, including LanguageTool, custom dictionaries, whitespace highlighting etc.
+- [x] **WIP** Integrated Git client.
+- [x] **WIP** Integrated asset inspector, which allows to inspect images, videos, fonts, scripts and more.
+- [x] Integrated spell-checking and advanced linting.
+- [ ] **WIP** LanguageTool integration.
 
 **Please, request features!** It's possible to implement virtually anything in Rust and C++. Request features that you and others would benefit from, and we will implement them.
 
@@ -34,9 +37,23 @@ Using these tools, the program parses the text to `.txt` files, allows you to ed
 
 If you have troubled figuring out the program, check the `Help > Usage Documentation` top menu option. That will probably help.
 
-## Installation
+## Releases
 
-**Download the latest version from the Releases section.**
+You can get those in **Releases** section.
+
+Built releases require AVX instructions, which means the minimum supported processors are Sandy Bridge (3th Gen) for Intel and Bulldozer for AMD (FX-4xxx, FX-6xxx, FX-8xxx).
+
+### Windows
+
+Windows releases are linked statically, you don't need any DLLs.
+
+Minimum supported Windows version is Windows 10.
+
+### Linux
+
+Linux releases are linked dynamically.
+
+[Dependencies you'll need](./docs/linux-deps.md).
 
 ## Usage
 
@@ -65,4 +82,3 @@ Project is licensed under [WTFPL](https://www.wtfpl.net/).
 The repository contains third-party software, that is licensed under other conditions:
 
 - `icons` - contains [Google Material Symbols](https://fonts.google.com/icons) - licensed under `Apache License Version 2.0`.
-- `dictionaries` - contains [LibreOffice dictionaries](https://cgit.freedesktop.org/libreoffice/dictionaries) - licensed under a variety of licenses.

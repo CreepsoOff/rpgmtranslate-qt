@@ -84,10 +84,8 @@ class TaskWorker final : public QObject {
         Selected selected,
         BatchAction action,
         u8 columnIndex,
-        const std::variant<
-            BatchMenu::TrimFlags,
-            std::tuple<TranslationEndpoint, QString>,
-            u8>& variant,
+        const std::variant<BatchMenu::TrimFlags, std::tuple<u8, QString>, u8>&
+            variant,
         const Glossary& glossary
     );
 
@@ -137,9 +135,7 @@ class TaskWorker final : public QObject {
     void writeFinished(std::tuple<FFIString, f32> results);
     void purgeFinished(FFIString error);
     void searchFinished(HashMap<FilenameArray, vector<CellMatch>> results);
-    void singleTranslateFinished(
-        const array<QString, TRANSLATION_ENDPOINT_COUNT>& translations
-    );
+    void singleTranslateFinished(const vector<QString>& translations);
     void singleReplaceFinished(const std::tuple<QString, TextMatch*>& results);
     void translateFinished(
         result<std::tuple<ByteBuffer, ByteBuffer>, FFIString> results

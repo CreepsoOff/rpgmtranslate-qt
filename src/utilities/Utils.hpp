@@ -39,3 +39,6 @@ auto qsvReplace(QStringView input, QChar needle, QChar replacement) -> QString;
 auto joinQSVList(const QSVList& list, QLatin1StringView separator) -> QString;
 auto joinQSVList(const QSVList& list, QStringView separator) -> QString;
 auto joinQSVList(const QSVList& list, QChar separator) -> QString;
+
+auto intLen(u32 num) -> u8;
+auto intLen(i32 num) -> u8;

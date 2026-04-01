@@ -99,69 +99,127 @@ auto DeepLEndpointSettings::fromJSON(const QJsonObject& obj)
              .singleTranslation = obj["singleTranslation"_L1].toBool() };
 }
 
-[[nodiscard]] auto LLMSettings::toJSON() const -> QJsonObject {
-    return {
-        { u"apiKey"_s, apiKey },
-        { u"baseUrl"_s, baseUrl },
-        { u"model"_s, model },
-        { u"systemPrompt"_s, systemPrompt },
-        { u"singleTranslateSystemPrompt"_s, singleTranslateSystemPrompt },
+[[nodiscard]] auto EndpointSettings::toJSON() const -> QJsonObject {
+    QJsonObject obj;
 
-        { u"temperature"_s, temperature },
-        { u"tokenLimit"_s, tokenLimit },
-        { u"outputTokenLimit"_s, outputTokenLimit },
+    obj["name"_L1] = name;
+    obj["apiKey"_L1] = apiKey;
+    obj["yandexFolderID"_L1] = yandexFolderID;
+    obj["baseUrl"_L1] = baseUrl;
+    obj["model"_L1] = model;
+    obj["systemPrompt"_L1] = systemPrompt;
+    obj["singleTranslateSystemPrompt"_L1] = singleTranslateSystemPrompt;
 
-        { u"useGlossary"_s, useGlossary },
-        { u"thinking"_s, thinking },
+    if (temperature.has_value()) {
+        obj["temperature"_L1] = temperature.value();
+    }
 
-        { u"singleTranslation"_s, singleTranslation },
-    };
+    if (frequencyPenalty.has_value()) {
+        obj["frequencyPenalty"_L1] = frequencyPenalty.value();
+    }
+
+    if (precensePenalty.has_value()) {
+        obj["precensePenalty"_L1] = precensePenalty.value();
+    }
+
+    if (topP.has_value()) {
+        obj["topP"_L1] = topP.value();
+    }
+
+    obj["tokenLimit"_L1] = tokenLimit;
+    obj["outputTokenLimit"_L1] = outputTokenLimit;
+
+    obj["thinkingBudget"_L1] = thinkingBudget;
+
+    obj["useGlossary"_L1] = useGlossary;
+    obj["thinking"_L1] = thinking;
+
+    obj["singleTranslation"_L1] = singleTranslation;
+    obj["type"_L1] = u8(type);
+
+    return obj;
 }
 
-auto LLMSettings::fromJSON(const QJsonObject& obj) -> LLMSettings {
-    return { .apiKey = obj["apiKey"_L1].toString(),
-             .baseUrl = obj["baseUrl"_L1].toString(),
-             .model = obj["model"_L1].toString(),
-             .systemPrompt = obj["systemPrompt"_L1].toString(),
+auto EndpointSettings::fromJSON(const QJsonObject& obj) -> EndpointSettings {
+    EndpointSettings settings;
 
-             .temperature =
-                 f32(obj["temperature"_L1].toDouble(DEFAULT_TEMPERATURE)),
-             .tokenLimit = u16(obj["tokenLimit"_L1].toInt(DEFAULT_TOKEN_LIMIT)),
+    settings.name = obj["name"_L1].toString();
+    settings.apiKey = obj["apiKey"_L1].toString();
+    settings.yandexFolderID = obj["yandexFolderID"_L1].toString();
+    settings.baseUrl = obj["baseUrl"_L1].toString();
+    settings.model = obj["model"_L1].toString();
+    settings.systemPrompt = obj["systemPrompt"_L1].toString();
+    settings.singleTranslateSystemPrompt =
+        obj["singleTranslateSystemPrompt"_L1].toString();
 
-             .useGlossary = obj["useGlossary"_L1].toBool(),
-             .thinking = obj["thinking"_L1].toBool(),
+    if (!obj["temperature"_L1].isUndefined()) {
+        settings.temperature = f32(obj["temperature"_L1].toDouble());
+    }
 
-             .singleTranslation = obj["singleTranslation"_L1].toBool() };
+    if (!obj["frequencyPenalty"_L1].isUndefined()) {
+        settings.frequencyPenalty = f32(obj["frequencyPenalty"_L1].toDouble());
+    }
+
+    if (!obj["precensePenalty"_L1].isUndefined()) {
+        settings.precensePenalty = f32(obj["precensePenalty"_L1].toDouble());
+    }
+
+    if (!obj["topP"_L1].isUndefined()) {
+        settings.topP = f32(obj["topP"_L1].toDouble());
+    }
+
+    settings.tokenLimit = u16(obj["tokenLimit"_L1].toInt());
+    settings.outputTokenLimit = u16(obj["outputTokenLimit"_L1].toInt());
+
+    settings.thinkingBudget = u16(obj["thinkingBudget"_L1].toInt());
+
+    settings.useGlossary = obj["useGlossary"_L1].toBool();
+    settings.thinking = obj["thinking"_L1].toBool();
+
+    settings.singleTranslation = obj["singleTranslation"_L1].toBool();
+    settings.type = TranslationEndpoint(obj["type"_L1].toInt());
+
+    return settings;
+}
+
+// TODO
+[[nodiscard]] auto LanguageToolSettings::toJSON() const -> QJsonObject {
+    return { { u"baseURL"_s, baseURL }, { u"enabled"_s, enabled } };
+}
+
+// TODO
+auto LanguageToolSettings::fromJSON(const QJsonObject& obj)
+    -> LanguageToolSettings {
+    return { .baseURL = obj["baseURL"_L1].toString(),
+             .enabled = obj["enabled"_L1].toBool() };
 }
 
 [[nodiscard]] auto TranslationSettings::toJSON() const -> QJsonObject {
-    return {
-        { u"google"_s, google.toJSON() },
-        { u"yandex"_s, yandex.toJSON() },
-        { u"deepl"_s, deepl.toJSON() },
-        { u"chatgpt"_s, chatgpt.toJSON() },
-        { u"claude"_s, claude.toJSON() },
-        { u"gemini"_s, gemini.toJSON() },
-        { u"deepseek"_s, deepseek.toJSON() },
-        { u"openaiCompatible"_s, openaiCompatible.toJSON() },
-        { u"ollama"_s, ollama.toJSON() },
-    };
+    QJsonArray endpointsArray;
+
+    for (const auto& endpoint : endpoints) {
+        endpointsArray.append(endpoint.toJSON());
+    }
+
+    return { { u"languageTool"_s, languageTool.toJSON() },
+             { u"endpoints"_s, endpointsArray } };
 }
 
 auto TranslationSettings::fromJSON(const QJsonObject& obj)
     -> TranslationSettings {
-    return {
-        .google = GoogleEndpointSettings::fromJSON(obj["google"_L1].toObject()),
-        .yandex = YandexEndpointSettings::fromJSON(obj["yandex"_L1].toObject()),
-        .deepl = DeepLEndpointSettings::fromJSON(obj["deepl"_L1].toObject()),
-        .chatgpt = LLMSettings::fromJSON(obj["chatgpt"_L1].toObject()),
-        .claude = LLMSettings::fromJSON(obj["claude"_L1].toObject()),
-        .gemini = LLMSettings::fromJSON(obj["gemini"_L1].toObject()),
-        .deepseek = LLMSettings::fromJSON(obj["deepseek"_L1].toObject()),
-        .openaiCompatible =
-            LLMSettings::fromJSON(obj["openaiCompatible"_L1].toObject()),
-        .ollama = LLMSettings::fromJSON(obj["ollama"_L1].toObject()),
-    };
+    QJsonArray endpointsArray = obj["endpoints"_L1].toArray();
+
+    vector<EndpointSettings> endpoints;
+    endpoints.reserve(endpointsArray.size());
+
+    for (const auto& endpoint : endpointsArray) {
+        endpoints.push_back(EndpointSettings::fromJSON(endpoint.toObject()));
+    }
+
+    return { .languageTool = LanguageToolSettings::fromJSON(
+                 obj["languageTool"_L1].toObject()
+             ),
+             .endpoints = std::move(endpoints) };
 }
 
 [[nodiscard]] auto ControlSettings::toJSON() const -> QJsonObject {

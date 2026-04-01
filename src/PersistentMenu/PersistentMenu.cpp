@@ -42,6 +42,7 @@ auto PersistentMenu::event(QEvent* const event) -> bool {
         default:
             break;
     }
+
     return QWidget::event(event);
 }
 

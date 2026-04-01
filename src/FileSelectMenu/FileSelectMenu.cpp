@@ -1,6 +1,7 @@
 #include "FileSelectMenu.hpp"
 
 #include "PersistentMenu.hpp"
+#include "TabListModel.hpp"
 #include "ui_FileSelectMenu.h"
 
 #include <QCheckBox>
@@ -28,6 +29,12 @@ FileSelectMenu::FileSelectMenu(QWidget* const parent) :
 
 FileSelectMenu::~FileSelectMenu() {
     delete ui;
+}
+
+void FileSelectMenu::setFiles(const vector<TabListItem>& files) {
+    for (const auto& file : files) {
+        addFile(file.name);
+    }
 }
 
 auto FileSelectMenu::setupUi() -> Ui::FileSelectMenu* {

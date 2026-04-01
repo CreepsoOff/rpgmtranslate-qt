@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Aliases.hpp"
+
 #include <QStyledItemDelegate>
 
 class TabListDelegate final : public QStyledItemDelegate {
@@ -18,4 +20,7 @@ class TabListDelegate final : public QStyledItemDelegate {
         const QStyleOptionViewItem& option,
         const QModelIndex& index
     ) const -> QSize override;
+
+    mutable u16 maxCachedNameWidth = 0;
+    mutable u16 maxCachedProgressWidth = 0;
 };

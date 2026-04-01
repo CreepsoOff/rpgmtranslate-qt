@@ -234,3 +234,18 @@ auto joinQSVList(const QSVList& list, const QStringView separator) -> QString {
 
     return result;
 }
+
+auto intLen(const u32 num) -> u8 {
+    constexpr array<u32, 10> powers = { 1,         10,        100,     1000,
+                                        10000,     100000,    1000000, 10000000,
+                                        100000000, 1000000000 };
+
+    const u8 len =
+        ((CHAR_BIT * sizeof(u32)) - std::countl_zero(num)) * 1233 >> 12;
+    return len + (num >= powers[len] ? 1 : 0);
+}
+
+auto intLen(const i32 num) -> u8 {
+    const u32 val = num < 0 ? -u32(num) : u32(num);
+    return intLen(val) + (num < 0 ? 1 : 0);
+}

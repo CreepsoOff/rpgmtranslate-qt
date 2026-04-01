@@ -1,102 +1,79 @@
 #include "TranslationsMenu.hpp"
 
-#include "Enums.hpp"
+#include "ClickableLabel.hpp"
 #include "PersistentMenu.hpp"
-#include "ui_TranslationsMenu.h"
+#include "Settings.hpp"
 
+#include <QLabel>
 #include <QMouseEvent>
+#include <QVBoxLayout>
+
+// TODO: Allow to resize this menu and implement translation widgets as
+// scrollable wrapping labels
 
 TranslationsMenu::TranslationsMenu(QWidget* const parent) :
     PersistentMenu(parent, Qt::FramelessWindowHint),
-    ui(setupUi()) {
+    layout(new QVBoxLayout(this)),
+    translationsWidget(new QWidget(this)),
+    translationsLayout(new QVBoxLayout(translationsWidget)) {
     setDragMoveEnabled(true);
 
-    ui->googleTranslation->installEventFilter(this);
-    ui->yandexTranslation->installEventFilter(this);
-    ui->deeplTranslation->installEventFilter(this);
-    ui->deepseekTranslation->installEventFilter(this);
-    ui->openaiTranslation->installEventFilter(this);
-    ui->anthropicTranslation->installEventFilter(this);
-    ui->geminiTranslation->installEventFilter(this);
-    ui->openaiCompatibleTranslation->installEventFilter(this);
-    ui->ollamaTranslation->installEventFilter(this);
+    layout->addWidget(new QLabel(tr("Translations Menu"), this));
+    layout->addWidget(translationsWidget);
+
+    layout->setContentsMargins(8, 8, 8, 8);
+    layout->setSpacing(8);
+
+    translationsLayout->setContentsMargins(0, 0, 0, 0);
+    translationsLayout->setSpacing(8);
+
+    layout->setSizeConstraint(QLayout::SetFixedSize);
 }
-
-TranslationsMenu::~TranslationsMenu() {
-    delete ui;
-}
-
-auto TranslationsMenu::setupUi() -> Ui::TranslationsMenu* {
-    auto* const ui_ = new Ui::TranslationsMenu();
-    ui_->setupUi(this);
-    return ui_;
-}
-
-void TranslationsMenu::changeEvent(QEvent* const event) {
-    if (event->type() == QEvent::LanguageChange) {
-        ui->retranslateUi(this);
-    }
-
-    QWidget::changeEvent(event);
-};
 
 void TranslationsMenu::showTranslations(
-    const array<QString, TRANSLATION_ENDPOINT_COUNT>& translations
+    const vector<QString>& translations,
+    const shared_ptr<Settings>& settings
 ) {
     clear();
 
     for (const auto& [idx, translation] : views::enumerate(translations)) {
-        switch (TranslationEndpoint(idx)) {
-            case TranslationEndpoint::Google:
-                ui->googleTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::Yandex:
-                ui->yandexTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::DeepL:
-                ui->deeplTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::OpenAI:
-                ui->openaiTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::Anthropic:
-                ui->anthropicTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::Gemini:
-                ui->geminiTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::DeepSeek:
-                ui->deepseekTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::OpenAICompatible:
-                ui->openaiCompatibleTranslation->setText(translation);
-                break;
-            case TranslationEndpoint::Ollama:
-                ui->ollamaTranslation->setText(translation);
-                break;
+        const QString& name = settings->translation.endpoints[idx].name;
+
+        auto* const translationWidget = new QWidget(this);
+        auto* const translationWidgetLayout =
+            new QVBoxLayout(translationWidget);
+
+        translationWidgetLayout->setContentsMargins(0, 0, 0, 0);
+        translationWidgetLayout->setSpacing(4);
+
+        auto* const translationLabel =
+            new ClickableLabel(translation, translationWidget);
+        translationLabel->setCursor(QCursor(Qt::PointingHandCursor));
+
+        translationWidgetLayout->addWidget(new QLabel(name, translationWidget));
+        translationWidgetLayout->addWidget(translationLabel);
+
+        connect(
+            translationLabel,
+            &ClickableLabel::clicked,
+            this,
+            [this, translationLabel] -> void {
+            emit translationClicked(translationLabel->text());
         }
+        );
+
+        translationsLayout->addWidget(translationWidget);
     }
 };
 
+void TranslationsMenu::showError(const QString& error) {
+    clear();
+    translationsLayout->addWidget(new QLabel(error, this));
+};
+
 void TranslationsMenu::clear() {
-    ui->googleTranslation->clear();
-    ui->yandexTranslation->clear();
-    ui->deeplTranslation->clear();
-    ui->openaiTranslation->clear();
-    ui->anthropicTranslation->clear();
-    ui->geminiTranslation->clear();
-    ui->deepseekTranslation->clear();
-    ui->openaiCompatibleTranslation->clear();
-    ui->ollamaTranslation->clear();
-}
-
-auto TranslationsMenu::eventFilter(QObject* const obj, QEvent* const event)
-    -> bool {
-    if (event->type() != QEvent::MouseButtonPress ||
-        !obj->objectName().endsWith("Translation"_L1)) {
-        return PersistentMenu::eventFilter(obj, event);
+    while (const auto* const item = translationsLayout->takeAt(0)) {
+        delete item->widget();
+        delete item;
     }
-
-    emit translationClicked(as<QLabel*>(obj)->text());
-    return true;
-}
+};

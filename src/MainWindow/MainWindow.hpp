@@ -5,15 +5,11 @@
 #include "FFILogger.hpp"
 #include "FWD.hpp"
 #include "ProjectSettings.hpp"
-#include "PurgeMenu.hpp"
 #include "Settings.hpp"
-#include "TabPanel.hpp"
 #include "TaskWorker.hpp"
-#include "WriteMenu.hpp"
 
 #include <QLocale>
 #include <QMainWindow>
-#include <QShortcut>
 #include <QTimer>
 
 QT_BEGIN_NAMESPACE
@@ -50,7 +46,7 @@ class MainWindow final : public QMainWindow {
 
     inline void loadSettings();
 
-    inline void openProject(const QString& folder);
+    inline void openProject(const QString& folder, bool newProject);
 
     inline void
     changeTab(const QString& tabName, const QString& previousTabName);
@@ -101,8 +97,6 @@ class MainWindow final : public QMainWindow {
 
     QTranslator* translator;
 
-    TabPanel* const tabPanel;
-
     SearchMenu* const searchMenu;
     BatchMenu* const batchMenu;
     GlossaryMenu* const glossaryMenu;
@@ -111,6 +105,7 @@ class MainWindow final : public QMainWindow {
     ReadMenu* const readMenu;
     WriteMenu* const writeMenu;
     PurgeMenu* const purgeMenu;
+    AssetMenu* const assetMenu;
 
     QLabel* const linesStatusLabel;
     QLabel* const progressStatusLabel;
@@ -119,21 +114,31 @@ class MainWindow final : public QMainWindow {
     FFILogger& ffiLogger;
     TaskWorker* const taskWorker;
 
+    QAction* const actionGoToRow = new QAction(this);
+
+    QAction* const actionTabPanel =
+        new QAction(QIcon(u":/icons/menu.svg"_s), tr("Tab Panel"), this);
     QAction* const actionSave =
         new QAction(QIcon(u":/icons/save.svg"_s), tr("Save"), this);
     QAction* const actionWrite =
         new QAction(QIcon(u":/icons/manufacturing.svg"_s), tr("Write"), this);
     QAction* const actionSearch =
         new QAction(QIcon(u":/icons/search.svg"_s), tr("Search"), this);
-
-    QAction* const actionTabPanel =
-        new QAction(QIcon(u":/icons/menu.svg"_s), tr("Tab Panel"), this);
-    QAction* const actionSearchPanel =
-        new QAction(QIcon(u":/icons/dock.svg"_s), tr("Search Panel"), this);
-    QAction* const actionGoToRow = new QAction(this);
     QAction* const actionBatchMenu = new QAction(
         QIcon(u":/icons/construction.svg"_s),
         tr("Batch Menu"),
+        this
+    );
+    QAction* const actionGlossaryMenu =
+        new QAction(QIcon(u":/icons/book_3.svg"_s), tr("Glossary Menu"), this);
+    QAction* const actionMatchMenu = new QAction(
+        QIcon(u":/icons/lab_profile.svg"_s),
+        tr("Match Menu"),
+        this
+    );
+    QAction* const actionTranslationsMenu = new QAction(
+        QIcon(u":/icons/translate.svg"_s),
+        tr("Translations Menu"),
         this
     );
     QAction* const actionBookmarkMenu = new QAction(
@@ -141,18 +146,17 @@ class MainWindow final : public QMainWindow {
         tr("Bookmark Menu"),
         this
     );
-    QAction* const actionMatchMenu = new QAction(
-        QIcon(u":/icons/lab_profile.svg"_s),
-        tr("Match Menu"),
+    QAction* const actionSourceControl =
+        new QAction(QIcon(u":/icons/commit.svg"_s), tr("Source Control"), this);
+    QAction* const actionAssets =
+        new QAction(QIcon(u":/icons/stock_media.svg"_s), tr("Assets"), this);
+    QAction* const actionLocateProjectDir = new QAction(
+        QIcon(u":/icons/folder_code.svg"_s),
+        tr("Locate Project Directory"),
         this
     );
-    QAction* const actionGlossaryMenu =
-        new QAction(QIcon(u":/icons/book_3.svg"_s), tr("Glossary Menu"), this);
-    QAction* const actionTranslationsMenu = new QAction(
-        QIcon(u":/icons/translate.svg"_s),
-        tr("Translations Menu"),
-        this
-    );
+    QAction* const actionSearchPanel =
+        new QAction(QIcon(u":/icons/dock.svg"_s), tr("Search Panel"), this);
 
     bool firstReadPending = false;
 };

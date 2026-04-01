@@ -18,7 +18,7 @@ class TabList final : public QListView {
 
     explicit TabList(QWidget* parent = nullptr);
 
-    [[nodiscard]] constexpr auto model() const -> QStandardItemModel* {
+    [[nodiscard]] constexpr auto model() const -> TabListModel* {
         return model_;
     }
 
@@ -26,15 +26,16 @@ class TabList final : public QListView {
         return displayPercents;
     }
 
-    void
-    addItem(const QString& name, u32 total, u32 translated, bool completed);
     void setProgress(u16 row, u32 total, u32 translated);
 
     void setProgressDisplay(bool percents);
     [[nodiscard]] auto progressDisplay() const -> bool;
 
     void toggleCompleted(const QModelIndex& index);
-    void setCompleted(const QModelIndex& index, bool completed);
+
+    [[nodiscard]] auto tab(u16 index) -> TabListItem&;
+    void clear();
+    void setTabs(vector<TabListItem> tabs);
 
    signals:
     void indexChanged(const QModelIndex& current, const QModelIndex& previous);
@@ -44,7 +45,7 @@ class TabList final : public QListView {
     void mousePressEvent(QMouseEvent* event) override;
 
    private:
-    QStandardItemModel* model_;
+    TabListModel* model_;
     TabListDelegate* delegate;
 
     bool displayPercents = false;

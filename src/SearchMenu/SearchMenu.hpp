@@ -27,7 +27,7 @@ class SearchMenu final : public PersistentMenu {
     ~SearchMenu() override;
 
     void clear();
-    void addFile(const QString& filename);
+    void setFiles(const vector<TabListItem>& files);
     void addColumn(const QString& name);
     void renameColumn(u8 index, const QString& name);
     [[nodiscard]] auto replaceText() const -> QString;

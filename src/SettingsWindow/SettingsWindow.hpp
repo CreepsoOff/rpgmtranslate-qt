@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Aliases.hpp"
+#include "Enums.hpp"
 #include "FWD.hpp"
+#include "Settings.hpp"
 
 #include <QDialog>
 
@@ -28,10 +30,13 @@ class SettingsWindow final : public QDialog {
    protected:
     void changeEvent(QEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
+    auto eventFilter(QObject* watched, QEvent* event) -> bool override;
 
    private:
     inline auto setupUi() -> Ui::SettingsWindow*;
-    inline auto saveCurrentEndpoint(u8 row) -> bool;
+    inline void saveCurrentEndpoint(EndpointSettings& settings);
+    inline void refreshSpellcheckDictionarySelect();
+    inline void setDefaultBaseURL(TranslationEndpoint endpoint);
 
     shared_ptr<Settings> settings;
     shared_ptr<ProjectSettings> projectSettings;

@@ -30,11 +30,12 @@ auto tou128(const string& str) -> u128 {
         { u"duplicateMode"_s, u8(duplicateMode) },
         { u"flags"_s, u8(flags) },
         { u"hashes"_s, hashes },
-        { u"completed"_s, QJsonArray::fromStringList(completed) },
+        { u"completed"_s, QJsonArray::fromStringList(completedFiles) },
         { u"lineLengthHint"_s, lineLengthHint },
         { u"sourceColumnWidth"_s, sourceColumnWidth },
         { u"translationColumns"_s, serializeTranslationColumns() },
-        { u"sourceDirectory"_s, sourceDirectory },
+        { u"sourceDirectory"_s, u8(sourceDirectory) },
+        { u"spellcheckDictionaryPath"_s, spellcheckDictionary },
         { u"projectContext"_s, projectContext },
         { u"fileContexts"_s, contexts },
     } };
@@ -56,12 +57,16 @@ auto ProjectSettings::fromJSON(const QJsonObject& obj) -> ProjectSettings {
         settings.hashes.emplace_back(tou128(hash.toStdString()));
     }
 
-    settings.completed = obj["completed"_L1].toVariant().toStringList();
+    settings.completedFiles = obj["completed"_L1].toVariant().toStringList();
 
     settings.lineLengthHint = obj["lineLengthHint"_L1].toInt();
     settings.sourceColumnWidth = obj["sourceColumnWidth"_L1].toInt();
 
-    settings.sourceDirectory = obj["sourceDirectory"_L1].toString();
+    settings.sourceDirectory =
+        SourceDirectory(obj["sourceDirectory"_L1].toInt());
+
+    settings.spellcheckDictionary =
+        obj["spellcheckDictionaryPath"_L1].toString();
     settings.projectContext = obj["projectContext"_L1].toString();
 
     auto contextsArray = obj["fileContexts"_L1].toArray();

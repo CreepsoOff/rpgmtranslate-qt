@@ -16,17 +16,17 @@ class TranslationTableDelegate final : public QStyledItemDelegate {
     explicit TranslationTableDelegate(QObject* parent = nullptr);
 
 #ifdef ENABLE_NUSPELL
-    void initializeDictionary();
+    [[nodiscard]] auto initializeDictionary() -> result<void, QString>;
 #endif
 
     void init(
-        const Algorithm* const algorithm,
         const u16* const hint,
-        const bool* const enabled
+        const bool* const enabled,
+        const QString* const dictionaryPath
     ) {
-        this->algorithm = algorithm;
         lengthHint = hint;
         this->whitespaceHighlightingEnabled = enabled;
+        this->dictionaryPath = dictionaryPath;
     }
 
     void setText(const QString& text);
@@ -60,15 +60,16 @@ class TranslationTableDelegate final : public QStyledItemDelegate {
    private:
 #ifdef ENABLE_NUSPELL
     mutable nuspell::Dictionary dictionary;
+    mutable bool dictionaryReady;
 #endif
 
     static constexpr u8 PAD_X = 4;
     static constexpr u8 PAD_Y = 4;
 
-    const Algorithm* algorithm;
     const u16* lengthHint;
     const bool* whitespaceHighlightingEnabled;
+    const QString* dictionaryPath;
 
-    mutable QPlainTextEdit* activeInput;
+    mutable QPlainTextEdit* activeInput = nullptr;
     mutable u32 activeRow;
 };

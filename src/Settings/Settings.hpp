@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Constants.hpp"
+#include "Enums.hpp"
 
 #include <QJsonArray>
 #include <QJsonObject>
@@ -70,42 +71,69 @@ struct DeepLEndpointSettings {
     static auto fromJSON(const QJsonObject& obj) -> DeepLEndpointSettings;
 };
 
-struct LLMSettings {
-    constexpr static f32 DEFAULT_TEMPERATURE = 0.3F;
+struct EndpointSettings {
     constexpr static u16 DEFAULT_TOKEN_LIMIT = 4000;
 
+    QString name;
     QString apiKey;
+    QString yandexFolderID;
     QString baseUrl;
     QString model;
     QString systemPrompt;
     QString singleTranslateSystemPrompt;
 
-    f32 temperature = DEFAULT_TEMPERATURE;
+    optional<f32> temperature;
+    optional<f32> frequencyPenalty;
+    optional<f32> precensePenalty;
+    optional<f32> topP;
+
     u16 tokenLimit = DEFAULT_TOKEN_LIMIT;
     u16 outputTokenLimit = UINT16_MAX;
+
+    u16 thinkingBudget = UINT16_MAX;
+
+    // TODO: Reasoning effort
 
     bool useGlossary = false;
     bool thinking = false;
 
     bool singleTranslation = false;
 
+    TranslationEndpoint type;
+
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> LLMSettings;
+    static auto fromJSON(const QJsonObject& obj) -> EndpointSettings;
 };
 
-// TODO: LanguageTool & Spell-check
+struct LanguageToolSettings {
+    QString baseURL;
+
+    QString apiKey;
+    QString username;
+
+    QString level;
+    QString motherTongue;
+    QString preferredVariants;
+    QString dicts;
+
+    QString enabledLints;
+    QString disabledLints;
+
+    QString enabledCategories;
+    QString disabledCategories;
+
+    bool enabledOnly;
+
+    bool enabled = false;
+
+    [[nodiscard]] auto toJSON() const -> QJsonObject;
+    static auto fromJSON(const QJsonObject& obj) -> LanguageToolSettings;
+};
+
 struct TranslationSettings {
-    GoogleEndpointSettings google;
-    YandexEndpointSettings yandex;
-    DeepLEndpointSettings deepl;
+    LanguageToolSettings languageTool;
 
-    LLMSettings chatgpt;
-    LLMSettings claude;
-    LLMSettings gemini;
-    LLMSettings deepseek;
-
-    LLMSettings openaiCompatible;
-    LLMSettings ollama;
+    vector<EndpointSettings> endpoints;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
     static auto fromJSON(const QJsonObject& obj) -> TranslationSettings;

@@ -1,18 +1,18 @@
 #include "TranslationTableDelegate.hpp"
 
 #include "Aliases.hpp"
+#include "TranslationHighlighter.hpp"
 #include "TranslationInput.hpp"
 #include "TranslationTable.hpp"
 #include "TranslationTableModel.hpp"
-#include "WhitespaceHighlighter.hpp"
-
-#ifdef ENABLE_NUSPELL
-#include "SpellHighlighter.hpp"
-#endif
 
 #include <QApplication>
+#include <QDir>
+#include <QDirIterator>
+#include <QFileInfo>
 #include <QModelIndex>
 #include <QPainter>
+#include <QSyntaxHighlighter>
 #include <QTimer>
 
 TranslationTableDelegate::TranslationTableDelegate(QObject* const parent) :
@@ -31,12 +31,12 @@ auto TranslationTableDelegate::createEditor(
 ) const -> QWidget* {
     auto* const editor = new TranslationInput(*lengthHint, parent);
 
-#ifdef ENABLE_NUSPELL
-    new SpellHighlighter(&dictionary, *algorithm, editor->document());
-#endif
-
-    new WhitespaceHighlighter(
+    new TranslationHighlighter(
         *whitespaceHighlightingEnabled,
+#ifdef ENABLE_NUSPELL
+        &dictionary,
+        &dictionaryReady,
+#endif
         editor->document()
     );
 
@@ -107,7 +107,7 @@ auto TranslationTableDelegate::sizeHint(
     const auto fontMetrics = QFontMetrics(option.font);
     const u32 lines = text.count('\n') + 1;
     const u32 height = (fontMetrics.lineSpacing() * lines) + 10;
-    return { fontMetrics.horizontalAdvance(text), i32(qMax(height, u32(30))) };
+    return { fontMetrics.horizontalAdvance(text), i32(max(height, u32(30))) };
 }
 
 void TranslationTableDelegate::paint(
@@ -312,92 +312,31 @@ auto TranslationTableDelegate::eventFilter(
 }
 
 #ifdef ENABLE_NUSPELL
-void TranslationTableDelegate::initializeDictionary() {
-    // TODO: Delete unpacked dictionary
+auto TranslationTableDelegate::initializeDictionary() -> result<void, QString> {
+    const QString path =
+        qApp->applicationDirPath() + u"/dictionaries" + *dictionaryPath;
 
-    switch (*algorithm) {
-        case Algorithm::None:
-            break;
-        case Algorithm::Arabic:
-            break;
-        case Algorithm::Armenian:
-            break;
-        case Algorithm::Basque:
-            break;
-        case Algorithm::Catalan:
-            break;
-        case Algorithm::Danish:
-            break;
-        case Algorithm::Dutch:
-        case Algorithm::DutchPorter:
-            break;
-        case Algorithm::English:
-        case Algorithm::Porter:
-        case Algorithm::Lovins:
-            // TODO: Unpack and load `en_US`
-            break;
-        case Algorithm::Esperanto:
-            break;
-        case Algorithm::Estonian:
-            break;
-        case Algorithm::Finnish:
-            break;
-        case Algorithm::French:
-            // TODO: Unpack and load `fr_FR`
-            break;
-        case Algorithm::German:
-            // TODO: Unpack and load `de`
-            break;
-        case Algorithm::Greek:
-            break;
-        case Algorithm::Hindi:
-            break;
-        case Algorithm::Hungarian:
-            break;
-        case Algorithm::Indonesian:
-            break;
-        case Algorithm::Irish:
-            break;
-        case Algorithm::Italian:
-            // TODO: Unpack and load `it_IT`
-            break;
-        case Algorithm::Lithuanian:
-            break;
-        case Algorithm::Nepali:
-            break;
-        case Algorithm::Norwegian:
-            break;
-        case Algorithm::Portuguese:
-            // TODO: Unpack and load `pt_PT`
-            break;
-        case Algorithm::Romanian:
-            break;
-        case Algorithm::Russian:
-            // TODO: Unpack and load `ru_RU`
-            break;
-        case Algorithm::Serbian:
-            break;
-        case Algorithm::Spanish:
-            // TODO: Unpack and load `es`
-            break;
-        case Algorithm::Swedish:
-            break;
-        case Algorithm::Tamil:
-            break;
-        case Algorithm::Turkish:
-            // TODO: Unpack and load `tr_TR`
-            break;
-        case Algorithm::Yiddish:
-            break;
-        case Algorithm::Japanese:
-        case Algorithm::Chinese:
-        case Algorithm::Korean:
-        case Algorithm::Thai:
-        case Algorithm::Burmese:
-        case Algorithm::Lao:
-        case Algorithm::Khmer:
-            // TODO: Custom
-            break;
+    if (dictionaryPath->isEmpty() || !QFile::exists(path)) {
+        dictionary = nuspell::Dictionary();
+        dictionaryReady = false;
+    } else {
+        try {
+            dictionary.load_aff_dic(path.toStdString());
+            dictionaryReady = true;
+        } catch (nuspell::Dictionary_Loading_Error& err) {
+            return Err(QString::fromUtf8(err.what()));
+        }
     }
+
+    if (activeInput != nullptr) {
+        const auto highlighters =
+            activeInput->document()->findChildren<QSyntaxHighlighter*>();
+
+        for (QSyntaxHighlighter* const highlighter : highlighters) {
+            highlighter->rehighlight();
+        }
+    }
+
+    return {};
 }
 #endif

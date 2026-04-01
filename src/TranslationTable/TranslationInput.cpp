@@ -136,9 +136,9 @@ void TranslationInput::paintEvent(QPaintEvent* const event) {
     auto painter = QPainter(viewport());
     painter.setPen(QColor(255, 0, 0, 80));
 
-    const int charWidth = fontMetrics().horizontalAdvance(' ');
+    const i32 charWidth = fontMetrics().horizontalAdvance(' ');
 
-    const int xPos = contentOffset().x() + document()->documentMargin() +
+    const i32 xPos = contentOffset().x() + document()->documentMargin() +
                      (charWidth * lengthHint);
 
     painter.drawLine(xPos, 0, xPos, viewport()->height());

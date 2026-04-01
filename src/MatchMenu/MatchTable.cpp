@@ -176,9 +176,9 @@ void MatchTableDelegate::paint(
 }
 
 [[nodiscard]] auto MatchTableModel::headerData(
-    int section,
-    Qt::Orientation orientation,
-    int role
+    const i32 section,
+    const Qt::Orientation orientation,
+    const i32 role
 ) const -> QVariant {
     if (role != Qt::DisplayRole) {
         return {};

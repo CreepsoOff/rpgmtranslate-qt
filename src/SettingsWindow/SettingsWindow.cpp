@@ -6,11 +6,47 @@
 #include "rpgmtranslate.h"
 #include "ui_SettingsWindow.h"
 
+#include <QDir>
+#include <QDirListing>
 #include <QDoubleValidator>
+#include <QKeyEvent>
 #include <QMessageBox>
 #include <QStringListModel>
 #include <QStyleFactory>
 #include <QStyleHints>
+
+[[nodiscard]] auto listSpellcheckDictionaries() -> QStringList {
+    const auto dictionariesPath = qApp->applicationDirPath() + u"/dictionaries";
+
+    if (!QFile::exists(dictionariesPath)) {
+        return {};
+    }
+
+    const auto listing = QDirListing(
+        dictionariesPath,
+        QDirListing::IteratorFlag::Recursive |
+            QDirListing::IteratorFlag::FilesOnly
+    );
+
+    QStringList dictionaries;
+
+    for (const auto& entry : listing) {
+        QString filename = entry.filePath();
+
+        if (!filename.endsWith("aff"_L1)) {
+            continue;
+        }
+
+        filename.slice(
+            dictionariesPath.size(),
+            filename.size() - dictionariesPath.size()
+        );
+        dictionaries.append(std::move(filename));
+    }
+
+    dictionaries.sort(Qt::CaseInsensitive);
+    return dictionaries;
+}
 
 SettingsWindow::SettingsWindow(
     const shared_ptr<Settings>& settings_,
@@ -22,6 +58,31 @@ SettingsWindow::SettingsWindow(
     ui(setupUi()),
     settings(settings_),
     projectSettings(projectSettings_) {
+    ui->inputTokenLimitWidget->setRange(0, UINT16_MAX);
+    ui->inputTokenLimitWidget->setCheckable(false);
+    ui->inputTokenLimitWidget->setLabel(tr("Input token limit"));
+    ui->outputTokenLimitWidget->setRange(0, UINT16_MAX);
+    ui->outputTokenLimitWidget->setCheckable(false);
+    ui->outputTokenLimitWidget->setLabel(tr("Output token limit"));
+    ui->thinkingBudgetWidget->setRange(0, UINT16_MAX);
+    ui->thinkingBudgetWidget->setCheckable(false);
+    ui->thinkingBudgetWidget->setLabel(tr("Thinking budget limit"));
+
+    ui->temperatureWidget->setRange(0.0F, 2.0F);
+    ui->temperatureWidget->setLabel(tr("Temperature"));
+    ui->frequencyWidget->setRange(0.0F, 2.0F);
+    ui->frequencyWidget->setLabel(tr("Frequency penalty"));
+    ui->precenseWidget->setRange(0.0F, 2.0F);
+    ui->precenseWidget->setLabel(tr("Precense penalty"));
+    ui->topPWidget->setRange(0.0F, 2.0F);
+    ui->topPWidget->setLabel(tr("Top P"));
+
+    ui->translationTableFontSizeWidget->setRange(8, 96);
+    ui->translationTableFontSizeWidget->setLabel(
+        tr("Translation table font size")
+    );
+    ui->translationTableFontSizeWidget->setCheckable(false);
+
     for (const auto [value, name] : magic_enum::enum_entries<Algorithm>()) {
         ui->sourceLanguageSelect->addItem(QString::fromLatin1(name));
         ui->translationLanguageSelect->addItem(QString::fromLatin1(name));
@@ -31,18 +92,15 @@ SettingsWindow::SettingsWindow(
         new QStringListModel(tabs, ui->fileContextList);
     ui->fileContextList->setModel(fileContextListModel);
 
-    auto* const endpointListModel = new QStringListModel(
-        { u"Google"_s,
-          u"Yandex"_s,
-          u"DeepL"_s,
-          u"OpenAI"_s,
-          u"Claude"_s,
-          u"Gemini"_s,
-          u"DeepSeek"_s,
-          u"OpenAI-compatible"_s,
-          u"Ollama"_s },
-        ui->endpointList
-    );
+    QStringList endpointNames;
+    endpointNames.reserve(isize(settings->translation.endpoints.size()));
+
+    for (const auto& endpoint : settings->translation.endpoints) {
+        endpointNames.append(endpoint.name);
+    }
+
+    auto* const endpointListModel =
+        new QStringListModel(endpointNames, ui->endpointList);
     ui->endpointList->setModel(endpointListModel);
 
     auto* const sectionsListModel = new QStringListModel(
@@ -55,7 +113,91 @@ SettingsWindow::SettingsWindow(
     );
     ui->sectionsList->setModel(sectionsListModel);
 
+    ui->spellcheckDictionarySelect->installEventFilter(this);
+    refreshSpellcheckDictionarySelect();
+
     ui->stackedWidget->setCurrentIndex(0);
+
+    connect(
+        ui->addEndpointButton,
+        &QPushButton::pressed,
+        this,
+        [this, endpointListModel] -> void {
+        const u8 index = endpointListModel->rowCount();
+
+        settings->translation.endpoints.emplace_back(
+            EndpointSettings{ .name = tr("Endpoint %1").arg(index + 1) }
+        );
+
+        endpointListModel->insertRow(index);
+        endpointListModel->setData(
+            endpointListModel->index(index, 0),
+            tr("Endpoint %1").arg(index + 1)
+        );
+    }
+    );
+
+    connect(
+        ui->removeEndpointButton,
+        &QPushButton::pressed,
+        this,
+        [this, endpointListModel] -> void {
+        const QModelIndex index = ui->endpointList->currentIndex();
+
+        if (!index.isValid()) {
+            return;
+        }
+
+        endpointListModel->removeRow(index.row());
+        settings->translation.endpoints.erase(
+            settings->translation.endpoints.begin() + index.row()
+        );
+    }
+    );
+
+    connect(
+        endpointListModel,
+        &QStringListModel::dataChanged,
+        this,
+        [this](const QModelIndex& topLeft, const QModelIndex& bottomRight)
+            -> void {
+        settings->translation.endpoints[topLeft.row()].name =
+            topLeft.data().toString();
+    }
+    );
+
+    connect(
+        ui->defaultBaseURLButton,
+        &QPushButton::pressed,
+        this,
+        [this] -> void {
+        const auto endpoint =
+            TranslationEndpoint(ui->typeSelect->currentIndex());
+        if (endpoint > TranslationEndpoint::DeepL) {
+            setDefaultBaseURL(endpoint);
+        }
+    }
+    );
+
+    connect(
+        ui->typeSelect,
+        &QComboBox::currentIndexChanged,
+        this,
+        [this](const u8 index) -> void {
+        const auto endpoint = TranslationEndpoint(index);
+        ui->baseURLInput->setEnabled(true);
+
+        switch (endpoint) {
+            case TranslationEndpoint::Google:
+            case TranslationEndpoint::Yandex:
+            case TranslationEndpoint::DeepL:
+                ui->baseURLInput->setEnabled(false);
+                break;
+            default:
+                setDefaultBaseURL(endpoint);
+        }
+    }
+    );
 
     connect(
         ui->sectionsList->selectionModel(),
@@ -89,153 +231,71 @@ SettingsWindow::SettingsWindow(
         this,
         [this](const QModelIndex& current, const QModelIndex& previous)
             -> void {
-        if (!saveCurrentEndpoint(previous.row())) {
-            ui->endpointList->selectionModel()->blockSignals(true);
-            ui->endpointList->selectionModel()->setCurrentIndex(
-                previous,
-                QItemSelectionModel::NoUpdate
+        if (previous.isValid()) {
+            saveCurrentEndpoint(
+                settings->translation.endpoints[previous.row()]
             );
-            ui->endpointList->selectionModel()->blockSignals(false);
-            return;
         }
 
-        const u8 currentRow = current.row();
+        // TODO: Query and populate models, if model is set
 
-        ui->apiKeyWidget->hide();
-        ui->yandexFolderWidget->hide();
-        ui->baseURLWidget->hide();
-        ui->checkKeyButton->hide();
-        ui->modelWidget->hide();
-        ui->tokenLimitWidget->hide();
-        ui->outputLimitWidget->hide();
-        ui->temperatureWidget->hide();
-        ui->glossaryCheckbox->hide();
-        ui->thinkingCheckbox->hide();
-        ui->systemPromptWidget->hide();
-        ui->singleSystemPromptWidget->hide();
+        auto& endpointSettings = settings->translation.endpoints[current.row()];
 
-        auto applyLLM = [this](
-                            const QString& description,
-                            const LLMSettings& settings
-                        ) -> void {
-            ui->endpointDescriptionLabel->setText(description);
-            ui->singleTranslationCheckbox->setChecked(
-                settings.singleTranslation
+        ui->apiKeyInput->setText(endpointSettings.apiKey);
+        ui->yandexFolderIDInput->setText(endpointSettings.yandexFolderID);
+        ui->baseURLInput->setText(endpointSettings.baseUrl);
+        ui->modelSelect->setCurrentText(endpointSettings.model);
+        ui->systemPromptInput->setPlainText(endpointSettings.systemPrompt);
+        ui->singleSystemPromptInput->setPlainText(
+            endpointSettings.singleTranslateSystemPrompt
+        );
+
+        if (endpointSettings.temperature) {
+            ui->temperatureWidget->setChecked(true);
+            ui->temperatureWidget->setValue(
+                endpointSettings.temperature.value()
             );
-
-            ui->apiKeyInput->setText(settings.apiKey);
-            ui->baseURLInput->setText(settings.baseUrl);
-            ui->modelSelect->setCurrentText(settings.model);
-            ui->tokenLimitInput->setText(QString::number(settings.tokenLimit));
-            ui->outputLimitInput->setText(
-                QString::number(settings.outputTokenLimit)
-            );
-            ui->temperatureInput->setText(
-                QString::number(settings.temperature)
-            );
-            ui->glossaryCheckbox->setChecked(settings.useGlossary);
-            ui->thinkingCheckbox->setChecked(settings.thinking);
-            ui->systemPromptInput->setPlainText(settings.systemPrompt);
-            ui->singleSystemPromptInput->setPlainText(
-                settings.singleTranslateSystemPrompt
-            );
-
-            ui->apiKeyWidget->show();
-            ui->baseURLWidget->show();
-            ui->checkKeyButton->show();
-            ui->modelWidget->show();
-            ui->tokenLimitWidget->show();
-            ui->outputLimitWidget->show();
-            ui->temperatureWidget->show();
-            ui->glossaryCheckbox->show();
-            ui->thinkingCheckbox->show();
-            ui->systemPromptWidget->show();
-            ui->singleSystemPromptWidget->show();
-        };
-
-        switch (TranslationEndpoint(currentRow)) {
-            case TranslationEndpoint::Google:
-                ui->endpointDescriptionLabel->setText(
-                    tr("Google Translate API. Free and unlimited.")
-                );
-                ui->singleTranslationCheckbox->setChecked(
-                    settings->translation.google.singleTranslation
-                );
-                break;
-
-            case TranslationEndpoint::Yandex:
-                ui->endpointDescriptionLabel->setText(
-                    tr("Yandex Translate API. Requires API key and folder ID.")
-                );
-                ui->singleTranslationCheckbox->setChecked(
-                    settings->translation.yandex.singleTranslation
-                );
-
-                ui->apiKeyInput->setText(settings->translation.yandex.apiKey);
-                ui->yandexFolderIDInput->setText(
-                    settings->translation.yandex.folderId
-                );
-
-                ui->apiKeyWidget->show();
-                ui->yandexFolderWidget->show();
-                break;
-
-            case TranslationEndpoint::DeepL:
-                ui->endpointDescriptionLabel->setText(
-                    tr("DeepL API. Requires API key and allows using glossary.")
-                );
-                ui->singleTranslationCheckbox->setChecked(
-                    settings->translation.deepl.singleTranslation
-                );
-
-                ui->apiKeyInput->setText(settings->translation.deepl.apiKey);
-                ui->glossaryCheckbox->setChecked(
-                    settings->translation.deepl.useGlossary
-                );
-
-                ui->apiKeyWidget->show();
-                ui->glossaryCheckbox->show();
-                break;
-            case TranslationEndpoint::OpenAI:
-                applyLLM(
-                    tr("OpenAI ChatGPT API. Allows fine-tuning."),
-                    settings->translation.chatgpt
-                );
-                break;
-            case TranslationEndpoint::Anthropic:
-                applyLLM(
-                    tr("Anthropic Claude API. Allows fine-tuning."),
-                    settings->translation.claude
-                );
-                break;
-            case TranslationEndpoint::DeepSeek:
-                applyLLM(
-                    tr("DeepSeek API. Allows fine-tuning."),
-                    settings->translation.deepseek
-                );
-                break;
-            case TranslationEndpoint::Gemini:
-                applyLLM(
-                    tr("Google Gemini API. Allows fine-tuning."),
-                    settings->translation.gemini
-                );
-                break;
-            case TranslationEndpoint::OpenAICompatible:
-                applyLLM(
-                    tr(
-                        "OpenAI-compatible API (e.g. koboldcpp). Requires base URL. Allows fine-tuning."
-                    ),
-                    settings->translation.openaiCompatible
-                );
-                break;
-
-            case TranslationEndpoint::Ollama:
-                applyLLM(
-                    tr("Ollama API. Requires base URL. Allows fine-tuning."),
-                    settings->translation.ollama
-                );
-                break;
+        } else {
+            ui->temperatureWidget->setChecked(false);
         }
+
+        if (endpointSettings.frequencyPenalty) {
+            ui->frequencyWidget->setChecked(true);
+            ui->frequencyWidget->setValue(
+                endpointSettings.frequencyPenalty.value()
+            );
+        } else {
+            ui->frequencyWidget->setChecked(false);
+        }
+
+        if (endpointSettings.precensePenalty) {
+            ui->precenseWidget->setChecked(true);
+            ui->precenseWidget->setValue(
+                endpointSettings.precensePenalty.value()
+            );
+        } else {
+            ui->precenseWidget->setChecked(false);
+        }
+
+        if (endpointSettings.topP) {
+            ui->topPWidget->setChecked(true);
+            ui->topPWidget->setValue(endpointSettings.topP.value());
+        } else {
+            ui->topPWidget->setChecked(false);
+        }
+
+        ui->inputTokenLimitWidget->setValue(endpointSettings.tokenLimit);
+        ui->outputTokenLimitWidget->setValue(endpointSettings.outputTokenLimit);
+
+        ui->thinkingBudgetWidget->setValue(endpointSettings.thinkingBudget);
+
+        ui->glossaryCheckbox->setChecked(endpointSettings.useGlossary);
+        ui->thinkingCheckbox->setChecked(endpointSettings.thinking);
+
+        ui->singleTranslationCheckbox->setChecked(
+            endpointSettings.singleTranslation
+        );
+        ui->typeSelect->setCurrentIndex(u8(endpointSettings.type));
     }
     );
 
@@ -290,12 +350,101 @@ SettingsWindow::SettingsWindow(
     }
     );
 
+    connect(
+        ui->baseURLInput,
+        &UnfocusLineEdit::editingFinished,
+        this,
+        [this] -> void {
+        QString apiKey = ui->baseURLInput->text();
+
+        if (apiKey.isEmpty()) {
+            return;
+        }
+
+        QUrl url = QUrl::fromUserInput(apiKey);
+
+        if (url.scheme().isEmpty() || url.host().isEmpty()) {
+            QMessageBox::warning(
+                this,
+                tr("URL is invalid"),
+                tr(
+                    "Given URL is invalid. Please check the validity of submitted URL."
+                )
+            );
+            ui->baseURLInput->clear();
+            return;
+        }
+
+        const auto endpoint =
+            TranslationEndpoint(ui->typeSelect->currentIndex());
+
+        switch (endpoint) {
+            case TranslationEndpoint::Xiaomi:
+            case TranslationEndpoint::DeepSeek:
+            case TranslationEndpoint::Koboldcpp:
+            case TranslationEndpoint::Longcat:
+            case TranslationEndpoint::Moonshot:
+            case TranslationEndpoint::Mistral:
+            case TranslationEndpoint::OpenAI:
+            case TranslationEndpoint::OpenAICompatible: {
+                QString base = url.scheme() + u"://" + url.host();
+
+                if (url.port() != -1) {
+                    base += ':' + QString::number(url.port());
+                }
+
+                if (base.endsWith("/v1")) {
+                    return;
+                }
+
+                if (base.endsWith("/chat"_L1)) {
+                    base.slice(base.size() - 6, 5);
+                }
+
+                if (base.endsWith("/completions"_L1)) {
+                    base.slice(base.size() - 13, 12);
+                }
+
+                if (!base.endsWith("/v1")) {
+                    QMessageBox::warning(
+                        this,
+                        tr("URL does not end with v1"),
+                        tr(
+                            "OpenAI-compatible URLs should always end with `/v1`. Change the URL, so it ends with `/v1`."
+                        )
+                    );
+                    ui->baseURLInput->clear();
+                    return;
+                }
+
+                break;
+            }
+
+            case TranslationEndpoint::Google:
+            case TranslationEndpoint::Yandex:
+            case TranslationEndpoint::DeepL:
+            case TranslationEndpoint::Aliyun:
+            case TranslationEndpoint::Anthropic:
+            case TranslationEndpoint::Gemini:
+            case TranslationEndpoint::Ollama:
+            case TranslationEndpoint::Volcengine:
+            case TranslationEndpoint::Xinference:
+            case TranslationEndpoint::Zhipu:
+                break;
+        }
+    }
+    );
+
     connect(ui->checkKeyButton, &QPushButton::pressed, this, [this] -> void {
-        const TranslationEndpoint endpoint = TranslationEndpoint(
-            ui->endpointList->selectionModel()->selectedRows().first().row()
-        );
+        const auto endpoint =
+            TranslationEndpoint(ui->typeSelect->currentIndex());
+
+        if (endpoint <= TranslationEndpoint::DeepL) {
+            return;
+        }
 
         ByteBuffer out;
+
         const QByteArray apiKey = ui->apiKeyInput->text().toUtf8();
         const QByteArray baseUrl = ui->baseURLInput->text().toUtf8();
 
@@ -335,20 +484,30 @@ SettingsWindow::SettingsWindow(
         rpgm_buffer_free(out);
     });
 
-    ui->fontSizeInput->setValidator(
-        new QIntValidator(8, 96, ui->fontSizeInput)
-    );
+    connect(
+        ui->spellcheckDictionarySelect,
+        &QComboBox::currentTextChanged,
+        this,
+        [&](const QString& text) -> void {
+        if (text.isEmpty()) {
+            return;
+        }
 
-    ui->tokenLimitInput->setValidator(
-        new QIntValidator(1000, UINT16_MAX, ui->tokenLimitInput)
-    );
+        QString dicPath = qApp->applicationDirPath() + u"/dictionaries" + text;
+        dicPath.slice(0, dicPath.size() - 3);
+        dicPath += u"dic";
 
-    ui->outputLimitInput->setValidator(
-        new QIntValidator(1000, UINT16_MAX, ui->tokenLimitInput)
-    );
-
-    ui->temperatureInput->setValidator(
-        new QDoubleValidator(0.0, 2.0, 3, ui->temperatureInput)
+        if (!QFile::exists(dicPath)) {
+            QMessageBox::warning(
+                this,
+                tr("No .dic file"),
+                tr(
+                    "`.dic` file corresponding to the `.aff` file does not exist. Dictionary won't work properly without the `.dic` file."
+                )
+            );
+            ui->spellcheckDictionarySelect->setCurrentIndex(0);
+        }
+    }
     );
 
     for (const QString& style : QStyleFactory::keys()) {
@@ -374,10 +533,10 @@ SettingsWindow::SettingsWindow(
     }
 
     if (settings->appearance.translationTableFontSize == 0) {
-        ui->fontSizeInput->setText(QString::number(font().pointSize()));
+        ui->translationTableFontSizeWidget->setValue(font().pointSize());
     } else {
-        ui->fontSizeInput->setText(
-            QString::number(settings->appearance.translationTableFontSize)
+        ui->translationTableFontSizeWidget->setValue(
+            settings->appearance.translationTableFontSize
         );
     }
 
@@ -397,20 +556,6 @@ SettingsWindow::SettingsWindow(
     ui->goToRowInput->setKeySequence(settings->controls.goToRow);
     ui->batchMenuInput->setKeySequence(settings->controls.batchMenu);
     ui->bookmarkMenuInput->setKeySequence(settings->controls.bookmarkMenu);
-
-    // Translation
-    ui->apiKeyWidget->hide();
-    ui->yandexFolderWidget->hide();
-    ui->baseURLWidget->hide();
-    ui->checkKeyButton->hide();
-    ui->modelWidget->hide();
-    ui->tokenLimitWidget->hide();
-    ui->temperatureWidget->hide();
-    ui->glossaryCheckbox->hide();
-    ui->thinkingCheckbox->hide();
-    ui->systemPromptWidget->hide();
-    ui->singleSystemPromptWidget->hide();
-    ui->endpointList->setCurrentIndex(endpointListModel->index(0));
 
     ui->lineLengthHintInput->setText(
         QString::number(projectSettings->lineLengthHint)
@@ -442,6 +587,49 @@ void SettingsWindow::changeEvent(QEvent* const event) {
     QDialog::changeEvent(event);
 };
 
+auto SettingsWindow::eventFilter(QObject* const watched, QEvent* const event)
+    -> bool {
+    if (watched == ui->spellcheckDictionarySelect) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            refreshSpellcheckDictionarySelect();
+        } else if (event->type() == QEvent::KeyPress) {
+            const auto* const keyEvent = as<QKeyEvent*>(event);
+            const bool popupPressed =
+                keyEvent->key() == Qt::Key_F4 ||
+                (keyEvent->key() == Qt::Key_Down &&
+                 keyEvent->modifiers().testFlag(Qt::AltModifier));
+
+            if (popupPressed) {
+                refreshSpellcheckDictionarySelect();
+            }
+        }
+    }
+
+    return QDialog::eventFilter(watched, event);
+}
+
+void SettingsWindow::refreshSpellcheckDictionarySelect() {
+    const QString selectedDictionary =
+        ui->spellcheckDictionarySelect->currentText().isEmpty()
+            ? projectSettings->spellcheckDictionary
+            : ui->spellcheckDictionarySelect->currentText();
+
+    const QStringList dictionaries = listSpellcheckDictionaries();
+
+    ui->spellcheckDictionarySelect->blockSignals(true);
+
+    for (const i32 idx : range(1, ui->spellcheckDictionarySelect->count())) {
+        ui->spellcheckDictionarySelect->removeItem(idx);
+    }
+
+    ui->spellcheckDictionarySelect->addItems(dictionaries);
+
+    const i32 selectedIndex =
+        ui->spellcheckDictionarySelect->findText(selectedDictionary);
+    ui->spellcheckDictionarySelect->setCurrentIndex(selectedIndex);
+    ui->spellcheckDictionarySelect->blockSignals(false);
+}
+
 void SettingsWindow::closeEvent(QCloseEvent* const event) {
     if (ui->backupPeriodInput->hasAcceptableInput()) {
         settings->core.backup.period = ui->backupPeriodInput->text().toUInt();
@@ -469,22 +657,12 @@ void SettingsWindow::closeEvent(QCloseEvent* const event) {
     settings->core.checkForUpdates = ui->updatesCheckbox->isChecked();
 
     settings->appearance.translationTableFont = ui->fontSelect->currentText();
+    settings->appearance.translationTableFontSize =
+        ui->translationTableFontSizeWidget->value();
     settings->appearance.displayTrailingWhitespace =
         ui->trailingWhitespaceCheckbox->isChecked();
     settings->appearance.displayWordsAndCharacters =
         ui->displayWordsCheckbox->isChecked();
-
-    if (ui->fontSizeInput->hasAcceptableInput()) {
-        settings->appearance.translationTableFontSize =
-            ui->fontSizeInput->text().toUInt();
-    } else {
-        QMessageBox::warning(
-            this,
-            tr("Invalid font size"),
-            tr("Font size is invalid. Unable to save.")
-        );
-        return;
-    }
 
     settings->controls.searchPanel =
         ui->searchPanelInput->keySequence().toString();
@@ -499,9 +677,9 @@ void SettingsWindow::closeEvent(QCloseEvent* const event) {
     settings->controls.translationsMenu =
         ui->translationsMenuInput->keySequence().toString();
 
-    if (!saveCurrentEndpoint(ui->endpointList->currentIndex().row())) {
-        return;
-    };
+    const u16 row = ui->endpointList->currentIndex().row();
+
+    saveCurrentEndpoint(settings->translation.endpoints[row]);
 
     if (ui->lineLengthHintInput->hasAcceptableInput()) {
         projectSettings->lineLengthHint =
@@ -533,96 +711,94 @@ void SettingsWindow::closeEvent(QCloseEvent* const event) {
         Algorithm(ui->sourceLanguageSelect->currentIndex() - 1);
     projectSettings->translationLang =
         Algorithm(ui->translationLanguageSelect->currentIndex() - 1);
+    projectSettings->spellcheckDictionary =
+        ui->spellcheckDictionarySelect->currentText();
 
     QDialog::closeEvent(event);
 };
 
-auto SettingsWindow::saveCurrentEndpoint(const u8 row) -> bool {
-    if (row == u8(-1)) {
-        return true;
-    }
+void SettingsWindow::saveCurrentEndpoint(EndpointSettings& settings) {
+    settings.apiKey = ui->apiKeyInput->text();
+    settings.yandexFolderID = ui->yandexFolderIDInput->text();
+    settings.baseUrl = ui->baseURLInput->text();
+    settings.model = ui->modelSelect->currentText();
+    settings.systemPrompt = ui->systemPromptInput->toPlainText();
+    settings.singleTranslateSystemPrompt =
+        ui->singleSystemPromptInput->toPlainText();
 
-    if (TranslationEndpoint(row) > TranslationEndpoint::DeepL) {
-        if (!ui->tokenLimitInput->hasAcceptableInput()) {
-            QMessageBox::warning(
-                this,
-                tr("Invalid token limit"),
-                tr(
-                    "Token input contains invalid value. Valid input is range from 1000 to 65536."
-                )
-            );
-            return false;
-        }
+    settings.temperature = ui->temperatureWidget->isChecked()
+                               ? optional(ui->temperatureWidget->value<f32>())
+                               : nullopt;
+    settings.frequencyPenalty =
+        ui->frequencyWidget->isChecked()
+            ? optional(ui->frequencyWidget->value<f32>())
+            : nullopt;
+    settings.precensePenalty = ui->precenseWidget->isChecked()
+                                   ? optional(ui->precenseWidget->value<f32>())
+                                   : nullopt;
+    settings.topP = ui->topPWidget->isChecked()
+                        ? optional(ui->topPWidget->value<f32>())
+                        : nullopt;
 
-        if (!ui->temperatureInput->hasAcceptableInput()) {
-            QMessageBox::warning(
-                this,
-                tr("Invalid temperature"),
-                tr(
-                    "Temperature input contains invalid value. Valid input is range from 0.0 to 2.0."
-                )
-            );
-            return false;
-        }
-    }
+    settings.tokenLimit = ui->inputTokenLimitWidget->value();
+    settings.outputTokenLimit = ui->outputTokenLimitWidget->value();
 
-    auto applyYandex = [this](auto& settings) -> void {
-        settings.singleTranslation = ui->singleTranslationCheckbox->isChecked();
-        settings.apiKey = ui->apiKeyInput->text();
-        settings.folderId = ui->yandexFolderIDInput->text();
-    };
+    settings.useGlossary = ui->glossaryCheckbox->isChecked();
+    settings.thinking = ui->thinkingCheckbox->isChecked();
 
-    auto applyDeepL = [this](auto& settings) -> void {
-        settings.singleTranslation = ui->singleTranslationCheckbox->isChecked();
-        settings.apiKey = ui->apiKeyInput->text();
-        settings.useGlossary = ui->glossaryCheckbox->isChecked();
-    };
+    settings.singleTranslation = ui->singleTranslationCheckbox->isChecked();
+    settings.type = TranslationEndpoint(ui->typeSelect->currentIndex());
+}
 
-    auto applyLLM = [this](LLMSettings& settings) -> void {
-        settings.singleTranslation = ui->singleTranslationCheckbox->isChecked();
-        settings.apiKey = ui->apiKeyInput->text();
-        settings.baseUrl = ui->baseURLInput->text();
-        settings.model = ui->modelSelect->currentText();
-        settings.tokenLimit = ui->tokenLimitInput->text().toUInt();
-        settings.outputTokenLimit = ui->outputLimitInput->text().toUInt();
-        settings.temperature = ui->temperatureInput->text().toFloat();
-        settings.useGlossary = ui->glossaryCheckbox->isChecked();
-        settings.thinking = ui->thinkingCheckbox->isChecked();
-        settings.systemPrompt = ui->systemPromptInput->toPlainText();
-        settings.singleTranslateSystemPrompt =
-            ui->singleSystemPromptInput->toPlainText();
-    };
-
-    switch (TranslationEndpoint(row)) {
+void SettingsWindow::setDefaultBaseURL(const TranslationEndpoint endpoint) {
+    switch (endpoint) {
         case TranslationEndpoint::Google:
-            settings->translation.google.singleTranslation =
-                ui->singleTranslationCheckbox->isChecked();
-            break;
         case TranslationEndpoint::Yandex:
-            applyYandex(settings->translation.yandex);
-            break;
         case TranslationEndpoint::DeepL:
-            applyDeepL(settings->translation.deepl);
+            std::unreachable();
             break;
-        case TranslationEndpoint::OpenAI:
-            applyLLM(settings->translation.chatgpt);
+        case TranslationEndpoint::Aliyun:
+            ui->baseURLInput->setText(u"https://dashscope.aliyuncs.com"_s);
             break;
         case TranslationEndpoint::Anthropic:
-            applyLLM(settings->translation.claude);
+            ui->baseURLInput->setText(u"https://api.anthropic.com"_s);
             break;
         case TranslationEndpoint::DeepSeek:
-            applyLLM(settings->translation.deepseek);
+            ui->baseURLInput->setText(u"https://api.deepseek.com/v1"_s);
             break;
         case TranslationEndpoint::Gemini:
-            applyLLM(settings->translation.gemini);
+            ui->baseURLInput->setText(
+                u"https://generativelanguage.googleapis.com/v1beta"_s
+            );
             break;
-        case TranslationEndpoint::OpenAICompatible:
-            applyLLM(settings->translation.openaiCompatible);
+        case TranslationEndpoint::Longcat:
+            ui->baseURLInput->setText(u"https://api.longcat.chat/openai/v1"_s);
             break;
+        case TranslationEndpoint::Moonshot:
+            ui->baseURLInput->setText(u"https://api.moonshot.cn/v1"_s);
+            break;
+        case TranslationEndpoint::Mistral:
+            ui->baseURLInput->setText(u"https://api.mistral.ai/v1"_s);
+            break;
+        case TranslationEndpoint::OpenAI:
+            ui->baseURLInput->setText(u"https://api.openai.com/v1"_s);
+            break;
+        case TranslationEndpoint::Volcengine:
+            ui->baseURLInput->setText(
+                u"https://ark.cn-beijing.volces.com/api/v3"_s
+            );
+            break;
+        case TranslationEndpoint::Xiaomi:
+            ui->baseURLInput->setText(u"https://api.xiaomimimo.com/v1"_s);
+            break;
+        case TranslationEndpoint::Koboldcpp:
         case TranslationEndpoint::Ollama:
-            applyLLM(settings->translation.ollama);
+        case TranslationEndpoint::OpenAICompatible:
+        case TranslationEndpoint::Xinference:
+            ui->baseURLInput->clear();
+            break;
+        case TranslationEndpoint::Zhipu:
+            ui->baseURLInput->setText(u"https://open.bigmodel.cn"_s);
             break;
     }
-
-    return true;
 }

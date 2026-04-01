@@ -11,11 +11,11 @@ class BookmarkMenu final : public QWidget {
    public:
     explicit BookmarkMenu(QWidget* parent = nullptr);
 
-    void addFile(const QString& file);
+    void setFiles(const vector<TabListItem>& files);
     void addBookmark(QStringView description, QStringView file, u32 row);
     void updateBookmark(u32 row, const QString& text);
     void removeBookmark(u32 row);
-    void shiftIndices(const QString& file, u32 removedRow);
+    void shiftIndices(QStringView file, u32 row, bool rowAdded = false);
 
     void clear();
 

@@ -204,6 +204,8 @@ pub unsafe extern "C" fn rpgm_read(
 
     match result {
         Ok(mut serialized) => {
+            debug_assert!(serialized.len() == serialized.capacity());
+
             *out_hashes = ByteBuffer {
                 ptr: serialized.as_mut_ptr().cast::<u8>(),
                 len: serialized.len() * size_of::<u128>(),
@@ -339,6 +341,8 @@ pub unsafe extern "C" fn rpgm_get_models(
                 buffer.extend_from_slice(string.as_bytes());
             }
 
+            debug_assert!(buffer.len() == buffer.capacity());
+
             *out = ByteBuffer {
                 ptr: buffer.as_mut_ptr(),
                 len: buffer.len(),
@@ -353,7 +357,6 @@ pub unsafe extern "C" fn rpgm_get_models(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rpgm_translate_single(
-    endpoint: TranslationEndpoint,
     endpoint_settings: FFIString,
     project_context: FFIString,
     local_context: FFIString,
@@ -378,7 +381,6 @@ pub unsafe extern "C" fn rpgm_translate_single(
     let result = (|| -> Result<_, Error> {
         let results = TOKIO_RT.block_on(async move {
             translate_single(
-                endpoint,
                 endpoint_settings,
                 source_language,
                 translation_language,
@@ -471,7 +473,6 @@ pub fn split_into_sections(input: &str) -> Vec<&str> {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rpgm_translate<'a>(
-    endpoint: TranslationEndpoint,
     endpoint_settings: FFIString,
     project_context: FFIString,
     local_context: FFIString,
@@ -599,7 +600,6 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
         let results = TOKIO_RT.block_on(async move {
             translate(
-                endpoint,
                 endpoint_settings,
                 source_language,
                 translation_language,
@@ -623,6 +623,10 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
     match result {
         Ok(translated_files) => {
+            debug_assert!(
+                translated_files.len() == translated_files.capacity()
+            );
+
             let mut translated_files_ffi =
                 Vec::with_capacity(translated_files.len());
 
@@ -644,6 +648,8 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                     });
                 }
 
+                debug_assert!(strings_ffi.len() == strings_ffi.capacity());
+
                 translated_files_ffi.push(ByteBuffer {
                     ptr: strings_ffi.as_ptr().cast::<u8>(),
                     len: strings_ffi.len(),
@@ -651,6 +657,10 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
                 std::mem::forget(strings_ffi);
             }
+
+            debug_assert!(
+                translated_files_ffi.len() == translated_files_ffi.capacity()
+            );
 
             *out_translated_ffi = ByteBuffer {
                 ptr: translated_files_ffi.as_ptr().cast::<u8>(),
@@ -773,6 +783,8 @@ pub unsafe extern "C" fn rpgm_find_all_matches(
 
     match result {
         Ok(mut serialized) => {
+            debug_assert!(serialized.len() == serialized.capacity());
+
             *out = ByteBuffer {
                 ptr: serialized.as_mut_ptr(),
                 len: serialized.len(),
@@ -873,4 +885,30 @@ pub unsafe extern "C" fn rpgm_language_tool_lint(
     // TODO
 
     FFIString::null()
+}
+
+pub unsafe extern "C" fn rpgm_decrypt_asset(
+    path: FFIString,
+    out: *mut ByteBuffer,
+) -> FFIString {
+    let result = (|| -> Result<_, Error> {
+        let decrypted = decrypt_asset(Path::new(&ffi_to_str(path)))?;
+        Ok(decrypted)
+    })();
+
+    match result {
+        Ok(decrypted) => {
+            debug_assert!(decrypted.len() == decrypted.capacity());
+
+            *out = ByteBuffer {
+                ptr: decrypted.as_ptr(),
+                len: decrypted.len(),
+            };
+
+            std::mem::forget(decrypted);
+
+            FFIString::null()
+        }
+        Err(error) => str_to_ffi(&error.to_string()),
+    }
 }

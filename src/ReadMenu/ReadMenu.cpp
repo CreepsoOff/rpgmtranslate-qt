@@ -191,10 +191,6 @@ void ReadMenu::clear() {
     ui->mapEventsCheckbox->setChecked(false);
 }
 
-void ReadMenu::addFile(const QString& file) {
-    fileSelectMenu->addFile(file);
-}
-
 void ReadMenu::init(const shared_ptr<ProjectSettings>& settings) {
     projectSettings = settings;
 
@@ -246,3 +242,7 @@ void ReadMenu::init(const shared_ptr<ProjectSettings>& settings) {
 [[nodiscard]] auto ReadMenu::selected(const bool skipped) const -> Selected {
     return fileSelectMenu->selected(skipped);
 };
+
+void ReadMenu::setFiles(const vector<TabListItem>& files) {
+    fileSelectMenu->setFiles(files);
+}

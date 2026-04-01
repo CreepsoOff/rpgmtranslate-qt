@@ -2,15 +2,15 @@
 
 #include "FWD.hpp"
 #include "TabListDelegate.hpp"
+#include "TabListModel.hpp"
 
 #include <QApplication>
 #include <QMouseEvent>
-#include <QStandardItemModel>
 #include <QVBoxLayout>
 
 TabList::TabList(QWidget* const parent) :
     QListView(parent),
-    model_(new QStandardItemModel(this)),
+    model_(new TabListModel(this)),
     delegate(new TabListDelegate(this)) {
     setModel(model_);
     setItemDelegate(delegate);
@@ -21,32 +21,14 @@ TabList::TabList(QWidget* const parent) :
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 }
 
-void TabList::addItem(
-    const QString& name,
-    const u32 total,
-    const u32 translated,
-    const bool completed
-) {
-    auto* const item = new QStandardItem();
-    item->setData(name, Roles::NameRole);
-    item->setData(total, Roles::TotalRole);
-    item->setData(translated, Roles::TranslatedRole);
-    item->setData(completed, Roles::CompletedRole);
-    item->setEditable(false);
-    model_->appendRow(item);
-}
-
 void TabList::setProgress(
     const u16 row,
     const u32 total,
     const u32 translated
 ) {
-    if (row < 0 || row >= model_->rowCount()) {
-        return;
-    }
-
-    model_->item(row)->setData(total, Roles::TotalRole);
-    model_->item(row)->setData(translated, Roles::TranslatedRole);
+    const QModelIndex index = model_->index(row);
+    model_->setData(index, total, Roles::TotalRole);
+    model_->setData(index, translated, Roles::TranslatedRole);
 }
 
 void TabList::setProgressDisplay(const bool percents) {
@@ -56,24 +38,12 @@ void TabList::setProgressDisplay(const bool percents) {
 
 [[nodiscard]] auto TabList::progressDisplay() const -> bool {
     return displayPercents;
-};
-
-void TabList::toggleCompleted(const QModelIndex& index) {
-    if (!index.isValid()) {
-        return;
-    }
-
-    const bool current = index.data(Roles::CompletedRole).toBool();
-    setCompleted(index, !current);
 }
 
-void TabList::setCompleted(const QModelIndex& index, const bool completed) {
-    if (!index.isValid()) {
-        return;
-    }
-
-    auto* const item = model_->itemFromIndex(index);
-    item->setData(completed, Roles::CompletedRole);
+void TabList::toggleCompleted(const QModelIndex& index) {
+    auto& tab = model_->tab(index.row());
+    const bool current = tab.completed;
+    tab.completed = !current;
 }
 
 void TabList::mousePressEvent(QMouseEvent* const event) {
@@ -91,4 +61,17 @@ void TabList::mousePressEvent(QMouseEvent* const event) {
     } else {
         event->ignore();
     }
+}
+
+auto TabList::tab(const u16 index) -> TabListItem& {
+    return model_->tab(index);
 };
+
+void TabList::clear() {
+    model_->clear();
+    delegate->maxCachedNameWidth = 0;
+}
+
+void TabList::setTabs(vector<TabListItem> tabs) {
+    model_->setTabs(std::move(tabs));
+}

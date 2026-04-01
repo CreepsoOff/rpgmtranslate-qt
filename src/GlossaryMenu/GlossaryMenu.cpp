@@ -359,10 +359,6 @@ auto GlossaryMenu::glossary() const -> Glossary {
     return out;
 }
 
-void GlossaryMenu::addFile(const QString& file) {
-    fileSelectMenu->addFile(file);
-}
-
 void GlossaryMenu::clear() {
     glossaryTable->clear();
     fileSelectMenu->clear();
@@ -527,4 +523,8 @@ void ActionButtonsCell::setEditable(bool editable) {
         editable ? u":/icons/edit_arrow_up.svg"_s
                  : u":/icons/edit_arrow_down.svg"_s
     ));
+}
+
+void GlossaryMenu::setFiles(const vector<TabListItem>& files) {
+    fileSelectMenu->setFiles(files);
 }

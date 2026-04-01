@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Enums.hpp"
 #include "FWD.hpp"
 #include "ProjectSettings.hpp"
 
@@ -56,9 +55,9 @@ class TranslationTable final : public QTableView {
     explicit TranslationTable(QWidget* parent = nullptr);
 
     void init(
-        const Algorithm* algorithm,
         const u16* hint,
-        const bool* enabled
+        const bool* enabled,
+        const QString* dictionaryPath
     ) const;
 
     void initializeDictionary() const;

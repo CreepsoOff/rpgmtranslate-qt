@@ -468,10 +468,8 @@ void TaskWorker::performBatchAction(
     const Selected selected,
     const BatchAction action,
     const u8 columnIndex,
-    const std::variant<
-        BatchMenu::TrimFlags,
-        std::tuple<TranslationEndpoint, QString>,
-        u8>& variant,
+    const std::variant<BatchMenu::TrimFlags, std::tuple<u8, QString>, u8>&
+        variant,
     const Glossary& glossary
 ) {
     u32 count = 0;
@@ -480,13 +478,15 @@ void TaskWorker::performBatchAction(
     auto filenames = selected.filenames(projectSettings->engineType);
 
     if (action == BatchAction::Translate) {
-        const auto [endpoint, context] = std::get<1>(variant);
+        const auto [endpointIndex, context] = std::get<1>(variant);
 
         const auto glossaryJSON =
             QJsonDocument(glossary.toJSON()).toJson(QJsonDocument::Compact);
 
         const auto endpointSettingsJSON =
-            QJsonDocument(settings->translation.openaiCompatible.toJSON())
+            QJsonDocument(
+                settings->translation.endpoints[endpointIndex].toJSON()
+            )
                 .toJson(QJsonDocument::Compact);
 
         const QByteArray projectContext =
@@ -502,7 +502,6 @@ void TaskWorker::performBatchAction(
         emit progressChanged(Task::BatchTranslate, 0, 0);
 
         const FFIString error = rpgm_translate(
-            endpoint,
             toFFIString(endpointSettingsJSON),
             toFFIString(projectContext),
             toFFIString(localContext),
@@ -715,7 +714,7 @@ void TaskWorker::replace(
                         QString result;
                         result.reserve(replaceText.size());
 
-                        for (int ci = 0; ci < replaceText.size(); ++ci) {
+                        for (i32 ci = 0; ci < replaceText.size(); ++ci) {
                             if (replaceText[ci] != u'\\' ||
                                 ci + 1 >= replaceText.size()) {
                                 result.append(replaceText[ci]);
@@ -741,7 +740,7 @@ void TaskWorker::replace(
 
                                 if (ci + 2 < replaceText.size() &&
                                     replaceText[ci + 2].isDigit()) {
-                                    const int twoDigit =
+                                    const i32 twoDigit =
                                         (next.digitValue() * 10) +
                                         replaceText[ci + 2].digitValue();
                                     const u32 idx =
@@ -758,7 +757,7 @@ void TaskWorker::replace(
                                 }
 
                                 if (!handled) {
-                                    const int oneDigit = next.digitValue();
+                                    const i32 oneDigit = next.digitValue();
                                     const u32 idx =
                                         capturedBegin + u32(oneDigit - 1);
                                     if (idx < capturedEnd &&
@@ -845,7 +844,8 @@ void TaskWorker::translateSingle(
     const QString& text,
     const Glossary& glossary
 ) {
-    array<QString, TRANSLATION_ENDPOINT_COUNT> translations;
+    vector<QString> translations;
+    translations.reserve(settings->translation.endpoints.size());
 
     TranslationEndpoint endpoint;
     QString localContext;
@@ -859,8 +859,7 @@ void TaskWorker::translateSingle(
 
     const auto translateClosure =
         [this, &translations, &glossaryJSON, &localContext, &text](
-            TranslationEndpoint endpoint,
-            const QByteArray& endpointSettings
+            const EndpointSettings& endpointSettings
         ) -> void {
         FFIString outString;
 
@@ -869,9 +868,11 @@ void TaskWorker::translateSingle(
         const QByteArray localContextUtf8 = localContext.toUtf8();
         const QByteArray textUtf8 = text.toUtf8();
 
+        const QByteArray endpointUtf8 = QJsonDocument(endpointSettings.toJSON())
+                                            .toJson(QJsonDocument::Compact);
+
         const FFIString error = rpgm_translate_single(
-            endpoint,
-            toFFIString(endpointSettings),
+            toFFIString(endpointUtf8),
             toFFIString(projectContext),
             toFFIString(localContextUtf8),
             projectSettings->sourceLang,
@@ -883,82 +884,24 @@ void TaskWorker::translateSingle(
         );
 
         if (error.ptr != nullptr) {
-            translations[u8(endpoint)] =
-                QString::fromUtf8(error.ptr, isize(error.len));
+            translations.push_back(
+                QString::fromUtf8(error.ptr, isize(error.len))
+            );
             rpgm_string_free(error);
             return;
         }
 
-        translations[u8(endpoint)] =
-            QString::fromUtf8(outString.ptr, isize(outString.len));
+        translations.push_back(
+            QString::fromUtf8(outString.ptr, isize(outString.len))
+        );
     };
 
-    if (settings->translation.google.singleTranslation) {
-        translateClosure(TranslationEndpoint::Google, QByteArray());
-    }
+    for (const auto& endpoint : settings->translation.endpoints) {
+        if (!endpoint.singleTranslation) {
+            continue;
+        }
 
-    if (settings->translation.yandex.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::Yandex,
-            QJsonDocument(settings->translation.yandex.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.deepl.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::DeepL,
-            QJsonDocument(settings->translation.deepl.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.chatgpt.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::OpenAI,
-            QJsonDocument(settings->translation.chatgpt.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.claude.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::Anthropic,
-            QJsonDocument(settings->translation.claude.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.gemini.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::Gemini,
-            QJsonDocument(settings->translation.gemini.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.deepseek.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::DeepSeek,
-            QJsonDocument(settings->translation.deepseek.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.openaiCompatible.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::OpenAICompatible,
-            QJsonDocument(settings->translation.openaiCompatible.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
-    }
-
-    if (settings->translation.ollama.singleTranslation) {
-        translateClosure(
-            TranslationEndpoint::Ollama,
-            QJsonDocument(settings->translation.ollama.toJSON())
-                .toJson(QJsonDocument::Compact)
-        );
+        translateClosure(endpoint);
     }
 
     emit singleTranslateFinished(translations);

@@ -1,6 +1,7 @@
 #include "MainWindow.hpp"
 
 #include "AboutWindow.hpp"
+#include "AssetMenu.hpp"
 #include "AutoUpdater.hpp"
 #include "BatchMenu.hpp"
 #include "BookmarkMenu.hpp"
@@ -15,6 +16,7 @@
 #include "SearchMenu.hpp"
 #include "SearchPanelDock.hpp"
 #include "SettingsWindow.hpp"
+#include "TabListModel.hpp"
 #include "TranslationTable.hpp"
 #include "TranslationTableModel.hpp"
 #include "TranslationsMenu.hpp"
@@ -42,10 +44,6 @@
 
 // TODO: Display entry in search panel/bookmark menu, but make it optional
 // through settings.
-// TODO: Button to open the current project in explorer.
-// TODO: Built-in asset inspector.
-// TODO: Built-in git client.
-// TODO: Thinking budget in settings.
 
 MainWindow::MainWindow(QWidget* const parent) :
     QMainWindow(parent),
@@ -54,7 +52,6 @@ MainWindow::MainWindow(QWidget* const parent) :
 
     translator(new QTranslator(this)),
 
-    tabPanel(new TabPanel(this)),
     searchMenu(new SearchMenu(this)),
     batchMenu(new BatchMenu(this)),
     glossaryMenu(new GlossaryMenu(this)),
@@ -64,6 +61,8 @@ MainWindow::MainWindow(QWidget* const parent) :
     readMenu(new ReadMenu(this)),
     writeMenu(new WriteMenu(this)),
     purgeMenu(new PurgeMenu(this)),
+
+    assetMenu(new AssetMenu(this)),
 
     linesStatusLabel(new QLabel(this)),
     progressStatusLabel(new QLabel(this)),
@@ -94,6 +93,8 @@ MainWindow::MainWindow(QWidget* const parent) :
     actionTranslationsMenu->setEnabled(false);
     actionBookmarkMenu->setEnabled(false);
     actionSearchPanel->setEnabled(false);
+    actionSourceControl->setEnabled(false);
+    actionAssets->setEnabled(false);
 
     ui->tabPanelButton->setDefaultAction(actionTabPanel);
     ui->saveButton->setDefaultAction(actionSave);
@@ -105,6 +106,9 @@ MainWindow::MainWindow(QWidget* const parent) :
     ui->matchMenuButton->setDefaultAction(actionMatchMenu);
     ui->translationsButton->setDefaultAction(actionTranslationsMenu);
     ui->bookmarksButton->setDefaultAction(actionBookmarkMenu);
+    ui->sourceControlButton->setDefaultAction(actionSourceControl);
+    ui->assetsButton->setDefaultAction(actionAssets);
+    ui->locateProjectDirButton->setDefaultAction(actionLocateProjectDir);
     ui->searchPanelButton->setDefaultAction(actionSearchPanel);
 
     taskWorker->start();
@@ -157,6 +161,23 @@ MainWindow::MainWindow(QWidget* const parent) :
 
     init_rust_logger(&FFILogger::rustLogCallback);
 
+#ifdef ENABLE_LIBGIT2
+    ui->sourceControlDock->init(
+        ui->branchSelect,
+        ui->gitChangesList,
+        ui->commitList,
+
+        ui->commitButton,
+        ui->commitOptionsButton,
+        ui->commitMessageInput,
+
+        ui->copyTranslationButton,
+        ui->refreshChangesButton
+    );
+#else
+    delete ui->sourceControlDock;
+#endif
+
     ui->matchMenu->init(ui->clearMatchMenuButton, ui->matchMenuTable);
     ui->searchPanel->init(
         ui->fileSelect,
@@ -201,7 +222,7 @@ MainWindow::MainWindow(QWidget* const parent) :
     });
 
     connect(ui->actionCloseTab, &QAction::triggered, this, [this] -> void {
-        tabPanel->changeTab(QString());
+        ui->tabPanel->changeTab(QString());
     });
 
     connect(
@@ -209,7 +230,7 @@ MainWindow::MainWindow(QWidget* const parent) :
         &BookmarkMenu::bookmarkClicked,
         this,
         [this](const QLatin1StringView file, const u32 row) -> void {
-        tabPanel->changeTab(file);
+        ui->tabPanel->changeTab(file);
 
         QTimer::singleShot(1, [this, row] -> void {
             ui->translationTable->scrollTo(
@@ -232,6 +253,78 @@ MainWindow::MainWindow(QWidget* const parent) :
 
     connect(ui->actionRussian, &QAction::triggered, this, [this] -> void {
         retranslate(QLocale::Russian);
+    });
+
+    connect(
+        ui->actionCheckForUpdates,
+        &QAction::triggered,
+        this,
+        [this] -> void { checkForUpdates(true); }
+    );
+
+    connect(actionGoToRow, &QAction::triggered, this, [this] -> void {
+        if (ui->tabPanel->currentTabName().isEmpty()) {
+            return;
+        }
+
+        auto* const popupInput = new PopupInput(this);
+        popupInput->setValidator(new QIntValidator(0, INT32_MAX, popupInput));
+        popupInput->setMaxLength(10);
+        popupInput->setFixedWidth(256);
+        popupInput->setPlaceholderText(
+            tr("Input line from %1 to %2")
+                .arg(1)
+                .arg(linesStatusLabel->text().split(' ').first())
+        );
+
+        popupInput->move((width() / 2) - 128, x() + 64);
+        popupInput->show();
+        popupInput->setFocus();
+
+        connect(
+            popupInput,
+            &PopupInput::inputRejected,
+            this,
+            [this, popupInput] -> void { delete popupInput; },
+            Qt::SingleShotConnection
+        );
+
+        connect(
+            popupInput,
+            &PopupInput::editingFinished,
+            this,
+            [this, popupInput] -> void {
+            const i32 rowIndex = popupInput->text().toInt() - 1;
+
+            ui->translationTable->scrollTo(
+                ui->translationTable->model()->index(rowIndex, 0),
+                TranslationTable::PositionAtCenter
+            );
+
+            delete popupInput;
+        },
+            Qt::SingleShotConnection
+        );
+    });
+
+    connect(ui->tabPanel, &TabPanel::tabChanged, this, &MainWindow::changeTab);
+
+    connect(actionTabPanel, &QAction::triggered, this, [this] -> void {
+        ui->tabPanel->setHidden(!ui->tabPanel->isHidden());
+    });
+
+    connect(actionSave, &QAction::triggered, this, [this] -> void {
+        const auto saveSuccess = saveCurrentTab();
+
+        if (!saveSuccess) {
+            return;
+        }
+
+        const auto saveSuccess2 = saveMaps();
+
+        if (!saveSuccess2) {
+            return;
+        }
     });
 
     connect(actionWrite, &QAction::triggered, this, [this] -> void {
@@ -290,22 +383,14 @@ MainWindow::MainWindow(QWidget* const parent) :
         );
     });
 
-    connect(
-        ui->actionCheckForUpdates,
-        &QAction::triggered,
-        this,
-        [this] -> void { checkForUpdates(true); }
-    );
+    connect(actionSearch, &QAction::triggered, this, [this] -> void {
+        searchMenu->setHidden(!searchMenu->isHidden());
 
-    connect(actionTabPanel, &QAction::triggered, this, [this] -> void {
-        tabPanel->setHidden(!tabPanel->isHidden());
-        tabPanel->move(ui->tabPanelButton->mapToGlobal(
-            QPoint(0, ui->tabPanelButton->height())
-        ));
-        tabPanel->setFixedHeight(
-            height() -
-            (ui->tabPanelButton->y() + (ui->tabPanelButton->height() * 2))
-        );
+        if (!searchMenu->mouseMoved()) {
+            searchMenu->move(ui->searchButton->mapToGlobal(
+                QPoint(0, ui->searchButton->height())
+            ));
+        }
     });
 
     connect(actionBatchMenu, &QAction::triggered, this, [this] -> void {
@@ -315,7 +400,63 @@ MainWindow::MainWindow(QWidget* const parent) :
         );
     });
 
-    connect(tabPanel, &TabPanel::tabChanged, this, &MainWindow::changeTab);
+    connect(actionGlossaryMenu, &QAction::triggered, this, [this] -> void {
+        glossaryMenu->setHidden(!glossaryMenu->isHidden());
+
+        if (!glossaryMenu->mouseMoved()) {
+            glossaryMenu->move(ui->glossaryButton->mapToGlobal(
+                QPoint(0, ui->glossaryButton->height())
+            ));
+        }
+    });
+
+    connect(actionMatchMenu, &QAction::triggered, this, [this] -> void {
+        ui->matchMenu->setHidden(!ui->matchMenu->isHidden());
+    });
+
+    connect(actionTranslationsMenu, &QAction::triggered, this, [this] -> void {
+        translationsMenu->setHidden(!translationsMenu->isHidden());
+
+        if (!translationsMenu->mouseMoved()) {
+            translationsMenu->move(ui->translationsButton->mapToGlobal(
+                QPoint(0, ui->translationsButton->height())
+            ));
+        }
+    });
+
+    connect(actionBookmarkMenu, &QAction::triggered, this, [this] -> void {
+        bookmarkMenu->setHidden(!bookmarkMenu->isHidden());
+
+        bookmarkMenu->move(ui->bookmarksButton->mapToGlobal(
+            QPoint(0, ui->bookmarksButton->height())
+        ));
+    });
+
+    connect(actionSourceControl, &QAction::triggered, this, [this] -> void {
+#ifdef ENABLE_LIBGIT2
+        ui->sourceControlDock->setHidden(!ui->sourceControlDock->isHidden());
+#else
+        QMessageBox::warning(
+            this,
+            tr("Libgit2 support is disabled"),
+            tr(
+                "Program was compiled without support for libgit2, so it's impossible to access source control."
+            )
+        );
+#endif
+    });
+
+    connect(actionAssets, &QAction::triggered, this, [this] -> void {
+        if (assetMenu->isHidden()) {
+            assetMenu->move(ui->assetsButton->mapToGlobal(
+                QPoint(0, ui->assetsButton->height())
+            ));
+            assetMenu->show();
+            assetMenu->adjustSize();
+        } else {
+            assetMenu->hide();
+        }
+    });
 
     connect(ui->rvpackerButton, &QPushButton::pressed, this, [this] -> void {
         auto menu = QMenu(this);
@@ -341,104 +482,9 @@ MainWindow::MainWindow(QWidget* const parent) :
         }
     });
 
-    connect(actionSave, &QAction::triggered, this, [this] -> void {
-        const auto saveSuccess = saveCurrentTab();
-
-        if (!saveSuccess) {
-            return;
-        }
-
-        const auto saveSuccess2 = saveMaps();
-
-        if (!saveSuccess2) {
-            return;
-        }
-    });
-
-    connect(actionSearch, &QAction::triggered, this, [this] -> void {
-        searchMenu->setHidden(!searchMenu->isHidden());
-
-        if (!searchMenu->mouseMoved()) {
-            searchMenu->move(ui->searchButton->mapToGlobal(
-                QPoint(0, ui->searchButton->height())
-            ));
-        }
-    });
-
-    connect(actionGlossaryMenu, &QAction::triggered, this, [this] -> void {
-        glossaryMenu->setHidden(!glossaryMenu->isHidden());
-
-        if (!glossaryMenu->mouseMoved()) {
-            glossaryMenu->move(ui->glossaryButton->mapToGlobal(
-                QPoint(0, ui->glossaryButton->height())
-            ));
-        }
-    });
-
-    connect(actionTranslationsMenu, &QAction::triggered, this, [this] -> void {
-        translationsMenu->setHidden(!translationsMenu->isHidden());
-
-        if (!translationsMenu->mouseMoved()) {
-            translationsMenu->move(ui->translationsButton->mapToGlobal(
-                QPoint(0, ui->translationsButton->height())
-            ));
-        }
-    });
-
-    connect(actionBookmarkMenu, &QAction::triggered, this, [this] -> void {
-        bookmarkMenu->setHidden(!bookmarkMenu->isHidden());
-
-        bookmarkMenu->move(ui->bookmarksButton->mapToGlobal(
-            QPoint(0, ui->bookmarksButton->height())
-        ));
-    });
-
-    connect(actionMatchMenu, &QAction::triggered, this, [this] -> void {
-        ui->matchMenu->setHidden(!ui->matchMenu->isHidden());
-    });
-
-    connect(actionGoToRow, &QAction::triggered, this, [this] -> void {
-        if (tabPanel->currentTabName().isEmpty()) {
-            return;
-        }
-
-        auto* const popupInput = new PopupInput(this);
-        popupInput->setValidator(new QIntValidator(0, INT32_MAX, popupInput));
-        popupInput->setMaxLength(10);
-        popupInput->setFixedWidth(256);
-        popupInput->setPlaceholderText(
-            tr("Input line from %1 to %2")
-                .arg(1)
-                .arg(linesStatusLabel->text().split(' ').first())
-        );
-
-        popupInput->move((width() / 2) - 128, x() + 64);
-        popupInput->show();
-        popupInput->setFocus();
-
-        connect(
-            popupInput,
-            &PopupInput::inputRejected,
-            this,
-            [this, popupInput] -> void { delete popupInput; },
-            Qt::SingleShotConnection
-        );
-
-        connect(
-            popupInput,
-            &PopupInput::editingFinished,
-            this,
-            [this, popupInput] -> void {
-            const i32 rowIndex = popupInput->text().toInt() - 1;
-
-            ui->translationTable->scrollTo(
-                ui->translationTable->model()->index(rowIndex, 0),
-                TranslationTable::PositionAtCenter
-            );
-
-            delete popupInput;
-        },
-            Qt::SingleShotConnection
+    connect(actionLocateProjectDir, &QAction::triggered, this, [this] -> void {
+        QDesktopServices::openUrl(
+            QUrl::fromLocalFile(projectSettings->projectPath)
         );
     });
 
@@ -475,7 +521,7 @@ MainWindow::MainWindow(QWidget* const parent) :
             searchLocation,
             columnIndex,
             searchFlags,
-            tabPanel->tabCount()
+            ui->tabPanel->tabCount()
         );
 
         connect(
@@ -498,13 +544,13 @@ MainWindow::MainWindow(QWidget* const parent) :
                     projectSettings
                 );
             } else {
-                const QString currentTabName = tabPanel->currentTabName();
+                const QString currentTabName = ui->tabPanel->currentTabName();
 
                 for (const auto filenameArray :
                      selected.filenames(projectSettings->engineType)) {
                     if (QLatin1StringView(filenameArray.data()) ==
                         currentTabName) {
-                        tabPanel->changeTab(QString());
+                        ui->tabPanel->changeTab(QString());
                     }
                 }
 
@@ -534,10 +580,10 @@ MainWindow::MainWindow(QWidget* const parent) :
         this,
         [this](const i8 count) -> void {
         ui->globalProgressBar->setValue(ui->globalProgressBar->value() + count);
-        tabPanel->setCurrentTranslated(count);
+        ui->tabPanel->setCurrentTranslated(count);
         progressStatusLabel->setText(tr("%1 Translated / %2 Total")
-                                         .arg(tabPanel->currentTranslated())
-                                         .arg(tabPanel->currentTotal()));
+                                         .arg(ui->tabPanel->currentTranslated())
+                                         .arg(ui->tabPanel->currentTotal()));
     }
     );
 
@@ -596,10 +642,14 @@ MainWindow::MainWindow(QWidget* const parent) :
             ui->globalProgressBar->setMaximum(
                 ui->globalProgressBar->maximum() - 1
             );
-            tabPanel->setCurrentTotal(i32(tabPanel->currentTotal() - 1));
+            ui->tabPanel->setCurrentTotal(
+                i32(ui->tabPanel->currentTotal() - 1)
+            );
 
             if ((info.flags() & TranslatedFlag) != 0) {
-                tabPanel->setCurrentTotal(i32(tabPanel->currentTotal() - 1));
+                ui->tabPanel->setCurrentTotal(
+                    i32(ui->tabPanel->currentTotal() - 1)
+                );
                 ui->globalProgressBar->setValue(
                     ui->globalProgressBar->value() - 1
                 );
@@ -608,33 +658,33 @@ MainWindow::MainWindow(QWidget* const parent) :
             bookmarkMenu->removeBookmark(info.row());
         }
 
-        bookmarkMenu->shiftIndices(tabPanel->currentTabName(), info.row());
+        bookmarkMenu->shiftIndices(ui->tabPanel->currentTabName(), info.row());
 
         linesStatusLabel->setText(
             tr("%1 Lines / %2 Comments")
                 .arg(ui->translationTable->model()->rowCount())
                 .arg(
                     ui->translationTable->model()->rowCount() -
-                    tabPanel->currentTotal()
+                    ui->tabPanel->currentTotal()
                 )
         );
     }
     );
 
-    connect(tabPanel, &TabPanel::displayToggled, this, [this] -> void {
+    connect(ui->tabPanel, &TabPanel::displayToggled, this, [this] -> void {
         settings->appearance.displayPercents =
             !settings->appearance.displayPercents;
     });
 
     connect(
-        tabPanel,
+        ui->tabPanel,
         &TabPanel::completedToggled,
         this,
         [this](const QString& tabName, const bool completed) -> void {
         if (completed) {
-            projectSettings->completed.append(tabName);
+            projectSettings->completedFiles.append(tabName);
         } else {
-            projectSettings->completed.removeIf(
+            projectSettings->completedFiles.removeIf(
                 [&tabName](const QString& pred) -> bool {
                 return pred == tabName;
             }
@@ -651,17 +701,16 @@ MainWindow::MainWindow(QWidget* const parent) :
             Selected selected,
             const BatchAction action,
             const u8 columnIndex,
-            const std::variant<
-                BatchMenu::TrimFlags,
-                std::tuple<TranslationEndpoint, QString>,
-                u8>& variant
+            const std::
+                variant<BatchMenu::TrimFlags, std::tuple<u8, QString>, u8>&
+                    variant
         ) -> void {
-        const QString currentTabName = tabPanel->currentTabName();
+        const QString currentTabName = ui->tabPanel->currentTabName();
 
         for (const auto filenameArray :
              selected.filenames(projectSettings->engineType)) {
             if (QLatin1StringView(filenameArray.data()) == currentTabName) {
-                tabPanel->changeTab(QString());
+                ui->tabPanel->changeTab(QString());
             }
         }
 
@@ -755,21 +804,23 @@ MainWindow::MainWindow(QWidget* const parent) :
                     const auto filename =
                         QLatin1StringView(filenameArray.data());
 
-                    if (tabPanel->currentTabName() == filename) {
-                        tabPanel->changeTab(QString());
+                    if (ui->tabPanel->currentTabName() == filename) {
+                        ui->tabPanel->changeTab(QString());
                     }
                     lockedFile = filename;
 
-                    QString content;
-                    QSVList lines;
+                    constexpr string_view COMMENT_PREFIX_UTF8 = "<!--";
+                    constexpr string_view SEPARATOR_UTF8 = "<#>";
+
+                    QByteArray content;
                     unique_ptr<QFile> file;
 
-                    // TODO: Maybe, avoid parsing content to UTF-16
+                    const bool isMap = filename.startsWith("map"_L1);
+                    const u16 mapNumber =
+                        isMap ? filename.sliced(3).toUInt() : 0;
 
-                    if (filename.startsWith("map"_L1)) {
-                        const u16 mapNumber = filename.sliced(3).toUInt();
-                        lines = QStringView(mapSections[mapNumber])
-                                    .split('\n', Qt::SkipEmptyParts);
+                    if (isMap) {
+                        content = mapSections[mapNumber].toUtf8();
                     } else {
                         const QString path =
                             projectSettings->translationPath() + '/' +
@@ -789,78 +840,157 @@ MainWindow::MainWindow(QWidget* const parent) :
                         }
 
                         content = file->readAll();
-                        lines = QStringView(content).split(
-                            '\n',
-                            Qt::SkipEmptyParts
-                        );
                     }
-
-                    QStringList newLines;
-                    newLines.reserve(lines.size());
 
                     auto filteredStrings = views::filter(
                         strings,
                         [](const FFIString element) -> bool {
-                        auto view =
-                            QUtf8StringView(element.ptr, isize(element.len));
+                        constexpr string_view COMMENT_PREFIX_BYTES = "<!--";
 
-                        return view.sliced(0, COMMENT_PREFIX.size()) !=
-                               COMMENT_PREFIX;
+                        return element.len < COMMENT_PREFIX_BYTES.size() ||
+                               std::memcmp(
+                                   element.ptr,
+                                   COMMENT_PREFIX_BYTES.data(),
+                                   COMMENT_PREFIX_BYTES.size()
+                               ) != 0;
                     }
                     );
 
-                    auto stringsIterator = filteredStrings.begin();
-                    total += lines.size();
+                    const auto countNonEmptyLines =
+                        [](const QByteArray& buffer) -> u32 {
+                        const cstr data = buffer.constData();
+                        const isize size = buffer.size();
 
-                    for (const auto [idx, line] : views::enumerate(lines)) {
-                        updateTask(
-                            TaskWorker::Task::BatchTranslate,
-                            ++progress,
-                            total
-                        );
+                        u32 lineCount = 0;
+                        isize lineStart = 0;
 
-                        if (line.startsWith(COMMENT_PREFIX)) {
-                            newLines.emplace_back(line);
-                            continue;
+                        while (lineStart < size) {
+                            isize lineEnd = lineStart;
+
+                            while (lineEnd < size && data[lineEnd] != '\n') {
+                                ++lineEnd;
+                            }
+
+                            if (lineEnd != lineStart) {
+                                ++lineCount;
+                            }
+
+                            lineStart = lineEnd + 1;
                         }
 
-                        auto split = lineParts(line, idx + 1, filename);
-                        const auto translated = *stringsIterator++;
+                        return lineCount;
+                    };
 
-                        const QString owned = QString::fromUtf8(
-                            translated.ptr,
-                            isize(translated.len)
-                        );
+                    total += countNonEmptyLines(content);
 
-                        split[columnIndex] = owned;
-                        newLines.push_back(joinQSVList(split, SEPARATOR));
+                    QByteArray replaced;
+                    replaced.reserve(content.size());
+
+                    auto stringsIterator = filteredStrings.begin();
+                    const char* const data = content.constData();
+                    const isize size = content.size();
+
+                    isize lineStart = 0;
+                    bool hasLines = false;
+
+                    while (lineStart < size) {
+                        isize lineEnd = lineStart;
+
+                        while (lineEnd < size && data[lineEnd] != '\n') {
+                            ++lineEnd;
+                        }
+
+                        if (lineEnd != lineStart) {
+                            updateTask(
+                                TaskWorker::Task::BatchTranslate,
+                                ++progress,
+                                total
+                            );
+
+                            if (hasLines) {
+                                replaced.push_back('\n');
+                            }
+                            hasLines = true;
+
+                            const cstr linePtr = data + lineStart;
+                            const isize lineSize = lineEnd - lineStart;
+                            const string_view lineView(
+                                linePtr,
+                                as<usize>(lineSize)
+                            );
+
+                            if (lineView.starts_with(COMMENT_PREFIX_UTF8)) {
+                                replaced.append(linePtr, lineSize);
+                            } else {
+                                usize fieldStart = 0;
+                                bool malformed = false;
+
+                                for (u8 column = 0; column < columnIndex;
+                                     ++column) {
+                                    const usize separatorPos = lineView.find(
+                                        SEPARATOR_UTF8,
+                                        fieldStart
+                                    );
+
+                                    if (separatorPos == string_view::npos) {
+                                        malformed = true;
+                                        break;
+                                    }
+
+                                    fieldStart =
+                                        separatorPos + SEPARATOR_UTF8.size();
+                                }
+
+                                const auto translated = *stringsIterator++;
+
+                                if (malformed) {
+                                    replaced.append(linePtr, lineSize);
+                                } else {
+                                    const usize fieldEnd = lineView.find(
+                                        SEPARATOR_UTF8,
+                                        fieldStart
+                                    );
+
+                                    replaced.append(linePtr, isize(fieldStart));
+                                    replaced.append(
+                                        translated.ptr,
+                                        isize(translated.len)
+                                    );
+
+                                    if (fieldEnd != string_view::npos) {
+                                        replaced.append(
+                                            linePtr + isize(fieldEnd),
+                                            lineSize - isize(fieldEnd)
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        lineStart = lineEnd + 1;
                     }
 
-                    const u16 tabIndex = tabPanel->tabIndex(filename);
+                    const u16 tabIndex = ui->tabPanel->tabIndex(filename);
 
-                    const u32 total = tabPanel->tabTotal(tabIndex);
-                    const u32 translated = tabPanel->tabTranslated(tabIndex);
+                    const u32 total = ui->tabPanel->tabTotal(tabIndex);
+                    const u32 translated =
+                        ui->tabPanel->tabTranslated(tabIndex);
 
-                    tabPanel->setTabTranslated(tabIndex, total);
+                    ui->tabPanel->setTabTranslated(tabIndex, total);
 
                     ui->globalProgressBar->setValue(i32(
                         (ui->globalProgressBar->value() - translated) + total
                     ));
 
-                    QString joined = newLines.join('\n');
-
-                    if (filename.startsWith("map"_L1)) {
-                        const u16 mapNumber = filename.sliced(3).toUInt();
+                    if (isMap) {
                         mapSections.insert_or_assign(
                             mapNumber,
-                            std::move(joined)
+                            QString::fromUtf8(replaced)
                         );
                     } else {
-                        const QByteArray utf8 = joined.toUtf8();
-
                         file->seek(0);
-                        file->resize(utf8.size());
-                        file->write(utf8);
+                        file->resize(replaced.size());
+                        file->write(replaced);
                     }
                 }
 
@@ -977,7 +1107,7 @@ MainWindow::MainWindow(QWidget* const parent) :
         ) -> void {
         switch (action) {
             case SearchPanelDock::Action::GoTo:
-                tabPanel->changeTab(filename);
+                ui->tabPanel->changeTab(filename);
 
                 QTimer::singleShot(1, this, [this, rowIndex] -> void {
                     ui->translationTable->scrollTo(
@@ -989,8 +1119,8 @@ MainWindow::MainWindow(QWidget* const parent) :
 
             case SearchPanelDock::Action::Put:
             case SearchPanelDock::Action::Replace: {
-                if (filename == tabPanel->currentTabName()) {
-                    tabPanel->changeTab(QString());
+                if (filename == ui->tabPanel->currentTabName()) {
+                    ui->tabPanel->changeTab(QString());
                 }
 
                 const QString replaceText = searchMenu->replaceText();
@@ -1039,7 +1169,38 @@ MainWindow::MainWindow(QWidget* const parent) :
         &TranslationTable::textChanged,
         this,
         [this](const QString& translation) -> void {
-        // TODO: Abort if sourcelanguage and translationlangauge are none
+        const bool sourceLangUnset =
+            projectSettings->sourceLang == Algorithm::None;
+        const bool translationLangUnset =
+            projectSettings->translationLang == Algorithm::None;
+
+        if (sourceLangUnset || translationLangUnset) {
+            const QString message =
+                sourceLangUnset && translationLangUnset
+                    ? tr(
+                          "Set source and translation languages in Settings > Project to show glossary matches."
+                      )
+                : sourceLangUnset
+                    ? tr(
+                          "Set source language in Settings > Project to show glossary matches."
+                      )
+                    : tr(
+                          "Set translation language in Settings > Project to show glossary matches."
+                      );
+
+            auto* const model = ui->matchMenuTable->model();
+            if (model->rowCount() == 1 && model->row(0).info == message) {
+                return;
+            }
+
+            ui->matchMenu->clear();
+
+            MatchTableModel::Row row;
+            row.sourceText = message;
+            row.info = message;
+            model->appendRow(std::move(row));
+            return;
+        }
 
         const QModelIndex index = ui->translationTable->currentIndex();
 
@@ -1058,7 +1219,7 @@ MainWindow::MainWindow(QWidget* const parent) :
 
         ui->matchMenu->clear();
 
-        const QString currentTab = tabPanel->currentTabName();
+        const QString currentTab = ui->tabPanel->currentTabName();
         for (const Term& term : glossaryMenu->glossary().terms) {
             appendMatches(
                 currentTab,
@@ -1076,33 +1237,64 @@ MainWindow::MainWindow(QWidget* const parent) :
         &TranslationTable::inputFocused,
         this,
         [this] -> void {
-        // TODO: Abort if sourcelanguage and translationlangauge are none
+        if (settings->translation.endpoints.empty() ||
+            ranges::all_of(
+                settings->translation.endpoints,
+                [](const auto& endpoint) -> bool {
+            return !endpoint.singleTranslation;
+        }
+            )) {
+            return;
+        };
 
-        const auto& sourceItem = ui->translationTable->model()->item(
-            ui->translationTable->currentIndex().row(),
-            0
-        );
-        const QString* const text = sourceItem.text();
-        const Glossary glossary = glossaryMenu->glossary();
+        if (projectSettings->sourceLang != Algorithm::None &&
+            projectSettings->translationLang != Algorithm::None) {
+            const auto& sourceItem = ui->translationTable->model()->item(
+                ui->translationTable->currentIndex().row(),
+                0
+            );
+            const QString* const text = sourceItem.text();
+            const Glossary glossary = glossaryMenu->glossary();
 
-        QMetaObject::invokeMethod(
-            taskWorker,
-            &TaskWorker::translateSingle,
-            Qt::QueuedConnection,
-            tabPanel->currentTabName(),
-            *text,
-            glossary
-        );
+            QMetaObject::invokeMethod(
+                taskWorker,
+                &TaskWorker::translateSingle,
+                Qt::QueuedConnection,
+                ui->tabPanel->currentTabName(),
+                *text,
+                glossary
+            );
 
-        connect(
-            taskWorker,
-            &TaskWorker::singleTranslateFinished,
-            this,
-            [this](
-                const array<QString, TRANSLATION_ENDPOINT_COUNT>& translations
-            ) -> void { translationsMenu->showTranslations(translations); },
-            Qt::SingleShotConnection
-        );
+            connect(
+                taskWorker,
+                &TaskWorker::singleTranslateFinished,
+                this,
+                [this](const vector<QString>& translations) -> void {
+                translationsMenu->showTranslations(translations, settings);
+            },
+                Qt::SingleShotConnection
+            );
+        } else {
+            const bool sourceLangUnset =
+                projectSettings->sourceLang == Algorithm::None;
+            const bool translationLangUnset =
+                projectSettings->translationLang == Algorithm::None;
+
+            const QString message =
+                sourceLangUnset && translationLangUnset
+                    ? tr(
+                          "Set source and translation languages in Settings > Project to show translations."
+                      )
+                : sourceLangUnset
+                    ? tr(
+                          "Set source language in Settings > Project to show translations."
+                      )
+                    : tr(
+                          "Set translation language in Settings > Project to show translations."
+                      );
+
+            translationsMenu->showError(message);
+        }
 
         // TODO: Call to FFI for language tool lints
     }
@@ -1113,8 +1305,11 @@ MainWindow::MainWindow(QWidget* const parent) :
         &TranslationTable::bookmarked,
         this,
         [this](const u32 row) -> void {
-        bookmarkMenu
-            ->addBookmark(tabPanel->currentTabName(), QStringView(), row - 1);
+        bookmarkMenu->addBookmark(
+            ui->tabPanel->currentTabName(),
+            QStringView(),
+            row - 1
+        );
     }
     );
 
@@ -1126,7 +1321,7 @@ MainWindow::MainWindow(QWidget* const parent) :
             return;
         }
 
-        openProject(dir);
+        openProject(dir, true);
     });
 
     connect(readMenu, &ReadMenu::accepted, this, [this] -> void {
@@ -1193,7 +1388,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 rpgm_buffer_free(hashes);
             }
 
-            openProject(projectSettings->projectPath);
+            openProject(projectSettings->projectPath, false);
         },
             Qt::SingleShotConnection
         );
@@ -1232,7 +1427,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 return;
             }
 
-            openProject(settings->core.projectPath);
+            openProject(settings->core.projectPath, false);
         },
             Qt::SingleShotConnection
         );
@@ -1329,7 +1524,7 @@ MainWindow::MainWindow(QWidget* const parent) :
             action,
             &QAction::triggered,
             this,
-            [this, recentProject] -> void { openProject(recentProject); }
+            [this, recentProject] -> void { openProject(recentProject, true); }
         );
     }
 
@@ -1338,7 +1533,7 @@ MainWindow::MainWindow(QWidget* const parent) :
     checkForUpdates();
 
     if (!settings->core.projectPath.isEmpty()) {
-        openProject(settings->core.projectPath);
+        openProject(settings->core.projectPath, false);
     } else {
         ui->statusBar->showMessage(
             tr("Open a project by using 'Open Folder' button!")
@@ -1398,7 +1593,7 @@ void MainWindow::loadSettings() {
 
     ui->translationTable->setFont(QFont(fontName, fontSize));
 
-    tabPanel->setProgressDisplay(settings->appearance.displayPercents);
+    ui->tabPanel->setProgressDisplay(settings->appearance.displayPercents);
 
     actionTabPanel->setShortcut(settings->controls.tabPanel);
     actionSearchPanel->setShortcut(settings->controls.searchPanel);
@@ -1409,11 +1604,13 @@ void MainWindow::loadSettings() {
     actionGlossaryMenu->setShortcut(settings->controls.glossaryMenu);
     actionTranslationsMenu->setShortcut(settings->controls.translationsMenu);
 
-    if (projectSettings != nullptr) {
 #ifdef ENABLE_NUSPELL
+    if (projectSettings != nullptr) {
         ui->translationTable->initializeDictionary();
-#endif
     }
+#endif
+
+    batchMenu->setEndpoints(settings->translation.endpoints);
 
     retranslate(settings->appearance.language);
 }
@@ -1667,8 +1864,12 @@ void MainWindow::showSettingsWindow() {
         return;
     }
 
-    auto* const settingsWindow =
-        new SettingsWindow(settings, projectSettings, tabPanel->tabs(), this);
+    auto* const settingsWindow = new SettingsWindow(
+        settings,
+        projectSettings,
+        ui->tabPanel->tabs(),
+        this
+    );
     settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
     settingsWindow->show();
 
@@ -1934,7 +2135,7 @@ void MainWindow::checkForUpdates(bool manual) {
 }
 
 // Awful
-void MainWindow::openProject(const QString& folder) {
+void MainWindow::openProject(const QString& folder, const bool newProject) {
     if (!QFile::exists(folder)) {
         QMessageBox::critical(
             this,
@@ -1946,22 +2147,35 @@ void MainWindow::openProject(const QString& folder) {
 
     closeProject();
 
+    if (!newProject &&
+        !QFile::exists(settings->core.projectPath + PROGRAM_DATA_DIRECTORY)) {
+        QMessageBox::critical(
+            this,
+            tr("Failed to open project"),
+            tr(
+                "Failed to opened project because couldn't locate `.rpgmtranslate` program directory that was previously located at this path: %1. If this is intentional, please reopen the directory manually."
+            )
+                .arg(folder + PROGRAM_DATA_DIRECTORY)
+        );
+        return;
+    }
+
     auto tempProjectSettings = make_shared<ProjectSettings>();
     tempProjectSettings->projectPath = folder;
 
     const QString rootTranslationPath = folder + TRANSLATION_DIRECTORY;
 
     if (QFile::exists(folder + u"/Data")) {
-        tempProjectSettings->sourceDirectory = u"/Data"_s;
+        tempProjectSettings->sourceDirectory = SourceDirectory::UppercaseData;
     }
 
     if (QFile::exists(folder + u"/data")) {
-        tempProjectSettings->sourceDirectory = u"/data"_s;
+        tempProjectSettings->sourceDirectory = SourceDirectory::LowercaseData;
     }
 
-    const auto postRead = [this, folder, tempProjectSettings](
+    const auto postRead = [this, folder, tempProjectSettings, newProject](
                               const std::tuple<FFIString, ByteBuffer> results
-                          ) -> result<std::monostate, QString> {
+                          ) -> result<void, QString> {
         const auto [error, hashes] = results;
 
         if (error.ptr != nullptr) {
@@ -1984,14 +2198,6 @@ void MainWindow::openProject(const QString& folder) {
 
             rpgm_buffer_free(hashes);
         }
-
-        const auto saveSuccess = saveEverything();
-
-        if (!saveSuccess) {
-            return std::monostate();
-        }
-
-        closeProject();
 
         const QString projectSettingsPath =
             folder + PROGRAM_DATA_DIRECTORY + PROJECT_SETTINGS_FILE;
@@ -2027,14 +2233,16 @@ void MainWindow::openProject(const QString& folder) {
         QDir().mkdir(projectSettings->backupPath());
         QDir().mkdir(projectSettings->translationPath());
 
-        i32 totalLines = 0;
-        i32 totalTranslated = 0;
+        u32 totalLines = 0;
+        u32 totalTranslated = 0;
 
-        u8 columnCount = std::max<u8>(2, projectSettings->columns.size());
+        u8 columnCount = max<u8>(2, projectSettings->columns.size());
 
         const auto translationFiles =
             QDir(projectSettings->translationPath())
                 .entryInfoList({ u"*.txt"_s }, QDir::Files);
+
+        vector<TabListItem> tabs;
 
         for (const auto& fileInfo : translationFiles) {
             auto file = QFile(fileInfo.filePath());
@@ -2066,8 +2274,8 @@ void MainWindow::openProject(const QString& folder) {
             u32 pos = 0;
             u32 lineIndex = 0;
 
-            i32 fileTotal = 0;
-            i32 fileTranslated = 0;
+            u32 fileTotal = 0;
+            u32 fileTranslated = 0;
 
             QStringView mapID;
             QStringView entry;
@@ -2099,8 +2307,7 @@ void MainWindow::openProject(const QString& folder) {
                     continue;
                 }
 
-                columnCount =
-                    std::max<u8>(columnCount, line.count(SEPARATORL1) + 1);
+                columnCount = max<u8>(columnCount, line.count(SEPARATORL1) + 1);
 
                 if (line.startsWith(BOOKMARK_COMMENT)) {
                     const u32 left =
@@ -2123,20 +2330,14 @@ void MainWindow::openProject(const QString& folder) {
                         if (fileTotal != 0) {
                             const QString tempMapName = u"map"_s + mapID;
 
-                            tabPanel->addTab(
+                            tabs.emplace_back(
                                 tempMapName,
                                 fileTotal,
                                 fileTranslated,
-                                projectSettings->completed.contains(basename)
+                                projectSettings->completedFiles.contains(
+                                    basename
+                                )
                             );
-                            searchMenu->addFile(tempMapName);
-                            batchMenu->addFile(tempMapName);
-                            glossaryMenu->addFile(tempMapName);
-                            readMenu->addFile(tempMapName);
-                            purgeMenu->addFile(tempMapName);
-                            writeMenu->addFile(tempMapName);
-                            bookmarkMenu->addFile(tempMapName);
-                            ui->searchPanel->addFile(tempMapName);
 
                             totalLines += fileTotal;
                             totalTranslated += fileTranslated;
@@ -2198,20 +2399,12 @@ void MainWindow::openProject(const QString& folder) {
                 basename = u"map"_s + mapID;
             }
 
-            tabPanel->addTab(
+            tabs.emplace_back(
                 basename,
                 fileTotal,
                 fileTranslated,
-                projectSettings->completed.contains(basename)
+                projectSettings->completedFiles.contains(basename)
             );
-            searchMenu->addFile(basename);
-            batchMenu->addFile(basename);
-            glossaryMenu->addFile(basename);
-            readMenu->addFile(basename);
-            purgeMenu->addFile(basename);
-            writeMenu->addFile(basename);
-            bookmarkMenu->addFile(basename);
-            ui->searchPanel->addFile(basename);
 
             if (isSystem &&
                 contentView.lastIndexOf("<!-- ID --><#>8"_L1) != -1) {
@@ -2231,19 +2424,19 @@ void MainWindow::openProject(const QString& folder) {
                     ui->gameTitleInput->setText(translation.toString());
                 }
 
-                const i32 textWidth =
+                const u16 textWidth =
                     QFontMetrics(qApp->font())
                         .horizontalAdvance(ui->gameTitleInput->text());
 
                 const QMargins margins = ui->gameTitleInput->textMargins();
 
-                const i32 frame = ui->gameTitleInput->style()->pixelMetric(
+                const u16 frame = ui->gameTitleInput->style()->pixelMetric(
                                       QStyle::PM_DefaultFrameWidth
                                   ) *
                                   2;
 
                 constexpr u8 GAME_TITLE_INPUT_PADDING = 32;
-                const i32 finalWidth = textWidth + margins.left() +
+                const u16 finalWidth = textWidth + margins.left() +
                                        margins.right() + frame +
                                        GAME_TITLE_INPUT_PADDING;
 
@@ -2253,6 +2446,16 @@ void MainWindow::openProject(const QString& folder) {
 
             qInfo() << tr("%1: Successfully parsed.").arg(fileInfo.filePath());
         }
+
+        searchMenu->setFiles(tabs);
+        batchMenu->setFiles(tabs);
+        glossaryMenu->setFiles(tabs);
+        readMenu->setFiles(tabs);
+        purgeMenu->setFiles(tabs);
+        writeMenu->setFiles(tabs);
+        bookmarkMenu->setFiles(tabs);
+        ui->searchPanel->setFiles(tabs);
+        ui->tabPanel->setTabs(std::move(tabs));
 
         {
             auto glossaryFile = QFile(projectSettings->glossaryPath());
@@ -2295,31 +2498,35 @@ void MainWindow::openProject(const QString& folder) {
             searchMenu->addColumn(column.name);
         }
 
+        assetMenu->init(projectSettings);
         readMenu->init(projectSettings);
         taskWorker->init(settings, projectSettings, &mapSections);
 
         ui->translationTable->init(
-            &projectSettings->sourceLang,
             &projectSettings->lineLengthHint,
-            &settings->appearance.displayTrailingWhitespace
+            &settings->appearance.displayTrailingWhitespace,
+            &projectSettings->spellcheckDictionary
         );
 
+        actionTabPanel->setEnabled(true);
         actionSave->setEnabled(true);
         actionWrite->setEnabled(true);
         actionSearch->setEnabled(true);
         actionBatchMenu->setEnabled(true);
         actionGlossaryMenu->setEnabled(true);
+        actionMatchMenu->setEnabled(true);
         actionTranslationsMenu->setEnabled(true);
         actionBookmarkMenu->setEnabled(true);
+        actionSourceControl->setEnabled(true);
+        actionAssets->setEnabled(true);
         ui->rvpackerButton->setEnabled(true);
         ui->gameTitleInput->setEnabled(true);
-        actionTabPanel->setEnabled(true);
+        actionLocateProjectDir->setEnabled(true);
         actionSearchPanel->setEnabled(true);
-        actionMatchMenu->setEnabled(true);
 
         ui->globalProgressBar->setEnabled(true);
-        ui->globalProgressBar->setMaximum(totalLines);
-        ui->globalProgressBar->setValue(totalTranslated);
+        ui->globalProgressBar->setMaximum(i32(totalLines));
+        ui->globalProgressBar->setValue(i32(totalTranslated));
 
         if (settings->core.backup.enabled) {
             backupTimer.start((settings->core.backup.period * SECOND_MS));
@@ -2331,7 +2538,7 @@ void MainWindow::openProject(const QString& folder) {
                 ui->actionRecentProjects->menu()->addAction(folder);
 
             connect(action, &QAction::triggered, this, [this, folder] -> void {
-                openProject(folder);
+                openProject(folder, true);
             });
         }
 
@@ -2346,20 +2553,22 @@ void MainWindow::openProject(const QString& folder) {
             "Before working with the program, check out documentation in Help > Documentation!"
         ));
 
-        return std::monostate();
+        return {};
     };
 
     const auto postArchive = [this,
                               folder,
                               rootTranslationPath,
                               tempProjectSettings,
-                              postRead]() -> result<std::monostate, QString> {
+                              postRead] -> result<void, QString> {
         if (QFile::exists(folder + u"/Data")) {
-            tempProjectSettings->sourceDirectory = u"/Data"_s;
+            tempProjectSettings->sourceDirectory =
+                SourceDirectory::UppercaseData;
         }
 
         if (QFile::exists(folder + u"/data")) {
-            tempProjectSettings->sourceDirectory = u"/data"_s;
+            tempProjectSettings->sourceDirectory =
+                SourceDirectory::LowercaseData;
         }
 
         if (!QFile::exists(
@@ -2377,6 +2586,10 @@ void MainWindow::openProject(const QString& folder) {
                 );
 
                 if (selected == QMessageBox::Yes) {
+                    QDir().mkpath(
+                        folder + PROGRAM_DATA_DIRECTORY + TRANSLATION_DIRECTORY
+                    );
+
                     try {
                         fs::copy(
                             rootTranslationPath.toStdString(),
@@ -2395,13 +2608,22 @@ void MainWindow::openProject(const QString& folder) {
             }
 
             if (!copied) {
-                if (tempProjectSettings->sourceDirectory.isEmpty()) {
+                if (tempProjectSettings->sourceDirectory ==
+                    SourceDirectory::None) {
                     return Err(
                         tr("Source files and translation do not exist.")
                     );
                 }
 
+                // TODO: This shit deadlocks if translation directory disappears
+
                 firstReadPending = true;
+
+                readMenu->show();
+                readMenu->move(
+                    (width() / 2) - (readMenu->width() / 2),
+                    (height() / 2) - (readMenu->height() / 2)
+                );
 
                 if (readMenu->exec() != QDialog::Accepted) {
                     firstReadPending = false;
@@ -2414,20 +2636,23 @@ void MainWindow::openProject(const QString& folder) {
                         tempProjectSettings->sourcePath() + u"/System.json"
                     )) {
                     tempProjectSettings->engineType = EngineType::New;
-                } else if (QFile::exists(
-                               tempProjectSettings->sourcePath() +
-                               u"/System.rvdata2"
-                           )) {
+                } else if (
+                    QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.rvdata2"
+                    )
+                ) {
                     tempProjectSettings->engineType = EngineType::VXAce;
-                } else if (QFile::exists(
-                               tempProjectSettings->sourcePath() +
-                               u"/System.rvdata"
-                           )) {
+                } else if (
+                    QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.rvdata"
+                    )
+                ) {
                     tempProjectSettings->engineType = EngineType::VX;
-                } else if (QFile::exists(
-                               tempProjectSettings->sourcePath() +
-                               u"/System.rxdata"
-                           )) {
+                } else if (
+                    QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.rxdata"
+                    )
+                ) {
                     tempProjectSettings->engineType = EngineType::XP;
                 }
 
@@ -2478,15 +2703,13 @@ void MainWindow::openProject(const QString& folder) {
                 },
                     Qt::SingleShotConnection
                 );
-
-                return std::monostate();
             }
         }
 
         return postRead({ { .ptr = nullptr, .len = 0 }, {} });
     };
 
-    if (tempProjectSettings->sourceDirectory.isEmpty()) {
+    if (tempProjectSettings->sourceDirectory == SourceDirectory::None) {
         for (const QStringView archiveFilename :
              { u"/Game.rgssad", u"/Game.rgss2a", u"/Game.rgss3a" }) {
             const QString archivePath = folder + archiveFilename;
@@ -2542,6 +2765,10 @@ void MainWindow::openProject(const QString& folder) {
             result.error()
         );
     }
+
+#ifdef ENABLE_LIBGIT2
+    ui->sourceControlDock->setProjectPath(projectSettings->projectPath);
+#endif
 }
 
 void MainWindow::closeEvent(QCloseEvent* const event) {
@@ -2553,13 +2780,13 @@ void MainWindow::changeTab(
     const QString& tabName,
     const QString& previousTabName
 ) {
-    // TODO: tabPanel->changeTab(previousTabName) may not work as expected
+    // TODO: ui->tabPanel->changeTab(previousTabName) may not work as expected
 
     if (!previousTabName.isEmpty()) {
         const bool success = saveCurrentTab(previousTabName);
 
         if (!success) {
-            tabPanel->changeTab(previousTabName);
+            ui->tabPanel->changeTab(previousTabName);
             return;
         }
     }
@@ -2576,7 +2803,7 @@ void MainWindow::changeTab(
                 tr("File is unavailable"),
                 tr("File is currently processed and is being locked.")
             );
-            tabPanel->changeTab(previousTabName);
+            ui->tabPanel->changeTab(previousTabName);
             return;
         }
 
@@ -2592,7 +2819,7 @@ void MainWindow::changeTab(
                 tr("Failed to open file"),
                 tr("Failed to open tab: %1.").arg(result.error())
             );
-            tabPanel->changeTab(previousTabName);
+            ui->tabPanel->changeTab(previousTabName);
             return;
         }
 
@@ -2611,11 +2838,11 @@ void MainWindow::changeTab(
         linesStatusLabel->setText(
             tr("%1 Lines / %2 Comments")
                 .arg(lines.size())
-                .arg(lines.size() - tabPanel->currentTotal())
+                .arg(lines.size() - ui->tabPanel->currentTotal())
         );
         progressStatusLabel->setText(tr("%1 Translated / %2 Total")
-                                         .arg(tabPanel->currentTranslated())
-                                         .arg(tabPanel->currentTotal()));
+                                         .arg(ui->tabPanel->currentTranslated())
+                                         .arg(ui->tabPanel->currentTotal()));
         tabNameStatusLabel->setText(tabName);
 
         // TODO: Display total source words/characters in the status bar
@@ -2627,7 +2854,7 @@ start:
     QString* mapSection = nullptr;
 
     if (tabName.isEmpty()) {
-        tabName = tabPanel->currentTabName();
+        tabName = ui->tabPanel->currentTabName();
 
         if (tabName.isEmpty()) {
             return true;
@@ -2709,7 +2936,7 @@ start:
             auto fields = QStringList(model->columnCount());
 
             for (const u8 column : range<u8>(0, model->columnCount())) {
-                auto item = model->item(row, column);
+                const auto item = model->item(row, column);
 
                 if (item.text()->isNull()) {
                     qWarning() << u"Item at row %1 and column %2 is nullptr."_s
@@ -2745,7 +2972,7 @@ start:
 
     ui->statusBar->showMessage(
         tr("Tab %1 saved.")
-            .arg(tabName.isEmpty() ? tabPanel->currentTabName() : tabName)
+            .arg(tabName.isEmpty() ? ui->tabPanel->currentTabName() : tabName)
     );
 
     return true;
@@ -2829,12 +3056,12 @@ void MainWindow::saveBackup() {
     const auto date = QDate::currentDate();
     const auto time = QTime::currentTime();
 
-    const auto backupDirName = u"/%1-%2-%3_%4-%5-%6"_s.arg(date.day())
-                                   .arg(date.month())
-                                   .arg(date.year())
-                                   .arg(time.hour())
-                                   .arg(time.minute())
-                                   .arg(time.second());
+    auto backupDirName = u"/%1-%2-%3_%4-%5-%6"_s.arg(date.day())
+                             .arg(date.month())
+                             .arg(date.year())
+                             .arg(time.hour())
+                             .arg(time.minute())
+                             .arg(time.second());
 
     try {
         fs::copy(
@@ -2847,7 +3074,9 @@ void MainWindow::saveBackup() {
         return;
     }
 
-    ui->statusBar->showMessage(tr("Backup %1 created.").arg(backupDirName));
+    ui->statusBar->showMessage(
+        tr("Backup %1 created.").arg(backupDirName.slice(1))
+    );
 }
 
 void MainWindow::appendMatches(
@@ -2901,11 +3130,11 @@ void MainWindow::appendMatches(
 }
 
 void MainWindow::closeProject() {
-    tabPanel->changeTab(QString());
+    ui->tabPanel->changeTab(QString());
 
     mapSections.clear();
 
-    tabPanel->clear();
+    ui->tabPanel->clear();
 
     glossaryMenu->clear();
     bookmarkMenu->clear();
@@ -2930,12 +3159,16 @@ void MainWindow::closeProject() {
     actionMatchMenu->setEnabled(false);
     actionTranslationsMenu->setEnabled(false);
     actionBookmarkMenu->setEnabled(false);
+    actionSourceControl->setEnabled(false);
+    actionAssets->setEnabled(false);
     ui->rvpackerButton->setEnabled(false);
 
-    tabPanel->hide();
-
+    ui->gameTitleInput->setEnabled(false);
     ui->gameTitleInput->clear();
     ui->gameTitleInput->setPlaceholderText(QString());
+
+    actionLocateProjectDir->setEnabled(false);
+    actionSearchPanel->setEnabled(false);
 
     ui->globalProgressBar->setMaximum(0);
     ui->globalProgressBar->setValue(0);
