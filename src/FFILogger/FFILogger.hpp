@@ -3,7 +3,7 @@
 #include "Aliases.hpp"
 #include "Enums.hpp"
 #include "Types.hpp"
-#include "rpgmtranslate.h"
+#include "rpgmtranslate.hpp"
 
 #include <QObject>
 

@@ -875,7 +875,7 @@
             <x>0</x>
             <y>0</y>
             <width>811</width>
-            <height>1538</height>
+            <height>1608</height>
            </rect>
           </property>
           <property name="sizePolicy">
@@ -949,6 +949,13 @@
                   <number>0</number>
                  </property>
                  <item>
+                  <widget class="QLabel" name="label_17">
+                   <property name="text">
+                    <string>Endpoint List</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QListView" name="endpointList">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -976,17 +983,101 @@
                  <item>
                   <widget class="QWidget" name="widget" native="true">
                    <layout class="QHBoxLayout" name="horizontalLayout_20">
+                    <property name="spacing">
+                     <number>4</number>
+                    </property>
+                    <property name="leftMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="topMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="rightMargin">
+                     <number>0</number>
+                    </property>
+                    <property name="bottomMargin">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QLabel" name="label_30">
+                      <property name="text">
+                       <string>Select endpoints by clicking on them. You can change the name by double-clicking an endpoint.</string>
+                      </property>
+                     </widget>
+                    </item>
                     <item>
                      <widget class="QPushButton" name="addEndpointButton">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>32</width>
+                        <height>32</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>32</width>
+                        <height>32</height>
+                       </size>
+                      </property>
+                      <property name="toolTip">
+                       <string>Add Endpoint</string>
+                      </property>
                       <property name="text">
-                       <string>+</string>
+                       <string notr="true"/>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../../resources.qrc">
+                        <normaloff>:/icons/add.svg</normaloff>:/icons/add.svg</iconset>
+                      </property>
+                      <property name="iconSize">
+                       <size>
+                        <width>20</width>
+                        <height>20</height>
+                       </size>
                       </property>
                      </widget>
                     </item>
                     <item>
                      <widget class="QPushButton" name="removeEndpointButton">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="minimumSize">
+                       <size>
+                        <width>32</width>
+                        <height>32</height>
+                       </size>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>32</width>
+                        <height>32</height>
+                       </size>
+                      </property>
+                      <property name="toolTip">
+                       <string>Remove Selected Endpoint</string>
+                      </property>
                       <property name="text">
-                       <string>-</string>
+                       <string notr="true"/>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../../resources.qrc">
+                        <normaloff>:/icons/close.svg</normaloff>:/icons/close.svg</iconset>
+                      </property>
+                      <property name="iconSize">
+                       <size>
+                        <width>20</width>
+                        <height>20</height>
+                       </size>
                       </property>
                      </widget>
                     </item>
@@ -1141,6 +1232,9 @@
                    <property name="text">
                     <string/>
                    </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
                   </widget>
                  </item>
                  <item>
@@ -1266,9 +1360,19 @@
                   </widget>
                  </item>
                  <item>
+                  <widget class="QLabel" name="label_4">
+                   <property name="text">
+                    <string>If &quot;Check key&quot; outputs something about incorrect URL, missing page etc., make sure that your base URL includes the API version. For example: &quot;https://api.openai.com/v1&quot; or &quot;https://generativelanguage.googleapis.com/v1beta&quot;. Don't include parts like &quot;/chat/completions&quot; in the URL!</string>
+                   </property>
+                   <property name="wordWrap">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
                   <widget class="QPushButton" name="checkKeyButton">
                    <property name="text">
-                    <string>Check Key</string>
+                    <string>Check key</string>
                    </property>
                   </widget>
                  </item>
@@ -1467,6 +1571,7 @@
                 <zorder>widget_6</zorder>
                 <zorder>singleTranslationCheckbox</zorder>
                 <zorder>typeDescriptionLabel</zorder>
+                <zorder>label_4</zorder>
                </widget>
               </item>
              </layout>
@@ -1827,7 +1932,9 @@
    <header>PasswordLineEdit.hpp</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../../resources.qrc"/>
+ </resources>
  <connections/>
  <designerdata>
   <property name="gridDeltaX">

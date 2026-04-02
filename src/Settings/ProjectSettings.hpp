@@ -74,7 +74,7 @@ struct ProjectSettings {
     }
 
     [[nodiscard]] auto outputPath() const -> QString {
-        return programDataPath() + PROGRAM_DATA_DIRECTORY + OUTPUT_DIRECTORY;
+        return programDataPath() + OUTPUT_DIRECTORY;
     }
 
     [[nodiscard]] auto glossaryPath() const -> QString {

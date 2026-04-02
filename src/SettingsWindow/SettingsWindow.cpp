@@ -3,7 +3,7 @@
 #include "Enums.hpp"
 #include "ProjectSettings.hpp"
 #include "Settings.hpp"
-#include "rpgmtranslate.h"
+#include "rpgmtranslate.hpp"
 #include "ui_SettingsWindow.h"
 
 #include <QDir>
@@ -189,12 +189,34 @@ SettingsWindow::SettingsWindow(
 
         switch (endpoint) {
             case TranslationEndpoint::Google:
+                ui->typeDescriptionLabel->setText(tr(
+                    "Google Translate. Free and unlimited. Configured options don't work with this endpoint."
+                ));
+                break;
             case TranslationEndpoint::Yandex:
+                ui->typeDescriptionLabel->setText(tr(
+                    "Yandex Translate. Requires API key and folder ID. Configured options don't work with this endpoint."
+                ));
+                break;
             case TranslationEndpoint::DeepL:
+                ui->typeDescriptionLabel->setText(tr(
+                    "DeepL. Requires API key and folder ID. Configured options don't work with this endpoint, except glossary usage."
+                ));
                 ui->baseURLInput->setEnabled(false);
                 break;
             default:
                 setDefaultBaseURL(endpoint);
+
+                ui->typeDescriptionLabel->setText(tr(
+                    "LLM endpoint with pre-defined base URL. Don't change the base URL, unless you know what you're doing. Configured options will affect this endpoint."
+                ));
+
+                if (endpoint == TranslationEndpoint::OpenAICompatible) {
+                    ui->typeDescriptionLabel->setText(tr(
+                        "OpenAI-compatible endpoint. This category fits many providers, including OpenAI itself, DeepSeek, Mistral, and local providers, such as llama.cpp and koboldcpp. Requires valid base URL, that should probably end with '/v1'. Configured options will affect this endpoint."
+                    ));
+                }
+                break;
         }
     }
     );
@@ -371,6 +393,7 @@ SettingsWindow::SettingsWindow(
                     "Given URL is invalid. Please check the validity of submitted URL."
                 )
             );
+
             ui->baseURLInput->clear();
             return;
         }
@@ -387,35 +410,14 @@ SettingsWindow::SettingsWindow(
             case TranslationEndpoint::Mistral:
             case TranslationEndpoint::OpenAI:
             case TranslationEndpoint::OpenAICompatible: {
+                // base doesn't include anything past the domain here
                 QString base = url.scheme() + u"://" + url.host();
 
                 if (url.port() != -1) {
                     base += ':' + QString::number(url.port());
                 }
 
-                if (base.endsWith("/v1")) {
-                    return;
-                }
-
-                if (base.endsWith("/chat"_L1)) {
-                    base.slice(base.size() - 6, 5);
-                }
-
-                if (base.endsWith("/completions"_L1)) {
-                    base.slice(base.size() - 13, 12);
-                }
-
-                if (!base.endsWith("/v1")) {
-                    QMessageBox::warning(
-                        this,
-                        tr("URL does not end with v1"),
-                        tr(
-                            "OpenAI-compatible URLs should always end with `/v1`. Change the URL, so it ends with `/v1`."
-                        )
-                    );
-                    ui->baseURLInput->clear();
-                    return;
-                }
+                // TODO: Check if path contains /chat, /completions, or /v{int}
 
                 break;
             }
@@ -440,6 +442,7 @@ SettingsWindow::SettingsWindow(
             TranslationEndpoint(ui->typeSelect->currentIndex());
 
         if (endpoint <= TranslationEndpoint::DeepL) {
+            // TODO: Check somehow?
             return;
         }
 
@@ -677,9 +680,11 @@ void SettingsWindow::closeEvent(QCloseEvent* const event) {
     settings->controls.translationsMenu =
         ui->translationsMenuInput->keySequence().toString();
 
-    const u16 row = ui->endpointList->currentIndex().row();
+    const i32 row = ui->endpointList->currentIndex().row();
 
-    saveCurrentEndpoint(settings->translation.endpoints[row]);
+    if (row != -1) {
+        saveCurrentEndpoint(settings->translation.endpoints[row]);
+    }
 
     if (ui->lineLengthHintInput->hasAcceptableInput()) {
         projectSettings->lineLengthHint =

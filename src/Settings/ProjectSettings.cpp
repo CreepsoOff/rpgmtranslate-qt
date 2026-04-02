@@ -10,11 +10,43 @@ auto tou128(const string& str) -> u128 {
     return result;
 }
 
+#ifdef Q_CC_MSVC
+// TODO: Temporary vibe-coded fix for being unable to convert u128 to string in
+// MSVC
+[[nodiscard]] auto uint128_to_string(u128 value) -> string {
+    constexpr u64 BASE = 10000000000000000000ULL;
+    std::array<u64, 3> parts{};
+    i32 idx = 0;
+
+    while (value > 0) {
+        parts[idx++] = u64(value % BASE);
+        value /= BASE;
+    }
+
+    string result = std::to_string(parts[idx - 1]);
+
+    for (i32 j = idx - 2; j >= 0; --j) {
+        string chunk = std::to_string(parts[j]);
+        result += string(19 - chunk.length(), '0') + chunk;
+    }
+
+    return result;
+}
+#endif
+
 [[nodiscard]] auto ProjectSettings::toJSON() const -> QJsonObject {
     QJsonArray hashes;
 
     for (const u128 hash : this->hashes) {
-        hashes.append(QString::fromLatin1(std::format("{}", hash)));
+        hashes.append(
+            QString::fromLatin1(
+#ifdef Q_CC_MSVC
+                uint128_to_string(hash)
+#else
+                std::format("{}", hash)
+#endif
+            )
+        );
     }
 
     QJsonArray contexts;

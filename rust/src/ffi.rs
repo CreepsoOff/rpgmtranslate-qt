@@ -208,7 +208,7 @@ pub unsafe extern "C" fn rpgm_read(
 
             *out_hashes = ByteBuffer {
                 ptr: serialized.as_mut_ptr().cast::<u8>(),
-                len: serialized.len() * size_of::<u128>(),
+                len: serialized.len(),
             };
 
             std::mem::forget(serialized);

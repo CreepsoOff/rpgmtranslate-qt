@@ -23,7 +23,7 @@
 #include "Types.hpp"
 #include "Utils.hpp"
 #include "WriteMenu.hpp"
-#include "rpgmtranslate.h"
+#include "rpgmtranslate.hpp"
 #include "ui_MainWindow.h"
 #include "version.h"
 
@@ -1375,15 +1375,13 @@ MainWindow::MainWindow(QWidget* const parent) :
 
             if (hashes.ptr != nullptr) {
                 const u128* const input = ras<const u128*>(hashes.ptr);
-                const u32 size = hashes.len / sizeof(u128);
 
-                projectSettings->hashes.clear();
-                projectSettings->hashes.shrink_to_fit();
-                projectSettings->hashes.reserve(size);
-
-                for (const u128 integer : span(input, size)) {
-                    projectSettings->hashes.emplace_back(integer);
-                }
+                projectSettings->hashes.resize(hashes.len);
+                memcpy(
+                    projectSettings->hashes.data(),
+                    input,
+                    hashes.len * sizeof(u128)
+                );
 
                 rpgm_buffer_free(hashes);
             }
@@ -1767,8 +1765,9 @@ start:
         QJsonDocument(projectSettings->toJSON()).toJson(QJsonDocument::Compact)
     );
 
+    // TODO: WRONG PATH
     QString metadataPath =
-        projectSettings->projectPath + u"/.rvpacker-metadata";
+        projectSettings->projectPath + u"/.rvpacker-metadata"_qssv;
     auto metadataFile = make_unique<QFile>(metadataPath);
 
     if (!metadataFile->open(QFile::WriteOnly | QFile::Truncate)) {
@@ -1781,7 +1780,7 @@ start:
                 break;
             case 1: {
                 const QString& dir = std::get<1>(result).s;
-                metadataPath = dir + u"/.rvpacker-metadata";
+                metadataPath = dir + u"/.rvpacker-metadata"_qssv;
                 metadataFile = make_unique<QFile>(metadataPath);
 
                 if (!metadataFile->open(QFile::WriteOnly | QFile::Truncate)) {
@@ -2188,13 +2187,14 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 
         if (hashes.ptr != nullptr) {
             const u128* const input = ras<const u128*>(hashes.ptr);
-            const u32 size = hashes.len / sizeof(u128);
+            const u32 size = hashes.len;
 
-            tempProjectSettings->hashes.reserve(size);
-
-            for (const u128 integer : span(input, size)) {
-                tempProjectSettings->hashes.emplace_back(integer);
-            }
+            tempProjectSettings->hashes.resize(size);
+            memcpy(
+                tempProjectSettings->hashes.data(),
+                input,
+                size * sizeof(u128)
+            );
 
             rpgm_buffer_free(hashes);
         }

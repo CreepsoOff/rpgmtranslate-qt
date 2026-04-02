@@ -8,7 +8,7 @@
 #include "SearchPanelDock.hpp"
 #include "Settings.hpp"
 #include "Types.hpp"
-#include "rpgmtranslate.h"
+#include "rpgmtranslate.hpp"
 
 #include <QObject>
 #include <QThread>

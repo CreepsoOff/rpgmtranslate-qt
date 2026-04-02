@@ -24,7 +24,7 @@ class CBSLIWidget final : public QWidget {
     ) :
         QWidget(parent),
         label_(new QLabel(QString(), this)),
-        checkbox_(checkable ? new QCheckBox(tr("Enabled"), this) : nullptr),
+        checkbox_(checkable ? new QCheckBox(tr("Custom"), this) : nullptr),
         slider_(new QSlider(Qt::Horizontal, this)),
         lineEdit_(new UnfocusLineEdit(this)) {
         lineEdit_->setAlignment(Qt::AlignRight);
@@ -68,7 +68,7 @@ class CBSLIWidget final : public QWidget {
                 return;
             }
 
-            checkbox_ = new QCheckBox(tr("Enabled"), this);
+            checkbox_ = new QCheckBox(tr("Custom"), this);
             as<QHBoxLayout*>(layout())->insertWidget(1, checkbox_);
         } else {
             delete checkbox_;

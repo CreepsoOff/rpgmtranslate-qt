@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.0.0-rc.3
+
+A couple of fixes.
+
+### Changes
+
+- Fixed undefined behavior when processing hashes on read which would lead to unexpected side effects, such as wrong engine being recognized.
+- Fixed base URL validation in settings.
+- Fixed outputting write results to `.rpgmtranslate/.rpgmtranslate/output` instead of `.rpgmtranslate/output`.
+- Fixed possible panic when tinkering with options in settings window.
+- Changed some checkboxes in settings window to show "custom" label instead of "enabled".
+- Added description for endpoint list.
+- Added description of different endpoint types.
+
 ## v1.0.0-rc.2
 
 The second release candidate implements some scratches for the future features, like git client and asset inspector, along with a couple of fixes. It's expected to be the last release candidate before the final release.
