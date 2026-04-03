@@ -760,7 +760,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 &TaskWorker::translateFinished,
                 this,
                 [this, columnIndex, selected](
-                    result<std::tuple<ByteBuffer, ByteBuffer>, FFIString>
+                    const result<std::tuple<ByteBuffer, ByteBuffer>, FFIString>&
                         results
                 ) -> void {
                 if (!results) {
@@ -777,7 +777,8 @@ MainWindow::MainWindow(QWidget* const parent) :
                     return;
                 }
 
-                const auto [translatedFiles, translatedFilesFFI] = *results;
+                const auto [translatedFiles, translatedFilesFFI] =
+                    results.value();
 
                 const auto stringsArray = span(
                     ras<const ByteBuffer*>(translatedFilesFFI.ptr),
@@ -2059,7 +2060,7 @@ void MainWindow::checkForUpdates(bool manual) {
         msgBox.setWindowTitle(tr("New version is available"));
         msgBox.setText(tr("Version %1 is available.\nCurrent version is %2.")
                            .arg(version)
-                           .arg(APP_VERSION));
+                           .arg(QString::fromLatin1(APP_VERSION)));
         const QPushButton* const installButton =
             msgBox.addButton(tr("Install"), QMessageBox::AcceptRole);
         const QPushButton* const skipButton =

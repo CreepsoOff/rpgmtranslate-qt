@@ -967,9 +967,6 @@
        <property name="horizontalScrollMode">
         <enum>QAbstractItemView::ScrollMode::ScrollPerPixel</enum>
        </property>
-       <property name="updateThreshold">
-        <number>1000</number>
-       </property>
        <property name="layoutMode">
         <enum>QListView::LayoutMode::Batched</enum>
        </property>

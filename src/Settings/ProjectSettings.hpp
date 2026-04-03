@@ -50,12 +50,12 @@ struct ProjectSettings {
 
     [[nodiscard]] auto sourcePath() const -> QString {
         switch (sourceDirectory) {
-            case SourceDirectory::None:
-                return {};
             case SourceDirectory::UppercaseData:
                 return projectPath + u"/Data";
             case SourceDirectory::LowercaseData:
                 return projectPath + u"/data";
+            default:
+                return {};
         }
     }
 
