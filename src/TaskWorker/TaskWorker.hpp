@@ -138,7 +138,7 @@ class TaskWorker final : public QObject {
     void singleTranslateFinished(const vector<QString>& translations);
     void singleReplaceFinished(const std::tuple<QString, TextMatch*>& results);
     void translateFinished(
-        const result<expected<ByteBuffer, ByteBuffer>, FFIString>& results
+        const expected<std::tuple<ByteBuffer, ByteBuffer>, FFIString>& results
     );
 
    private:
