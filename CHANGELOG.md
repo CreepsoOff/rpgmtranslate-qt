@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.0-rc.4
+
+A couple more fixes.
+
+### Changes
+
+- Fixed outputting none/not all files when writing.
+- Fixed possible crash when applying batch translation. Still requires more testing.
+- Fixed absolutely idiotic issue, where the application would batch translate all maps, that end with the number of the selected map. For example, if map1 is selected, application would try to batch translate all other maps, that end with 1 (e.g. map11, map21, map31 etc.).
+- Fixed possible crash when getting error while opening/reading the project or aborting the read.
+- To avoid losing project settings and glossary in result of program abort, each backup will also save project settings and glossary.
+- To avoid losing settings in result of program abort, settings will be saved when closing settings window.
+
 ## v1.0.0-rc.3
 
 A couple of fixes.
@@ -20,6 +33,7 @@ The second release candidate implements some scratches for the future features, 
 
 ### Changes
 
+- Updated to `rvpacker-txt-rs-lib` v11.2.0.
 - Fixed read menu not showing itself when trying to open an unparsed project, which would effectively lead to a complete unability to open a new project using the program.
 - Fixed possible deadlock on program startup if `.rpgmtranslate` directory disappears in the saved project.
 - Fixed possible empty translation files when parsing the project.

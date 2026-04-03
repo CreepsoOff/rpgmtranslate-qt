@@ -7,8 +7,11 @@
 AboutWindow::AboutWindow(QWidget* const parent) :
     QDialog(parent),
     ui(setupUi()) {
-    ui->versionLabel->setText(u"RPGMTranslate v"_s + APP_VERSION);
-    ui->qtVersionLabel->setText(u"Qt "_s + qVersion());
+    ui->versionLabel->setText(
+        u"RPGMTranslate v"_s + QString::fromLatin1(APP_VERSION)
+    );
+    ui->qtVersionLabel->setText(u"Qt "_s + QString::fromLatin1(qVersion()));
+    // TODO: Libgit2 version, Nuspell version
 }
 
 AboutWindow::~AboutWindow() {

@@ -507,17 +507,20 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
         for filename in filenames {
             let filename = str::from_utf8_unchecked(filename);
-            let filename = &filename[..filename.find('\0').unwrap_unchecked()];
+            let filename = &filename
+                [..=filename.rfind(|chr| chr != '\0').unwrap_unchecked()];
 
             if filename.starts_with("map") {
                 if map_content.is_empty() {
                     let path = Path::new(translation_path).join("maps.txt");
+
                     #[allow(invalid_reference_casting)]
                     unsafe {
                         *(&mut *(&map_content as *const String
                             as *mut String)) = read_to_string(&path)
                             .map_err(|err| Error::Io(path, err))?;
                     }
+
                     sections = split_into_sections(&map_content);
                 }
 
@@ -527,9 +530,12 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                 let id = &filename[3..];
 
                 for &section in &sections {
-                    if !section[..section.find('\n').unwrap_or(section.len())]
-                        .ends_with(id)
-                    {
+                    let id_line =
+                        &section[..section.find('\n').unwrap_or(section.len())];
+                    let id_part = &id_line
+                        [id_line.find("<#>").unwrap_or(id_line.len()) + 3..];
+
+                    if id_part != id {
                         continue;
                     }
 
@@ -557,9 +563,13 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                         }
 
                         if not_name && not_in_game_name && not_map_name {
-                            entry.push(
-                                line[..line.find("<#>").unwrap()].to_string(),
-                            );
+                            if let Some(separator_pos) = line.find("<#>") {
+                                entry.push(line[..separator_pos].to_string());
+                            } else {
+                                log::error!(
+                                    "Failed to split line {i} in file {filename}"
+                                );
+                            }
                         } else {
                             entry.push(line.to_string());
                         }
@@ -575,10 +585,11 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
                 files.insert(filename, Vec::new());
 
-                for line in lines {
-                    if line.starts_with("<!--")
-                        && !line.starts_with("<!-- ID")
-                        && !line.starts_with("<!-- NAME")
+                for (idx, line) in lines.enumerate() {
+                    if line.is_empty()
+                        || line.starts_with("<!--")
+                            && !line.starts_with("<!-- ID")
+                            && !line.starts_with("<!-- NAME")
                     {
                         continue;
                     }
@@ -588,9 +599,13 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                     if !line.starts_with("<!-- ID")
                         && !line.starts_with("<!-- NAME")
                     {
-                        entry.push(
-                            line[0..line.rfind("<#>").unwrap()].to_string(),
-                        );
+                        if let Some(separator_pos) = line.rfind("<#>") {
+                            entry.push(line[0..separator_pos].to_string());
+                        } else {
+                            log::error!(
+                                "Failed to split line {idx} in file {filename}"
+                            );
+                        }
                     } else {
                         entry.push(line.to_string());
                     }

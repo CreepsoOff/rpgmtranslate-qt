@@ -349,7 +349,7 @@ auto TranslationTable::copy() -> u32 {
         rowData.append(cellData);
     }
 
-    const QString clipboardText = rowData.join("\n");
+    const QString clipboardText = rowData.join(u'\n');
 
     qApp->clipboard()->setText(clipboardText);
 
@@ -389,7 +389,7 @@ auto TranslationTable::paste() -> u32 {
         return 0;
     }
 
-    QStringList rows = clipboardText.split('\n');
+    QStringList rows = clipboardText.split(u'\n');
 
     for (QString& row : rows) {
         row.replace("\\n"_L1, "\n"_L1);

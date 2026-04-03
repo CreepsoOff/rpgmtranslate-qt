@@ -116,8 +116,9 @@ class CBSLIWidget final : public QWidget {
         {
             QSignalBlocker blocker(lineEdit_);
             lineEdit_->setText(
-                floatFormat ? QString::number(f32(value) / FLOAT_FACTOR, 'f', 3)
-                            : QString::number(value)
+                floatFormat
+                    ? QString::number(f32(value) / FLOAT_FACTOR, u'f', 3)
+                    : QString::number(value)
             );
         }
 
@@ -137,8 +138,9 @@ class CBSLIWidget final : public QWidget {
         {
             QSignalBlocker blocker(lineEdit_);
             lineEdit_->setText(
-                floatFormat ? QString::number(f32(value) / FLOAT_FACTOR, 'f', 3)
-                            : QString::number(value)
+                floatFormat
+                    ? QString::number(f32(value) / FLOAT_FACTOR, u'f', 3)
+                    : QString::number(value)
             );
         }
 
@@ -175,7 +177,7 @@ class CBSLIWidget final : public QWidget {
     void onSliderValueChanged(const i32 value) {
         QSignalBlocker blocker(lineEdit_);
         lineEdit_->setText(
-            floatFormat ? QString::number(f32(value) / FLOAT_FACTOR, 'f', 3)
+            floatFormat ? QString::number(f32(value) / FLOAT_FACTOR, u'f', 3)
                         : QString::number(value)
         );
         emit valueChanged(value);
@@ -197,7 +199,7 @@ class CBSLIWidget final : public QWidget {
             lineEdit_->setText(
                 floatFormat ? QString::number(
                                   f32(slider_->value()) / FLOAT_FACTOR,
-                                  'f',
+                                  u'f',
                                   3
                               )
                             : QString::number(slider_->value())

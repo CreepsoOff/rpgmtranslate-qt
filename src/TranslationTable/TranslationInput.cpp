@@ -101,7 +101,7 @@ void TranslationInput::performAutoReplacements() {
                          { ">>"_L1, u"»" },
                          { "--"_L1, u"—" },
                          { ",,"_L1, u"„" },
-                         { "''"_L1, u"“" } };
+                         { "u''"_L1, u"“" } };
 
     for (const auto& pair : replacements) {
         const QLatin1StringView source = pair.first;
@@ -136,7 +136,7 @@ void TranslationInput::paintEvent(QPaintEvent* const event) {
     auto painter = QPainter(viewport());
     painter.setPen(QColor(255, 0, 0, 80));
 
-    const i32 charWidth = fontMetrics().horizontalAdvance(' ');
+    const i32 charWidth = fontMetrics().horizontalAdvance(u' ');
 
     const i32 xPos = contentOffset().x() + document()->documentMargin() +
                      (charWidth * lengthHint);

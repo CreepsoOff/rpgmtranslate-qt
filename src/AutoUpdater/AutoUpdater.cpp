@@ -13,7 +13,7 @@ void AutoUpdater::checkForUpdates() {
             emit updateFailed(reply->error());
         } else {
             const QString url = reply->url().toString();
-            emit versionFetched(url.sliced(url.lastIndexOf('/') + 2));
+            emit versionFetched(url.sliced(url.lastIndexOf(u'/') + 2));
         }
 
         reply->deleteLater();

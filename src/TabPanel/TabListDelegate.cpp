@@ -23,24 +23,24 @@ void TabListDelegate::paint(
     initStyleOption(&opt, index);
     opt.text.clear();
 
-    auto fontMetrics = QFontMetrics(opt.font);
+    const auto fontMetrics = QFontMetrics(opt.font);
     const auto* const model = ras<const TabListModel*>(index.model());
 
     if (maxCachedNameWidth == 0 || maxCachedProgressWidth == 0) {
         for (const u16 idx : range(0, model->rowCount())) {
             const TabListItem& tab = model->tab(idx);
 
-            const u16 spaceAdvance = fontMetrics.horizontalAdvance(' ');
+            const u16 spaceAdvance = fontMetrics.horizontalAdvance(u' ');
             maxCachedNameWidth = max<u16>(
                 maxCachedNameWidth,
                 fontMetrics.horizontalAdvance(tab.name) + spaceAdvance
             );
 
-            const u16 zeroAdvance = fontMetrics.horizontalAdvance('0');
+            const u16 zeroAdvance = fontMetrics.horizontalAdvance(u'0');
             maxCachedProgressWidth = max<u16>(
                 maxCachedProgressWidth,
                 (zeroAdvance * intLen(tab.translated)) +
-                    fontMetrics.horizontalAdvance('/') +
+                    fontMetrics.horizontalAdvance(u'/') +
                     (zeroAdvance * intLen(tab.total)) + (spaceAdvance * 2)
             );
         }
@@ -98,10 +98,10 @@ void TabListDelegate::paint(
         const u32 percent =
             u32((f32(translated) / f32(total)) * f32(PERCENT_MULTIPLIER));
 
-        progressText = QString::number(percent) + '%';
+        progressText = QString::number(percent) + u'%';
     } else {
         progressText =
-            QString::number(translated) + '/' + QString::number(total);
+            QString::number(translated) + u'/' + QString::number(total);
     }
 
     style->drawControl(QStyle::CE_ProgressBar, &progressBar, painter);

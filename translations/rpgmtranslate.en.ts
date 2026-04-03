@@ -197,7 +197,7 @@
     <message>
         <location filename="../src/CBSLIWidget/CBSLIWidget.hpp" line="27"/>
         <location filename="../src/CBSLIWidget/CBSLIWidget.hpp" line="71"/>
-        <source>Enabled</source>
+        <source>Custom</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -360,510 +360,520 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2127"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2139"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2150"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2162"/>
         <source>Failed to open project</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1524"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1540"/>
         <source>Open a project by using &apos;Open Folder&apos; button!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1303"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1321"/>
         <source>Select a game folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="449"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="467"/>
         <source>Read</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="450"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="468"/>
         <source>Purge</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="270"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="276"/>
         <source>Input line from %1 to %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="593"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="596"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="597"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2476"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="611"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="614"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="615"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2504"/>
         <source>Translation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2803"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2834"/>
         <source>Failed to open tab: %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2957"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2988"/>
         <source>Tab %1 saved.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3019"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3050"/>
         <source>maps.txt saved.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3095"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3129"/>
         <source>Matching failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="331"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="337"/>
         <source>No source files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="146"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="147"/>
         <source>Purging</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="148"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="149"/>
         <source>Writing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="150"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="151"/>
         <source>Reading</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="332"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="338"/>
         <source>Cannot write, source files are absent.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="364"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1447"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="372"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1463"/>
         <source>Write failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="373"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="381"/>
         <source>Written successfully</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1165"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="444"/>
+        <source>Libgit2 support is disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="445"/>
+        <source>Program was compiled without support for libgit2, so it&apos;s impossible to access source control.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1183"/>
         <source>Set source and translation languages in Settings &gt; Project to show glossary matches.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1169"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1187"/>
         <source>Set source language in Settings &gt; Project to show glossary matches.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1172"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1190"/>
         <source>Set translation language in Settings &gt; Project to show glossary matches.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1270"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1288"/>
         <source>Set source and translation languages in Settings &gt; Project to show translations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1274"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1292"/>
         <source>Set source language in Settings &gt; Project to show translations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1277"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1295"/>
         <source>Set translation language in Settings &gt; Project to show translations.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1846"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1869"/>
         <source>Cannot open settings window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1847"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1870"/>
         <source>Settings can only be changed after opening a project.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1960"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2091"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1983"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2114"/>
         <source>Update failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1961"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1984"/>
         <source>Failed to write archive file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1983"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2006"/>
         <source>Unarchiving update failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1984"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2007"/>
         <source>Executing tar failed with: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2020"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2043"/>
         <source>Up to date</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2021"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2044"/>
         <source>Program is up-to-date.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2031"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2054"/>
         <source>Don&apos;t remind me</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2032"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2055"/>
         <source>New version is available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2033"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2056"/>
         <source>Version %1 is available.
 Current version is %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2037"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2060"/>
         <source>Install</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2039"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2062"/>
         <source>Skip</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2049"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2072"/>
         <source>Installing update...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2050"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3197"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2073"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3231"/>
         <source>Abort</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2092"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2115"/>
         <source>Update failed with error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2107"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2130"/>
         <source>%1 rows cut.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2110"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2133"/>
         <source>%1 rows copied.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2113"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2136"/>
         <source>%1 rows pasted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2128"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2151"/>
         <source>Folder does not exist.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2140"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2163"/>
         <source>Failed to opened project because couldn&apos;t locate `.rpgmtranslate` program directory that was previously located at this path: %1. If this is intentional, please reopen the directory manually.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2567"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2595"/>
         <source>Existing translation folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2568"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2596"/>
         <source>Translation folder is found in the root of the project. Use it?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2599"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2627"/>
         <source>Source files and translation do not exist.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2615"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2641"/>
         <source>Read was rejected by user.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="374"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="382"/>
         <source>Elapsed: %1s.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="569"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2826"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="587"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2857"/>
         <source>%1 Translated / %2 Total</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="649"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2822"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="667"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2853"/>
         <source>%1 Lines / %2 Comments</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="706"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="724"/>
         <source>Source language is not set</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="707"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="725"/>
         <source>Cannot perform batch-translate. You need to set source language in Settings &gt; Project first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="717"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="735"/>
         <source>Translation language is not set</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="718"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="736"/>
         <source>Cannot perform batch-translate. You need to set translation language in Settings &gt; Project first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="752"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="770"/>
         <source>Batch translation failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="753"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="771"/>
         <source>Batch translation failed with error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="995"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1071"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1013"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1089"/>
         <source>Files were skipped</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="996"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1072"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1014"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1090"/>
         <source>The program was unable to open the following files:
  %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1357"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1375"/>
         <source>Read failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1406"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1422"/>
         <source>Purge failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1407"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1423"/>
         <source>Purge failed with error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1448"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1464"/>
         <source>Write failed with error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1457"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1473"/>
         <source>Write finished</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1458"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1474"/>
         <source>Elapsed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3236"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3270"/>
         <source>Search finished.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3236"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3270"/>
         <source>Searching...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3241"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3275"/>
         <source>Replace finished.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3241"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3275"/>
         <source>Replacing...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3246"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3280"/>
         <source>Put finished.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3246"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3280"/>
         <source>Putting...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3251"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3285"/>
         <source>Trim finished.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3251"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3285"/>
         <source>Trimming...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3256"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3290"/>
         <source>Sending translation request...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3261"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3295"/>
         <source>Translate finished.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3261"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3295"/>
         <source>Translating...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3266"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3300"/>
         <source>Wrap finished.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3266"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3300"/>
         <source>Wrapping...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="353"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1344"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1397"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1436"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2683"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3163"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3273"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="361"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1362"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1413"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1452"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2709"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3197"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3307"/>
         <source>No Tasks</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1623"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1674"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1727"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1775"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2802"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2883"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2985"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1639"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1690"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1743"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1791"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2833"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2914"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3016"/>
         <source>Failed to open file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1624"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1675"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1728"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="1776"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2884"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2986"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1640"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1691"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1744"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="1792"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2915"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3017"/>
         <source>Failed to open file %1: %2. Starting from the beginning.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2432"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2460"/>
         <source>%1: Successfully parsed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3178"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3212"/>
         <source>Warning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3179"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3213"/>
         <source>Saving file failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3181"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3215"/>
         <source>Unable to save file %1: %2. You may try to save the file to a custom location. It&apos;s strongly advised to you to better close the program and fix the underlying issue before continuing your work.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3189"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3223"/>
         <source>Continue anyway</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3191"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3225"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3193"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3227"/>
         <source>Save to custom location</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2469"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2497"/>
         <source>Source</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2537"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2565"/>
         <source>Before working with the program, check out documentation in Help &gt; Documentation!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2677"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2719"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2731"/>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2749"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2703"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2745"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2757"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2775"/>
         <source>Failed to load project</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2786"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2817"/>
         <source>File is unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="2787"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="2818"/>
         <source>File is currently processed and is being locked.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/MainWindow/MainWindow.cpp" line="3061"/>
+        <location filename="../src/MainWindow/MainWindow.cpp" line="3095"/>
         <source>Backup %1 created.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1272,7 +1282,7 @@ Current version is %2.</source>
     <name>SettingsWindow</name>
     <message>
         <location filename="../src/SettingsWindow/SettingsWindow.ui" line="32"/>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1580"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1685"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1348,7 +1358,7 @@ Current version is %2.</source>
     </message>
     <message>
         <location filename="../src/SettingsWindow/SettingsWindow.ui" line="475"/>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1261"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1355"/>
         <source>Default</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1388,123 +1398,123 @@ Current version is %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="982"/>
-        <source>+</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="989"/>
-        <source>-</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1038"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1129"/>
         <source>Type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1046"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1137"/>
         <source>Google</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1051"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1142"/>
         <source>Yandex</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1056"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1147"/>
         <source>DeepL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1061"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1152"/>
         <source>Aliyun</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1066"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1157"/>
         <source>Anthropic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1071"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1162"/>
         <source>DeepSeek</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1076"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1167"/>
         <source>Gemini</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1081"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1172"/>
         <source>Koboldcpp</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1086"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1177"/>
         <source>Longcat</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1091"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1182"/>
         <source>Moonshot</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1096"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1187"/>
         <source>Mistral</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1101"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1192"/>
         <source>Ollama</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1106"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1197"/>
         <source>OpenAI</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1111"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1202"/>
         <source>OpenAI-compatible</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1116"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1207"/>
         <source>Volcengine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1121"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1212"/>
         <source>Xiaomi</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1126"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1217"/>
         <source>Xinference</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1131"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1222"/>
         <source>Zhipu</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1149"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1243"/>
         <source>Use for single translation (will display text translation through the endpoint in translations menu)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1174"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1268"/>
         <source>API key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1209"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1303"/>
         <source>Yandex folder ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1365"/>
+        <source>If &quot;Check key&quot; outputs something about incorrect URL, missing page etc., make sure that your base URL includes the API version. For example: &quot;https://api.openai.com/v1&quot; or &quot;https://generativelanguage.googleapis.com/v1beta&quot;. Don&apos;t include parts like &quot;/chat/completions&quot; in the URL!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1375"/>
+        <source>Check key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1518,52 +1528,52 @@ Current version is %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1343"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1447"/>
         <source>Use glossary</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1524"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1629"/>
         <source>LanguageTool base URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1622"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1727"/>
         <source>Line length hint</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1648"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1753"/>
         <source>Source language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1664"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1769"/>
         <source>Translation language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1674"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1779"/>
         <source>Spellcheck dictionary</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1696"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1801"/>
         <source>Context</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1735"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1840"/>
         <source>File context select</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1766"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1871"/>
         <source>File context</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1797"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1902"/>
         <source>Project сontext</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1598,23 +1608,38 @@ Current version is %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1244"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="954"/>
+        <source>Endpoint List</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1004"/>
+        <source>Select endpoints by clicking on them. You can change the name by double-clicking an endpoint.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1029"/>
+        <source>Add Endpoint</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1067"/>
+        <source>Remove Selected Endpoint</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1338"/>
         <source>Base URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1251"/>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1531"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1345"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1636"/>
         <source>https://localhost:8000</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1271"/>
-        <source>Check Key</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1302"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1406"/>
         <source>Model</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1624,40 +1649,40 @@ Current version is %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1350"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1454"/>
         <source>Thinking</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1375"/>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1388"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1479"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1492"/>
         <source>System Prompt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1395"/>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1443"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1499"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1547"/>
         <source>Default System Prompt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1423"/>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1436"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1527"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1540"/>
         <source>Single Translate System Prompt</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1478"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1583"/>
         <source>LanguageTool</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1499"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1604"/>
         <source>Use LanguageTool linting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1635"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.ui" line="1740"/>
         <source>In characters. Allowed range: 0-255.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1693,72 +1718,87 @@ Current version is %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="369"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="192"/>
+        <source>Google Translate. Free and unlimited. Configured options don&apos;t work with this endpoint.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="197"/>
+        <source>Yandex Translate. Requires API key and folder ID. Configured options don&apos;t work with this endpoint.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="202"/>
+        <source>DeepL. Requires API key and folder ID. Configured options don&apos;t work with this endpoint, except glossary usage.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="210"/>
+        <source>LLM endpoint with pre-defined base URL. Don&apos;t change the base URL, unless you know what you&apos;re doing. Configured options will affect this endpoint.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="215"/>
+        <source>OpenAI-compatible endpoint. This category fits many providers, including OpenAI itself, DeepSeek, Mistral, and local providers, such as llama.cpp and koboldcpp. Requires valid base URL, that should probably end with &apos;/v1&apos;. Configured options will affect this endpoint.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="391"/>
         <source>URL is invalid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="370"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="392"/>
         <source>Given URL is invalid. Please check the validity of submitted URL.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="411"/>
-        <source>URL does not end with v1</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="412"/>
-        <source>OpenAI-compatible URLs should always end with `/v1`. Change the URL, so it ends with `/v1`.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="461"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="427"/>
         <source>Failed to validate key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="462"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="428"/>
         <source>Getting available models failed with error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="503"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="469"/>
         <source>No .dic file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="504"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="470"/>
         <source>`.dic` file corresponding to the `.aff` file does not exist. Dictionary won&apos;t work properly without the `.dic` file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="639"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="605"/>
         <source>Invalid backup period</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="640"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="606"/>
         <source>Backup period is invalid. Unable to save.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="650"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="616"/>
         <source>Invalid max backups</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="651"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="617"/>
         <source>Max backups value is invalid. Unable to save.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="690"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="658"/>
         <source>Invalid line length hint</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="691"/>
+        <location filename="../src/SettingsWindow/SettingsWindow.cpp" line="659"/>
         <source>Line length hint is invalid. Unable to save.</source>
         <translation type="unfinished"></translation>
     </message>

@@ -48,21 +48,21 @@ void SearchPanelDock::showMatches(
         if (filename.startsWith("map"_L1)) {
             const u16 mapNumber = filename.sliced(3).toUInt();
             lines = QStringView(mapSections.find(mapNumber)->second)
-                        .split('\n', Qt::SkipEmptyParts);
+                        .split(u'\n', Qt::SkipEmptyParts);
         } else {
             const QString path = this->projectSettings->translationPath() +
-                                 '/' + filename + u".txt";
+                                 u'/' + filename + u".txt";
             auto file = QFile(path);
 
             if (!file.open(QFile::ReadOnly)) {
-                qWarning() << u"Failed to open file %1: %2"_qssv.arg(path).arg(
+                qWarning() << "Failed to open file %1: %2"_L1.arg(path).arg(
                     file.errorString()
                 );
                 continue;
             }
 
-            content = file.readAll();
-            lines = QStringView(content).split('\n', Qt::SkipEmptyParts);
+            content = QString::fromUtf8(file.readAll());
+            lines = QStringView(content).split(u'\n', Qt::SkipEmptyParts);
         }
 
         for (const auto& cellMatch : cellMatches) {
@@ -79,7 +79,7 @@ void SearchPanelDock::showMatches(
             items.emplace_back(
                 qsvReplace(
                     parts.at(cellMatch.colIndex()),
-                    '\n',
+                    u'\n',
                     LINE_SEPARATOR
                 ),
                 tr("File %1 / Row %2 / Column %3 (%4)")
@@ -167,7 +167,7 @@ void SearchPanelDock::init(
                          views::drop(projectSettings->columns, 1)
                      )) {
                     const QAction* const action = menu.addAction(
-                        QString::number(idx + 1) + u" (" + column.name + ')'
+                        QString::number(idx + 1) + u" (" + column.name + u')'
                     );
 
                     connect(

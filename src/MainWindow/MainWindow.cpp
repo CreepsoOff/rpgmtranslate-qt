@@ -116,6 +116,7 @@ MainWindow::MainWindow(QWidget* const parent) :
     connect(
         &ffiLogger,
         &FFILogger::logReceived,
+        this,
         [this](const u8 level, const QString& message) -> void {
         switch (level) {
             case 0:
@@ -150,10 +151,10 @@ MainWindow::MainWindow(QWidget* const parent) :
                 taskName = tr("Reading");
             }
 
-            const u32 spacePos = message.indexOf(' ') + 1;
+            const u32 spacePos = message.indexOf(u' ') + 1;
             ui->taskLabel->setText("%1: %2"_L1.arg(taskName).arg(
                 QStringView(message)
-                    .sliced(spacePos, message.lastIndexOf(':') - spacePos)
+                    .sliced(spacePos, message.lastIndexOf(u':') - spacePos)
             ));
         }
     }
@@ -274,7 +275,7 @@ MainWindow::MainWindow(QWidget* const parent) :
         popupInput->setPlaceholderText(
             tr("Input line from %1 to %2")
                 .arg(1)
-                .arg(linesStatusLabel->text().split(' ').first())
+                .arg(linesStatusLabel->text().split(u' ').first())
         );
 
         popupInput->move((width() / 2) - 128, x() + 64);
@@ -346,7 +347,9 @@ MainWindow::MainWindow(QWidget* const parent) :
             &TaskWorker::write,
             Qt::QueuedConnection,
             gameTitle,
-            readMenu->selected(true)
+            // TODO: Right now, no mechanism for specifying skipped files for
+            // write
+            Selected()
         );
 
         connect(
@@ -823,13 +826,13 @@ MainWindow::MainWindow(QWidget* const parent) :
                         content = mapSections[mapNumber].toUtf8();
                     } else {
                         const QString path =
-                            projectSettings->translationPath() + '/' +
+                            projectSettings->translationPath() + u'/' +
                             filename + u".txt";
                         file = make_unique<QFile>(path);
 
                         if (!file->open(QFile::ReadWrite)) {
                             qWarning()
-                                << u"Failed to open file %1: %2"_qssv.arg(path)
+                                << "Failed to open file %1: %2"_L1.arg(path)
                                        .arg(file->errorString());
 
                             std::swap(
@@ -867,7 +870,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                         while (lineStart < size) {
                             isize lineEnd = lineStart;
 
-                            while (lineEnd < size && data[lineEnd] != '\n') {
+                            while (lineEnd < size && data[lineEnd] != u'\n') {
                                 ++lineEnd;
                             }
 
@@ -896,7 +899,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                     while (lineStart < size) {
                         isize lineEnd = lineStart;
 
-                        while (lineEnd < size && data[lineEnd] != '\n') {
+                        while (lineEnd < size && data[lineEnd] != u'\n') {
                             ++lineEnd;
                         }
 
@@ -908,7 +911,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                             );
 
                             if (hasLines) {
-                                replaced.push_back('\n');
+                                replaced.push_back(u'\n');
                             }
                             hasLines = true;
 
@@ -1002,7 +1005,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                     for (const auto filename :
                          views::take(filenames, skippedCount)) {
                         skippedString += QLatin1StringView(filename.data());
-                        skippedString += '\n';
+                        skippedString += u'\n';
                     }
 
                     QMessageBox::warning(
@@ -1078,7 +1081,7 @@ MainWindow::MainWindow(QWidget* const parent) :
 
             for (const auto filename : views::take(filenames, skippedCount)) {
                 skippedString += QLatin1StringView(filename.data());
-                skippedString += '\n';
+                skippedString += u'\n';
             }
 
             QMessageBox::warning(
@@ -1765,9 +1768,8 @@ start:
         QJsonDocument(projectSettings->toJSON()).toJson(QJsonDocument::Compact)
     );
 
-    // TODO: WRONG PATH
     QString metadataPath =
-        projectSettings->projectPath + u"/.rvpacker-metadata"_qssv;
+        projectSettings->translationPath() + u"/.rvpacker-metadata";
     auto metadataFile = make_unique<QFile>(metadataPath);
 
     if (!metadataFile->open(QFile::WriteOnly | QFile::Truncate)) {
@@ -1780,7 +1782,7 @@ start:
                 break;
             case 1: {
                 const QString& dir = std::get<1>(result).s;
-                metadataPath = dir + u"/.rvpacker-metadata"_qssv;
+                metadataPath = dir + u"/.rvpacker-metadata";
                 metadataFile = make_unique<QFile>(metadataPath);
 
                 if (!metadataFile->open(QFile::WriteOnly | QFile::Truncate)) {
@@ -1809,6 +1811,13 @@ start:
                 std::unreachable();
         }
     }
+
+    // TODO: Fill metadata
+    QVariantHash metadata;
+
+    metadataFile->write(
+        QJsonDocument(QJsonObject::fromVariantHash(metadata)).toJson()
+    );
 
     return true;
 }
@@ -1845,7 +1854,7 @@ void MainWindow::retranslate(const QLocale::Language language) {
 
     translator = new QTranslator(this);
     const bool success = translator->load(
-        ":/%1.qm"_L1.arg(QLocale(language).bcp47Name().split('-').first())
+        ":/%1.qm"_L1.arg(QLocale(language).bcp47Name().split(u'-').first())
     );
 
     qApp->installTranslator(translator);
@@ -1874,6 +1883,7 @@ void MainWindow::showSettingsWindow() {
 
     connect(settingsWindow, &QDialog::destroyed, this, [this] -> void {
         loadSettings();
+        saveSettings();
     });
 }
 
@@ -1965,7 +1975,7 @@ void MainWindow::checkForUpdates(bool manual) {
         auto archiveFile = QFile(archivePath);
 
         if (!archiveFile.open(QIODevice::WriteOnly)) {
-            qWarning() << u"Failed to open rpgmtranslate.tar.xz: %1"_qssv.arg(
+            qWarning() << "Failed to open rpgmtranslate.tar.xz: %1"_L1.arg(
                 archiveFile.errorString()
             );
 
@@ -2214,6 +2224,10 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             if (jsonError.error != QJsonParseError::NoError) {
                 qWarning() << "Parsing project-settings.json failed: "_L1
                            << jsonError.errorString();
+                //! Could use improper settings, if application aborted (because
+                //! of crash, power outage etc.).
+                // We guard against it by saving project settings in backup and
+                // after creating them
                 projectSettings = tempProjectSettings;
             } else {
                 projectSettings = make_shared<ProjectSettings>(
@@ -2248,7 +2262,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             auto file = QFile(fileInfo.filePath());
 
             if (!file.open(QFile::ReadWrite)) {
-                qWarning() << u"Failed to open file %1: %2"_qssv
+                qWarning() << "Failed to open file %1: %2"_L1
                                   .arg(fileInfo.filePath())
                                   .arg(file.errorString());
                 continue;
@@ -2256,7 +2270,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 
             const QByteArray normalized =
                 file.readAll().removeIf([](const char byte) -> bool {
-                return byte == '\r';
+                return byte == u'\r';
             });
 
             file.seek(0);
@@ -2267,7 +2281,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             const bool isMap = basename.startsWith("map"_L1);
             const bool isSystem = basename.startsWith("system"_L1);
 
-            const QString content = normalized;
+            const QString content = QString::fromUtf8(normalized);
             const auto contentView = QStringView(content);
             const u32 size = contentView.size();
 
@@ -2283,7 +2297,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 
             while (pos < size) {
                 const u32 lineStart = pos;
-                u32 newlinePos = contentView.indexOf('\n', pos);
+                u32 newlinePos = contentView.indexOf(u'\n', pos);
 
                 if (newlinePos == u32(-1)) {
                     newlinePos = size;
@@ -2291,7 +2305,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 
                 u32 lineEnd = newlinePos;
 
-                if (lineEnd > lineStart && contentView[lineEnd - 1] == '\r') {
+                if (lineEnd > lineStart && contentView[lineEnd - 1] == u'\r') {
                     lineEnd--;
                 }
 
@@ -2409,7 +2423,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             if (isSystem &&
                 contentView.lastIndexOf("<!-- ID --><#>8"_L1) != -1) {
                 const QStringView titleLine =
-                    contentView.sliced(contentView.lastIndexOf('\n') + 1);
+                    contentView.sliced(contentView.lastIndexOf(u'\n') + 1);
                 const QSVList parts = lineParts(titleLine, 0, basename);
                 const QStringView translation =
                     getTranslation(parts).translation;
@@ -2615,8 +2629,6 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
                     );
                 }
 
-                // TODO: This shit deadlocks if translation directory disappears
-
                 firstReadPending = true;
 
                 readMenu->show();
@@ -2764,7 +2776,10 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             tr("Failed to load project"),
             result.error()
         );
+        return;
     }
+
+    saveProjectSettings();
 
 #ifdef ENABLE_LIBGIT2
     ui->sourceControlDock->setProjectPath(projectSettings->projectPath);
@@ -2877,7 +2892,7 @@ start:
             filePath = projectSettings->translationPath();
         }
 
-        filePath += '/' + tabName + TXT_EXTENSION;
+        filePath += u'/' + tabName + TXT_EXTENSION;
         file = make_unique<QFile>(filePath);
 
         if (!file->open(QFile::WriteOnly | QFile::Truncate)) {
@@ -2890,8 +2905,8 @@ start:
                 case 1: {
                     const QString& dir = std::get<1>(result).s;
                     const QString filename =
-                        filePath.sliced(filePath.lastIndexOf('/'));
-                    filePath = dir + '/' + tabName + TXT_EXTENSION;
+                        filePath.sliced(filePath.lastIndexOf(u'/'));
+                    filePath = dir + u'/' + tabName + TXT_EXTENSION;
                     file = make_unique<QFile>(filePath);
 
                     if (!file->open(QFile::WriteOnly | QFile::Truncate)) {
@@ -2955,7 +2970,7 @@ start:
             *stream << fields.join(SEPARATORL1);
         }
 
-        *stream << '\n';
+        *stream << u'\n';
     }
 
     if (tabName == "system"_L1) {
@@ -3070,9 +3085,12 @@ void MainWindow::saveBackup() {
             fs::copy_options::recursive | fs::copy_options::overwrite_existing
         );
     } catch (const fs::filesystem_error& error) {
-        qWarning() << u"Failed to save backup: "_qssv << error.what();
+        qWarning() << u"Failed to save backup: " << error.what();
         return;
     }
+
+    saveGlossary();
+    saveProjectSettings();
 
     ui->statusBar->showMessage(
         tr("Backup %1 created.").arg(backupDirName.slice(1))
@@ -3188,7 +3206,7 @@ void MainWindow::closeProject() {
 
 auto MainWindow::handleOpenError(const QString& path, const QString& error)
     -> ControlFlow {
-    qWarning() << u"Failed to save file %1: %2"_qssv.arg(path).arg(error);
+    qWarning() << "Failed to save file %1: %2"_L1.arg(path).arg(error);
 
     auto messageBox = QMessageBox(this);
     messageBox.setIcon(QMessageBox::Warning);
@@ -3220,11 +3238,11 @@ auto MainWindow::handleOpenError(const QString& path, const QString& error)
     const auto* const clicked = messageBox.clickedButton();
 
     if (clicked == continueBtn) {
-        return ContinueAnyway{};
+        return ContinueAnyway();
     }
 
     if (clicked == retryBtn) {
-        return Retry{};
+        return Retry();
     }
 
     if (clicked == saveButton) {

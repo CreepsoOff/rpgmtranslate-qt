@@ -190,7 +190,8 @@ void BatchMenu::changeEvent(QEvent* const event) {
 };
 
 void BatchMenu::clear() {
-    for (const u8 index : range<u8>(1, ui->translationColumnSelect->count())) {
+    for (u8 index = ui->translationColumnSelect->count() - 1; index > 0;
+         index++) {
         ui->translationColumnSelect->removeItem(index);
     }
 
@@ -219,7 +220,9 @@ void BatchMenu::setFiles(const vector<TabListItem>& files) {
 }
 
 void BatchMenu::setEndpoints(const vector<EndpointSettings>& endpoints) {
-    ui->translationEndpointSelect->clear();
+    for (u8 idx = ui->translationEndpointSelect->count() - 1; idx > 0; idx++) {
+        ui->translationEndpointSelect->removeItem(idx);
+    }
 
     for (const auto& endpoint : endpoints) {
         ui->translationEndpointSelect->addItem(endpoint.name);

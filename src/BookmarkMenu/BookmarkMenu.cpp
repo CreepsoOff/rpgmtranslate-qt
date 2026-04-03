@@ -35,7 +35,7 @@ BookmarkMenu::BookmarkMenu(QWidget* const parent) :
                 const Bookmark& bookmark = bookmarkList->bookmark(row);
                 bookmarkList->setRowHidden(
                     row,
-                    bookmark.filename.data() != filename
+                    QLatin1StringView(bookmark.filename.data()) != filename
                 );
             }
         }

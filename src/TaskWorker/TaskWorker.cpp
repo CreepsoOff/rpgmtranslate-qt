@@ -35,23 +35,23 @@ auto fileLines(
 
     if (filename.startsWith("map"_L1)) {
         const u16 mapNumber = filename.sliced(3).toUInt();
-        lines =
-            QStringView(mapSections[mapNumber]).split('\n', Qt::SkipEmptyParts);
+        lines = QStringView(mapSections[mapNumber])
+                    .split(u'\n', Qt::SkipEmptyParts);
     } else {
         const QString path =
-            projectSettings->translationPath() + '/' + filename + u".txt";
+            projectSettings->translationPath() + u'/' + filename + u".txt";
 
         auto file = QFile(path);
 
         if (!file.open(QFile::ReadOnly)) {
-            qWarning() << u"Failed to open file %1: %2"_qssv.arg(path).arg(
+            qWarning() << "Failed to open file %1: %2"_L1.arg(path).arg(
                 file.errorString()
             );
             return Err(path);
         }
 
-        content = file.readAll();
-        lines = QStringView(content).split('\n', Qt::SkipEmptyParts);
+        content = QString::fromUtf8(file.readAll());
+        lines = QStringView(content).split(u'\n', Qt::SkipEmptyParts);
     }
 
     return FileLines{ .content = content, .lines = lines };
@@ -71,24 +71,24 @@ auto modifyFile(
 
     if (filename.startsWith("map"_L1)) {
         const u16 mapNumber = filename.sliced(3).toUInt();
-        lines =
-            QStringView(mapSections[mapNumber]).split('\n', Qt::SkipEmptyParts);
+        lines = QStringView(mapSections[mapNumber])
+                    .split(u'\n', Qt::SkipEmptyParts);
     } else {
         const QString path =
-            projectSettings->translationPath() + '/' + filename + u".txt";
+            projectSettings->translationPath() + u'/' + filename + u".txt";
 
         file = new QFile(path);
 
         if (!file->open(QFile::ReadWrite)) {
-            qWarning() << u"Failed to open file %1: %2"_qssv.arg(path).arg(
+            qWarning() << "Failed to open file %1: %2"_L1.arg(path).arg(
                 file->errorString()
             );
             delete file;
             return false;
         }
 
-        content = file->readAll();
-        lines = QStringView(content).split('\n', Qt::SkipEmptyParts);
+        content = QString::fromUtf8(file->readAll());
+        lines = QStringView(content).split(u'\n', Qt::SkipEmptyParts);
     }
 
     QString result = func(content, lines);
@@ -119,10 +119,10 @@ auto modifyFile(
 
         if (!remainder.isEmpty()) {
             const u32 totalSize =
-                remainder.join(' ').size() + 1 + lineView.size();
+                remainder.join(u' ').size() + 1 + lineView.size();
             currentLine.reserve(totalSize);
-            currentLine = remainder.join(' ');
-            currentLine += ' ';
+            currentLine = remainder.join(u' ');
+            currentLine += u' ';
             currentLine += lineView;
             remainder.clear();
         } else {
@@ -147,17 +147,17 @@ auto modifyFile(
                 remainder.prepend(popped.toString());
             }
 
-            wrappedLines.emplace_back(joinQSVList(words, ' '));
+            wrappedLines.emplace_back(joinQSVList(words, u' '));
         } else {
             wrappedLines.emplace_back(std::move(currentLine));
         }
     }
 
     if (!remainder.isEmpty()) {
-        wrappedLines.emplace_back(remainder.join(' '));
+        wrappedLines.emplace_back(remainder.join(u' '));
     }
 
-    return wrappedLines.join('\n');
+    return wrappedLines.join(u'\n');
 }
 
 TaskWorker::TaskWorker(QObject* const parent) : QObject{ parent } {
@@ -447,7 +447,7 @@ void TaskWorker::search(
 
             for (const auto filename : views::take(filenames, skippedCount)) {
                 skippedString += QLatin1StringView(filename.data());
-                skippedString += '\n';
+                skippedString += u'\n';
             }
 
             QMessageBox::warning(
@@ -550,7 +550,7 @@ void TaskWorker::performBatchAction(
 
                     if (parts.size() < columnIndex) {
                         joined += joinQSVList(parts, SEPARATORL1);
-                        joined += '\n';
+                        joined += u'\n';
                         continue;
                     }
 
@@ -580,7 +580,7 @@ void TaskWorker::performBatchAction(
                     }
 
                     joined += joinQSVList(parts, SEPARATORL1);
-                    joined += '\n';
+                    joined += u'\n';
                 }
 
                 joined.removeLast();
@@ -608,14 +608,14 @@ void TaskWorker::performBatchAction(
 
                     if (parts.size() < columnIndex) {
                         joined += joinQSVList(parts, SEPARATORL1);
-                        joined += '\n';
+                        joined += u'\n';
                         continue;
                     }
 
                     const QString wrapped =
                         wrapText(parts[columnIndex], wrapLength);
                     joined += wrapped;
-                    joined += '\n';
+                    joined += u'\n';
                 }
 
                 joined.removeLast();
@@ -723,19 +723,19 @@ void TaskWorker::replace(
 
                             const QChar next = replaceText[ci + 1];
 
-                            if (next == '`') {
+                            if (next == u'`') {
                                 result.append(beforeFull);
                                 ++ci;
-                            } else if (next == '\'') {
+                            } else if (next == u'\'') {
                                 result.append(afterFull);
                                 ++ci;
-                            } else if (next == '+') {
+                            } else if (next == u'+') {
                                 result.append(lastCapture);
                                 ++ci;
-                            } else if (next == '\\') {
-                                result.append('\\');
+                            } else if (next == u'\\') {
+                                result.append(u'\\');
                                 ++ci;
-                            } else if (next.isDigit() && next != '0') {
+                            } else if (next.isDigit() && next != u'0') {
                                 bool handled = false;
 
                                 if (ci + 2 < replaceText.size() &&
@@ -772,10 +772,10 @@ void TaskWorker::replace(
                                 }
 
                                 if (!handled) {
-                                    result.append('\\');
+                                    result.append(u'\\');
                                 }
                             } else {
-                                result.append('\\');
+                                result.append(u'\\');
                             }
                         }
 
@@ -819,7 +819,7 @@ void TaskWorker::replace(
                 newLines.push_back(lines[idx]);
             }
 
-            return joinQSVList(newLines, '\n');
+            return joinQSVList(newLines, u'\n');
         };
 
         modifyFile(
@@ -967,7 +967,7 @@ void TaskWorker::replaceSingle(
         const QString merged = joinQSVList(parts, SEPARATORL1);
         lines[rowIndex] = QStringView(merged);
 
-        return joinQSVList(lines, '\n');
+        return joinQSVList(lines, u'\n');
     };
 
     modifyFile(

@@ -187,6 +187,7 @@ SettingsWindow::SettingsWindow(
         const auto endpoint = TranslationEndpoint(index);
         ui->baseURLInput->setEnabled(true);
 
+        // TODO: Update also when a new endpoint is created.
         switch (endpoint) {
             case TranslationEndpoint::Google:
                 ui->typeDescriptionLabel->setText(tr(
@@ -396,43 +397,6 @@ SettingsWindow::SettingsWindow(
 
             ui->baseURLInput->clear();
             return;
-        }
-
-        const auto endpoint =
-            TranslationEndpoint(ui->typeSelect->currentIndex());
-
-        switch (endpoint) {
-            case TranslationEndpoint::Xiaomi:
-            case TranslationEndpoint::DeepSeek:
-            case TranslationEndpoint::Koboldcpp:
-            case TranslationEndpoint::Longcat:
-            case TranslationEndpoint::Moonshot:
-            case TranslationEndpoint::Mistral:
-            case TranslationEndpoint::OpenAI:
-            case TranslationEndpoint::OpenAICompatible: {
-                // base doesn't include anything past the domain here
-                QString base = url.scheme() + u"://" + url.host();
-
-                if (url.port() != -1) {
-                    base += ':' + QString::number(url.port());
-                }
-
-                // TODO: Check if path contains /chat, /completions, or /v{int}
-
-                break;
-            }
-
-            case TranslationEndpoint::Google:
-            case TranslationEndpoint::Yandex:
-            case TranslationEndpoint::DeepL:
-            case TranslationEndpoint::Aliyun:
-            case TranslationEndpoint::Anthropic:
-            case TranslationEndpoint::Gemini:
-            case TranslationEndpoint::Ollama:
-            case TranslationEndpoint::Volcengine:
-            case TranslationEndpoint::Xinference:
-            case TranslationEndpoint::Zhipu:
-                break;
         }
     }
     );

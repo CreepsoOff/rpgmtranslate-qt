@@ -30,7 +30,7 @@ void MatchTableDelegate::paint(
         index.column() == MatchTableModel::SourceMatch ||
         index.column() == MatchTableModel::TranslationMatch;
 
-    auto option = QStyleOptionViewItem(opt);
+    auto option = opt;
     initStyleOption(&option, index);
 
     painter->save();
@@ -376,10 +376,10 @@ void MatchTable::appendMatch(
     row.termOccurrences = std::move(termOccurrences);
     row.translationOccurrences = std::move(translationOccurrences);
 
-    row.sourceText = qsvReplace(source, '\n', LINE_SEPARATOR);
+    row.sourceText = qsvReplace(source, u'\n', LINE_SEPARATOR);
     row.sourceSpans = std::move(sourceSpans);
 
-    row.translationText = qsvReplace(translation, '\n', LINE_SEPARATOR);
+    row.translationText = qsvReplace(translation, u'\n', LINE_SEPARATOR);
     row.translationSpans = std::move(translationSpans);
 
     row.info = std::move(info);

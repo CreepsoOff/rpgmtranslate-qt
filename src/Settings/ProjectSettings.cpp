@@ -1,21 +1,19 @@
 #include "ProjectSettings.hpp"
 
-auto tou128(const string& str) -> u128 {
+auto tou128(const QString& str) -> u128 {
     u128 result = 0;
 
-    for (const char chr : str) {
-        result = (result * 10) + (chr - '0');
+    for (const QChar chr : str) {
+        result = (result * 10) + (chr.toLatin1() - '0');
     }
 
     return result;
 }
 
 #ifdef Q_CC_MSVC
-// TODO: Temporary vibe-coded fix for being unable to convert u128 to string in
-// MSVC
-[[nodiscard]] auto uint128_to_string(u128 value) -> string {
+[[nodiscard]] auto uint128_to_string(u128 value) -> QString {
     constexpr u64 BASE = 10000000000000000000ULL;
-    std::array<u64, 3> parts{};
+    array<u64, 3> parts{};
     i32 idx = 0;
 
     while (value > 0) {
@@ -23,11 +21,11 @@ auto tou128(const string& str) -> u128 {
         value /= BASE;
     }
 
-    string result = std::to_string(parts[idx - 1]);
+    QString result = QString::number(parts[idx - 1]);
 
     for (i32 j = idx - 2; j >= 0; --j) {
-        string chunk = std::to_string(parts[j]);
-        result += string(19 - chunk.length(), '0') + chunk;
+        QString chunk = QString::number(parts[j]);
+        result += QString(19 - chunk.length(), u'0') + chunk;
     }
 
     return result;
@@ -39,13 +37,11 @@ auto tou128(const string& str) -> u128 {
 
     for (const u128 hash : this->hashes) {
         hashes.append(
-            QString::fromLatin1(
 #ifdef Q_CC_MSVC
-                uint128_to_string(hash)
+            uint128_to_string(hash)
 #else
-                std::format("{}", hash)
+            QString::fromLatin1(std::format("{}", hash))
 #endif
-            )
         );
     }
 
@@ -86,7 +82,7 @@ auto ProjectSettings::fromJSON(const QJsonObject& obj) -> ProjectSettings {
     settings.hashes.reserve(hashes.size());
 
     for (const auto& hash : hashes) {
-        settings.hashes.emplace_back(tou128(hash.toStdString()));
+        settings.hashes.emplace_back(tou128(hash));
     }
 
     settings.completedFiles = obj["completed"_L1].toVariant().toStringList();

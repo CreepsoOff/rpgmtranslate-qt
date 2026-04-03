@@ -33,7 +33,7 @@ struct GitChangeItem final {
         const QString dir =
             QDir(repoRootPath)
                 .relativeFilePath(QFileInfo(filePath).absolutePath());
-        return (dir == '.') ? QString() : dir;
+        return (dir == u'.') ? QString() : dir;
     }
 };
 
@@ -163,7 +163,7 @@ class GitChangesDelegate final : public QStyledItemDelegate {
         const i32 checkboxReserved =
             CHECKBOX_PAD + CHECKBOX_SIZE + CHECKBOX_PAD;
 
-        char badgeLetter;
+        QChar badgeLetter;
         QColor badgeColor;
         resolveBadge(item.changeType, badgeLetter, badgeColor);
 
@@ -193,7 +193,7 @@ class GitChangesDelegate final : public QStyledItemDelegate {
         const i32 totalTextAvail = badgeX - xPos - NAME_PATH_GAP;
         const i32 actualNameWidth = min(nameWidth, totalTextAvail);
 
-        font.setStrikeOut(badgeLetter == 'D');
+        font.setStrikeOut(badgeLetter == u'D');
         painter->setFont(font);
         painter->setPen(primaryColor);
         painter->drawText(
@@ -281,38 +281,38 @@ class GitChangesDelegate final : public QStyledItemDelegate {
     }
 
     static void
-    resolveBadge(const git_delta_t type, char& letter, QColor& color) {
+    resolveBadge(const git_delta_t type, QChar& letter, QColor& color) {
         switch (type) {
             case GIT_DELTA_MODIFIED:
-                letter = 'M';
+                letter = u'M';
                 color = QColor(0xE2, 0xC0, 0x8D);
                 return;
             case GIT_DELTA_UNTRACKED:
-                letter = 'U';
+                letter = u'U';
                 color = QColor(0x73, 0xC9, 0x91);
                 return;
             case GIT_DELTA_ADDED:
-                letter = 'A';
+                letter = u'A';
                 color = QColor(0x73, 0xC9, 0x91);
                 return;
             case GIT_DELTA_DELETED:
-                letter = 'D';
+                letter = u'D';
                 color = QColor(0xF1, 0x4C, 0x4C);
                 return;
             case GIT_DELTA_RENAMED:
-                letter = 'R';
+                letter = u'R';
                 color = QColor(0xE2, 0xC0, 0x8D);
                 return;
             case GIT_DELTA_COPIED:
-                letter = 'C';
+                letter = u'C';
                 color = QColor(0x73, 0xC9, 0x91);
                 return;
             case GIT_DELTA_CONFLICTED:
-                letter = '!';
+                letter = u'!';
                 color = QColor(0xF1, 0x4C, 0x4C);
                 return;
             case GIT_DELTA_IGNORED:
-                letter = 'I';
+                letter = u'I';
                 color = QColor(0x8C, 0x8C, 0x8C);
                 return;
             case GIT_DELTA_TYPECHANGE:

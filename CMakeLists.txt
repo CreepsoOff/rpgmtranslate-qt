@@ -31,7 +31,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 # Configure MSVC runtime linkage (static runtime, Debug/Release aware)
-if(MSVC)
+if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
@@ -104,6 +104,22 @@ target_compile_definitions(${PROJECT_NAME}
         $<$<BOOL:${ENABLE_LIBGIT2}>:ENABLE_LIBGIT2>
 )
 
+add_definitions(
+    -DQT_DISABLE_DEPRECATED_UP_TO=0x060800
+    -DQT_ENABLE_STRICT_MODE_UP_TO=0x060800
+    -DQT_NO_CAST_FROM_ASCII
+    -DQT_NO_CAST_TO_ASCII
+    -DQT_NO_CAST_FROM_BYTEARRAY
+    -DQT_NO_QASCONST
+    -DQT_NO_QEXCHANGE
+    -DQT_NO_QSNPRINTF
+    -DQT_NO_URL_CAST_FROM_STRING
+    -DQT_NO_FOREACH
+    -DQT_NO_CONTEXTLESS_CONNECT
+    -DQT_NO_NARROWING_CONVERSIONS_IN_CONNECT
+    -DQT_USE_NODISCARD_FILE_OPEN
+)
+
 # Include file/line information in debug messages
 target_compile_definitions(${PROJECT_NAME} PRIVATE QT_MESSAGELOGCONTEXT)
 
@@ -133,8 +149,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Svg
 )
 
-if(ENABLE_NUSPELL)
-    if(TARGET Nuspell::nuspell)
+if (ENABLE_NUSPELL)
+    if (TARGET Nuspell::nuspell)
         target_link_libraries(${PROJECT_NAME} PRIVATE Nuspell::nuspell)
     else()
         message(FATAL_ERROR "Nuspell found, but Nuspell::nuspell target not provided by your package config.")

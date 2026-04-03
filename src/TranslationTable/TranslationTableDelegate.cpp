@@ -105,7 +105,7 @@ auto TranslationTableDelegate::sizeHint(
                              : index.data(Qt::DisplayRole).toString();
 
     const auto fontMetrics = QFontMetrics(option.font);
-    const u32 lines = text.count('\n') + 1;
+    const u32 lines = text.count(u'\n') + 1;
     const u32 height = (fontMetrics.lineSpacing() * lines) + 10;
     return { fontMetrics.horizontalAdvance(text), i32(max(height, u32(30))) };
 }

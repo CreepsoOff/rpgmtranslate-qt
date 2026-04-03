@@ -102,21 +102,6 @@ constexpr auto range(const T from, const T dest) {
     return views::iota(from, dest);
 }
 
-// Concatenation compatibility
-#if QT_VERSION_MINOR >= 9
-constexpr auto operator""_qssv(const char16_t* chr, const size_t size)
-    -> QStringView {
-    return { chr, isize(size) };
-}
-#else
-constexpr auto operator""_qssv(const char16_t* chr, const size_t size)
-    -> QString {
-    return QString(
-        QStringPrivate(nullptr, const_cast<char16_t*>(chr), qsizetype(size))
-    );
-}
-#endif
-
 struct RapidHasher {
     template <typename T>
     constexpr auto operator()(const T& value) const -> u64 {

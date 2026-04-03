@@ -106,7 +106,7 @@ auto SourceControlDock::setProjectPath(const QString& projectPath)
         const auto& error = result.error();
         this->changesList->model()->clear();
         this->branchSelect->clear();
-        return Err(u"Failed to open repository '%1': %2"_s
+        return Err("Failed to open repository '%1': %2"_L1
                        .arg(projectPath, QString::fromUtf8(error.message)));
     }
 
