@@ -31,6 +31,7 @@
 #include <QCloseEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QJsonParseError>
 #include <QMessageBox>
 #include <QProcess>
 #include <QProgressDialog>
@@ -793,9 +794,10 @@ MainWindow::MainWindow(QWidget* const parent) :
                 for (const auto [idx, filenameArray] :
                      views::enumerate(filenames)) {
                     if (stringsArray[idx].len == 0) {
-                        qInfo() << "Translated strings array at index "_L1
-                                << idx << "in file "_L1 << filenameArray
-                                << " is empty."_L1;
+                        qInfo()
+                            << "Translated strings array at index "_L1 << idx
+                            << "in file "_L1 << QLatin1StringView(filenameArray)
+                            << " is empty."_L1;
                         continue;
                     }
 
@@ -2006,7 +2008,7 @@ void MainWindow::checkForUpdates(bool manual) {
                 this,
                 tr("Unarchiving update failed"),
                 tr("Executing tar failed with: %1")
-                    .arg(tarProcess.readAllStandardError())
+                    .arg(QString::fromUtf8(tarProcess.readAllStandardError()))
             );
         } else {
             QFile::setPermissions(
@@ -2035,7 +2037,8 @@ void MainWindow::checkForUpdates(bool manual) {
         this,
         [=, this](const QString& version) -> void {
         const auto newVersion = QVersionNumber::fromString(version);
-        const auto currentVersion = QVersionNumber::fromString(APP_VERSION);
+        const auto currentVersion =
+            QVersionNumber::fromString(QString::fromLatin1(APP_VERSION));
 
         if (newVersion <= currentVersion) {
             if (manual) {

@@ -73,9 +73,9 @@ static void messageHandler(
     const QString& msg
 ) {
     const QString formatted = "[%1] %2:%3 (%4): %5"_L1.arg(levelToString(type))
-                                  .arg(shortFile(ctx.file))
+                                  .arg(QString::fromUtf8(shortFile(ctx.file)))
                                   .arg(ctx.line)
-                                  .arg(ctx.function)
+                                  .arg(QString::fromUtf8(ctx.function))
                                   .arg(msg);
 
     std::println(

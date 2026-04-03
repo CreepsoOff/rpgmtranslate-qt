@@ -12,7 +12,13 @@ auto lineParts(
     if (split.size() < 2) {
         qWarning() << QObject::tr("Couldn't split text at line %1 in file %2")
                           .arg(lineNumber)
-                          .arg(filename);
+                          .arg(
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
+                              filename.toString()
+#else
+                              filename
+#endif
+                          );
         return {};
     }
 

@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QFile>
+#include <QJsonDocument>
 #include <QMessageBox>
 
 enum class RustLogLevel : u8 {

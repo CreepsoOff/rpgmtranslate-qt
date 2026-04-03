@@ -54,10 +54,8 @@ struct ProjectSettings {
                 return {};
             case SourceDirectory::UppercaseData:
                 return projectPath + u"/Data";
-                break;
             case SourceDirectory::LowercaseData:
                 return projectPath + u"/data";
-                break;
         }
     }
 

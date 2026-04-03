@@ -138,4 +138,16 @@ class HashSet : public rapidhashset<E> {
     using rapidhashset<E>::rapidhashset;
 };
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 0)
+inline QString operator+(QString lhs, QStringView rhs) {
+    lhs.append(rhs);
+    return lhs;
+}
+
+inline QString operator+(QStringView lhs, QString rhs) {
+    rhs.prepend(lhs);
+    return rhs;
+}
+#endif
+
 using FilenameArray = array<char, 13>;
