@@ -760,8 +760,9 @@ MainWindow::MainWindow(QWidget* const parent) :
                 &TaskWorker::translateFinished,
                 this,
                 [this, columnIndex, selected](
-                    const result<std::tuple<ByteBuffer, ByteBuffer>, FFIString>&
-                        results
+                    const expected<
+                        std::tuple<ByteBuffer, ByteBuffer>,
+                        FFIString>& results
                 ) -> void {
                 if (!results) {
                     const auto error = results.error();
