@@ -38,10 +38,8 @@
 #include <QStyleHints>
 #include <QTranslator>
 #include <QVersionNumber>
-
-#ifdef Q_OS_WINDOWS
-#include <bit7z/bitarchivereader.hpp>
-#endif
+#include <archive.h>
+#include <archive_entry.h>
 
 // TODO: Display entry in search panel/bookmark menu, but make it optional
 // through settings.
@@ -1933,99 +1931,131 @@ void MainWindow::checkForUpdates(bool manual) {
 #ifdef Q_OS_WINDOWS
         const QString exePath = qApp->applicationFilePath();
         QFile::rename(exePath, appDir + u"/rpgmtranslate-old.exe");
+#endif
 
-        const bit7z::Bit7zLibrary lib(appDir.toStdString() + "/7zxa.dll");
+        archive* const a = archive_read_new();
+        archive* const disk = archive_write_disk_new();
 
-        vector<bit7z::byte_t> archiveVec(archiveData.size());
-        memcpy(archiveVec.data(), archiveData.data(), archiveData.size());
+        const auto cleanup = [&] -> void {
+            archive_read_close(a);
+            archive_read_free(a);
+            archive_write_close(disk);
+            archive_write_free(disk);
+        };
 
-        const bit7z::BitArchiveReader archive{ lib,
-                                               archiveVec,
-                                               bit7z::ArchiveStartOffset::None,
-                                               bit7z::BitFormat::SevenZip };
+#ifdef Q_OS_WINDOWS
+        archive_read_support_format_7zip(a);
+        archive_read_support_filter_none(a);
+#else
+        archive_read_support_format_tar(a);
+        archive_read_support_filter_xz(a);
+        archive_read_support_filter_lzma(a);
+#endif
 
-        vector<u32> indicesToExtract;
+        archive_write_disk_set_options(
+            disk,
+            ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_SECURE_NODOTDOT
+        );
 
-        optional<u32> rapExeIdx;
-        optional<u32> iconIdx;
-
-        for (const auto& item : archive.items()) {
-            const string name = item.name();
-
-            if (name == "rpgmtranslate.exe") {
-                rapExeIdx = item.index();
-            }
-        }
-
-        if (rapExeIdx) {
-            indicesToExtract.emplace_back(*rapExeIdx);
-        }
-
-        if (!indicesToExtract.empty()) {
-            archive.extractTo(appDir.toStdString(), indicesToExtract);
-
-            if (rapExeIdx) {
-                QFile::rename(
-                    appDir + u"/rpgmtranslate/rpgmtranslate.exe",
-                    appDir + u"/rpgmtranslate.exe"
-                );
-            }
-
-            QFile::remove(appDir + u"/rpgmtranslate.7z");
-            QDir(appDir + u"/rpgmtranslate").removeRecursively();
-        }
-#elifdef Q_OS_LINUX
-        const QString archivePath = appDir + u"/rpgmtranslate.tar.xz";
-        auto archiveFile = QFile(archivePath);
-
-        if (!archiveFile.open(QIODevice::WriteOnly)) {
-            qWarning() << "Failed to open rpgmtranslate.tar.xz: %1"_L1.arg(
-                archiveFile.errorString()
-            );
+        if (archive_read_open_memory(
+                a,
+                archiveData.constData(),
+                usize(archiveData.size())
+            ) != ARCHIVE_OK) {
+            qWarning() << "libarchive failed to open archive:"_L1
+                       << archive_error_string(a);
 
             QMessageBox::information(
                 this,
                 tr("Update failed"),
-                tr("Failed to write archive file")
+                tr("Failed to open update archive")
+            );
+
+            cleanup();
+            return;
+        }
+
+#ifdef Q_OS_WINDOWS
+        constexpr string_view targetEntry = "rpgmtranslate/rpgmtranslate.exe";
+        const QByteArray outputPath = (appDir + u"/rpgmtranslate.exe").toUtf8();
+#else
+        constexpr string_view targetEntry = "rpgmtranslate";
+        const QByteArray outputPath = (appDir + u"/rpgmtranslate").toUtf8();
+#endif
+
+        bool extracted = false;
+        archive_entry* entry;
+
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            if (archive_entry_pathname_utf8(entry) != targetEntry) {
+                archive_read_data_skip(a);
+                continue;
+            }
+
+            archive_entry_set_pathname(entry, outputPath.constData());
+
+            if (archive_write_header(disk, entry) != ARCHIVE_OK) {
+                qWarning() << "libarchive write_header failed:"
+                           << archive_error_string(disk);
+                break;
+            }
+
+            const void* buff;
+            usize size;
+            i64 offset;
+            bool writeOk = true;
+
+            while (true) {
+                const i32 r = archive_read_data_block(a, &buff, &size, &offset);
+                if (r == ARCHIVE_EOF) {
+                    break;
+                }
+
+                if (r != ARCHIVE_OK) {
+                    qWarning() << "libarchive read_data_block failed:"
+                               << archive_error_string(a);
+                    writeOk = false;
+                    break;
+                }
+
+                if (archive_write_data_block(disk, buff, size, offset) !=
+                    ARCHIVE_OK) {
+                    qWarning() << "libarchive write_data_block failed:"
+                               << archive_error_string(disk);
+                    writeOk = false;
+                    break;
+                }
+            }
+
+            archive_write_finish_entry(disk);
+            extracted = writeOk;
+            break;
+        }
+
+        cleanup();
+
+        if (!extracted) {
+            QMessageBox::information(
+                this,
+                tr("Update failed"),
+                tr("Failed to extract update archive")
             );
             return;
         }
 
-        archiveFile.write(archiveData);
-        archiveFile.close();
-
-        QProcess tarProcess;
-        tarProcess.setWorkingDirectory(appDir);
-
-        tarProcess.start(
-            u"tar"_s,
-            { u"-xf"_s, archivePath, u"rpgmtranslate"_s }
+#ifdef Q_OS_WINDOWS
+        QFile::remove(appDir + u"/rpgmtranslate.7z");
+#else
+        QFile::setPermissions(
+            appDir + u"/rpgmtranslate",
+            QFileDevice::ReadOwner | QFileDevice::WriteOwner |
+                QFileDevice::ExeOwner | QFileDevice::ReadGroup |
+                QFileDevice::ExeGroup | QFileDevice::ReadOther |
+                QFileDevice::ExeOther
         );
-
-        tarProcess.waitForFinished(5000);
-
-        if (tarProcess.exitStatus() != QProcess::NormalExit ||
-            tarProcess.exitCode() != 0) {
-            QMessageBox::information(
-                this,
-                tr("Unarchiving update failed"),
-                tr("Executing tar failed with: %1")
-                    .arg(QString::fromUtf8(tarProcess.readAllStandardError()))
-            );
-        } else {
-            QFile::setPermissions(
-                appDir + u"/rpgmtranslate",
-                QFileDevice::ReadOwner | QFileDevice::WriteOwner |
-                    QFileDevice::ExeOwner | QFileDevice::ReadGroup |
-                    QFileDevice::ExeGroup | QFileDevice::ReadOther |
-                    QFileDevice::ExeOther
-            );
-        }
-
-        QFile::remove(archivePath);
-#elifdef Q_OS_MAC
-// TODO
 #endif
+
+        // TODO: MacOS
 
         qApp->quit();
         QProcess::startDetached(qApp->arguments()[0]);

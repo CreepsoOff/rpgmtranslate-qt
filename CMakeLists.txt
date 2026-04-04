@@ -40,6 +40,7 @@ if (LINUX)
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent Gui Svg Network LinguistTools)
+find_package(LibArchive REQUIRED)
 
 if (ENABLE_NUSPELL)
     find_package(Nuspell REQUIRED)
@@ -50,7 +51,8 @@ if (ENABLE_LIBGIT2)
 endif()
 
 find_path(RAPIDHASH_INCLUDE_DIRS "rapidhash.h")
-if(NOT RAPIDHASH_INCLUDE_DIRS)
+
+if (NOT RAPIDHASH_INCLUDE_DIRS)
     message(FATAL_ERROR "rapidhash.h not found, specify path to it using `-DRAPIDHASH_INCLUDE_DIRS=...`")
 endif()
 
@@ -147,28 +149,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Concurrent
     Qt6::Network
     Qt6::Svg
+    LibArchive::LibArchive
 )
 
 if (ENABLE_NUSPELL)
-    if (TARGET Nuspell::nuspell)
-        target_link_libraries(${PROJECT_NAME} PRIVATE Nuspell::nuspell)
-    else()
-        message(FATAL_ERROR "Nuspell found, but Nuspell::nuspell target not provided by your package config.")
-    endif()
+    target_link_libraries(${PROJECT_NAME} PRIVATE Nuspell::nuspell)
 endif()
 
 if (ENABLE_LIBGIT2)
     target_link_libraries(${PROJECT_NAME} PRIVATE libgit2::libgit2package)
-endif()
-
-if (WIN32)
-    find_library(BIT7Z_LIBRARY bit7z)
-    target_include_directories(${PROJECT_NAME} PRIVATE
-        ${BIT7Z_INCLUDE_DIRS}
-    )
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        bit7z
-    )
 endif()
 
 if (LINUX)
@@ -195,7 +184,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Corrosion)
 
 set(RPGMTRANSLATE_RUST_FEATURES "")
-if(ENABLE_LANGUAGETOOL)
+if (ENABLE_LANGUAGETOOL)
     list(APPEND RPGMTRANSLATE_RUST_FEATURES "languagetool")
 endif()
 
