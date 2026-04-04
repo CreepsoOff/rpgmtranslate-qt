@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef ENABLE_LIBGIT2
 #include "Aliases.hpp"
 
 #include <git2/diff.h>
@@ -365,3 +366,13 @@ class GitChangesList final : public QListView {
     GitChangesModel* const model_;
     GitChangesDelegate* const delegate;
 };
+#else
+#include <QListView>
+
+class GitChangesList final : public QListView {
+    Q_OBJECT
+
+   public:
+    using QListView::QListView;
+};
+#endif
