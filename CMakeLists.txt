@@ -162,12 +162,9 @@ endif()
 
 if (LINUX)
     find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
-    find_package(OpenSSL REQUIRED)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::WaylandClient
-        OpenSSL::SSL
-        OpenSSL::Crypto
     )
 endif()
 
@@ -193,6 +190,11 @@ corrosion_import_crate(
     MANIFEST_PATH "${RUST_CRATE_DIR}/Cargo.toml"
     FEATURES ${RPGMTRANSLATE_RUST_FEATURES}
 )
+
+if (LINUX)
+    find_package(OpenSSL REQUIRED)
+    corrosion_link_libraries(rpgmtranslate_rs OpenSSL::Crypto OpenSSL::SSL)
+endif()
 
 file(GLOB_RECURSE RUST_SOURCES
     CONFIGURE_DEPENDS
