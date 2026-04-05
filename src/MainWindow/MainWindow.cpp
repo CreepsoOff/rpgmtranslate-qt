@@ -175,7 +175,7 @@ MainWindow::MainWindow(QWidget* const parent) :
         ui->refreshChangesButton
     );
 #else
-    delete ui->sourceControlDock;
+    ui->sourceControlDock->hide();
 #endif
 
     ui->matchMenu->init(ui->clearMatchMenuButton, ui->matchMenuTable);
