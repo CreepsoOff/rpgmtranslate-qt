@@ -162,11 +162,12 @@ endif()
 
 if (LINUX)
     find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
+    find_package(OpenSSL REQUIRED)
 
     target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::WaylandClient
-        -lssl
-        -lcrypto
+        OpenSSL::SSL
+        OpenSSL::Crypto
     )
 endif()
 
