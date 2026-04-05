@@ -1933,23 +1933,23 @@ void MainWindow::checkForUpdates(bool manual) {
         QFile::rename(exePath, appDir + u"/rpgmtranslate-old.exe");
 #endif
 
-        archive* const a = archive_read_new();
+        archive* const archive_ = archive_read_new();
         archive* const disk = archive_write_disk_new();
 
-        const auto cleanup = [&] -> void {
-            archive_read_close(a);
-            archive_read_free(a);
+        const auto cleanup = [archive_, disk] -> void {
+            archive_read_close(archive_);
+            archive_read_free(archive_);
             archive_write_close(disk);
             archive_write_free(disk);
         };
 
 #ifdef Q_OS_WINDOWS
-        archive_read_support_format_7zip(a);
-        archive_read_support_filter_none(a);
+        archive_read_support_format_7zip(archive_);
+        archive_read_support_filter_none(archive_);
 #else
-        archive_read_support_format_tar(a);
-        archive_read_support_filter_xz(a);
-        archive_read_support_filter_lzma(a);
+        archive_read_support_format_tar(archive_);
+        archive_read_support_filter_xz(archive_);
+        archive_read_support_filter_lzma(archive_);
 #endif
 
         archive_write_disk_set_options(
@@ -1958,12 +1958,12 @@ void MainWindow::checkForUpdates(bool manual) {
         );
 
         if (archive_read_open_memory(
-                a,
+                archive_,
                 archiveData.constData(),
                 usize(archiveData.size())
             ) != ARCHIVE_OK) {
             qWarning() << "libarchive failed to open archive:"_L1
-                       << archive_error_string(a);
+                       << archive_error_string(archive_);
 
             QMessageBox::information(
                 this,
@@ -1976,51 +1976,54 @@ void MainWindow::checkForUpdates(bool manual) {
         }
 
 #ifdef Q_OS_WINDOWS
-        constexpr string_view targetEntry = "rpgmtranslate/rpgmtranslate.exe";
+        static constexpr string_view targetEntry =
+            "rpgmtranslate/rpgmtranslate.exe";
         const QByteArray outputPath = (appDir + u"/rpgmtranslate.exe").toUtf8();
 #else
-        constexpr string_view targetEntry = "rpgmtranslate";
+        static constexpr string_view targetEntry = "rpgmtranslate";
         const QByteArray outputPath = (appDir + u"/rpgmtranslate").toUtf8();
 #endif
 
         bool extracted = false;
         archive_entry* entry;
 
-        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        while (archive_read_next_header(archive_, &entry) == ARCHIVE_OK) {
             if (archive_entry_pathname_utf8(entry) != targetEntry) {
-                archive_read_data_skip(a);
+                archive_read_data_skip(archive_);
                 continue;
             }
 
             archive_entry_set_pathname(entry, outputPath.constData());
 
             if (archive_write_header(disk, entry) != ARCHIVE_OK) {
-                qWarning() << "libarchive write_header failed:"
+                qWarning() << "libarchive write_header failed:"_L1
                            << archive_error_string(disk);
                 break;
             }
 
-            const void* buff;
+            const void* buffer;
             usize size;
             i64 offset;
             bool writeOk = true;
 
             while (true) {
-                const i32 r = archive_read_data_block(a, &buff, &size, &offset);
-                if (r == ARCHIVE_EOF) {
+                const i32 read =
+                    archive_read_data_block(archive_, &buffer, &size, &offset);
+
+                if (read == ARCHIVE_EOF) {
                     break;
                 }
 
-                if (r != ARCHIVE_OK) {
-                    qWarning() << "libarchive read_data_block failed:"
-                               << archive_error_string(a);
+                if (read != ARCHIVE_OK) {
+                    qWarning() << "libarchive read_data_block failed:"_L1
+                               << archive_error_string(archive_);
                     writeOk = false;
                     break;
                 }
 
-                if (archive_write_data_block(disk, buff, size, offset) !=
+                if (archive_write_data_block(disk, buffer, size, offset) !=
                     ARCHIVE_OK) {
-                    qWarning() << "libarchive write_data_block failed:"
+                    qWarning() << "libarchive write_data_block failed:"_L1
                                << archive_error_string(disk);
                     writeOk = false;
                     break;
@@ -2043,9 +2046,7 @@ void MainWindow::checkForUpdates(bool manual) {
             return;
         }
 
-#ifdef Q_OS_WINDOWS
-        QFile::remove(appDir + u"/rpgmtranslate.7z");
-#else
+#ifdef Q_OS_LINUX
         QFile::setPermissions(
             appDir + u"/rpgmtranslate",
             QFileDevice::ReadOwner | QFileDevice::WriteOwner |
