@@ -142,6 +142,8 @@ pub(crate) enum Error {
     LanguageTool(#[from] languagetool_rust::error::Error),
     #[error(transparent)]
     AssetDecrypt(#[from] rpgm_asset_decrypter_lib::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
 }
 
 #[repr(u8)]
@@ -166,6 +168,7 @@ pub enum TranslationEndpoint {
     Xiaomi,
     Xinference,
     Zhipu,
+    Lingva,
 }
 
 impl Default for TranslationEndpoint {
@@ -307,7 +310,8 @@ pub(crate) async fn get_models(
     Ok(match endpoint {
         TranslationEndpoint::Google
         | TranslationEndpoint::Yandex
-        | TranslationEndpoint::DeepL => unreachable!(),
+        | TranslationEndpoint::DeepL
+        | TranslationEndpoint::Lingva => unreachable!(),
         TranslationEndpoint::OpenAI
         | TranslationEndpoint::Longcat
         | TranslationEndpoint::Moonshot
@@ -387,6 +391,20 @@ pub(crate) async fn translate_single<'a>(
                 .await?
         }
 
+        TranslationEndpoint::Lingva => {
+            let base_url = unsafe {
+                endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
+            };
+            let encoded = urlencoding::encode(text);
+            let url = format!(
+                "{}/api/v1/{}/{}/{}",
+                base_url, source_language, translation_language, encoded
+            );
+            let json: serde_json::Value =
+                reqwest::get(&url).await?.json().await?;
+            json["translation"].as_str().unwrap_or("").to_string()
+        }
+
         _ => {
             let api_key = unsafe {
                 endpoint_settings["apiKey"].as_str().unwrap_unchecked()
@@ -443,7 +461,8 @@ pub(crate) async fn translate_single<'a>(
                     let client = match endpoint {
                         TranslationEndpoint::Google
                         | TranslationEndpoint::Yandex
-                        | TranslationEndpoint::DeepL => unreachable!(),
+                        | TranslationEndpoint::DeepL
+                        | TranslationEndpoint::Lingva => unreachable!(),
                         TranslationEndpoint::OpenAI
                         | TranslationEndpoint::Longcat
                         | TranslationEndpoint::Moonshot
@@ -588,6 +607,36 @@ pub(crate) async fn translate<'a>(
             response
         }
 
+        TranslationEndpoint::Lingva => {
+            let base_url = unsafe {
+                endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
+            };
+            let client = reqwest::Client::new();
+
+            for (&file, strings) in &files {
+                response.insert(
+                    file.to_string(),
+                    Vec::with_capacity(strings.len()),
+                );
+                let response_file = response.get_mut(file).unwrap();
+
+                for string in strings {
+                    let encoded = urlencoding::encode(string);
+                    let url = format!(
+                        "{}/api/v1/{}/{}/{}",
+                        base_url, source_language, translation_language, encoded
+                    );
+                    let json: serde_json::Value =
+                        client.get(&url).send().await?.json().await?;
+                    let translated =
+                        json["translation"].as_str().unwrap_or("").to_string();
+                    response_file.push(translated.replace('\n', NEW_LINE));
+                }
+            }
+
+            response
+        }
+
         _ => {
             let api_key = unsafe {
                 endpoint_settings["apiKey"].as_str().unwrap_unchecked()
@@ -695,7 +744,8 @@ pub(crate) async fn translate<'a>(
                     let client = match endpoint {
                         TranslationEndpoint::Google
                         | TranslationEndpoint::Yandex
-                        | TranslationEndpoint::DeepL => unreachable!(),
+                        | TranslationEndpoint::DeepL
+                        | TranslationEndpoint::Lingva => unreachable!(),
                         TranslationEndpoint::OpenAI
                         | TranslationEndpoint::Longcat
                         | TranslationEndpoint::Moonshot

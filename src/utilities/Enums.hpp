@@ -185,6 +185,7 @@ enum class TranslationEndpoint : u8 {
     Xiaomi,
     Xinference,
     Zhipu,
+    Lingva,
 };
 
 constexpr u8 TRANSLATION_ENDPOINT_COUNT =
