@@ -111,19 +111,17 @@ jobs:
           arch: win64_msvc2022_64
           cache: true
 
-      # install-qt-action sets Qt6_DIR but CMake needs the install root.
-      # Walk up from Qt6_DIR until we find bin/qmake.exe.
+      # install-qt-action@v4 sets QT_ROOT_DIR to the Qt install root
+      # (e.g. D:\a\repo\Qt\6.8.2\msvc2022_64). This already contains
+      # bin/qmake.exe and lib/cmake/Qt6 — exactly what CMAKE_PREFIX_PATH needs.
       - name: Resolve Qt root
         run: |
-          $candidate = $env:Qt6_DIR
-          while ($candidate -and !(Test-Path (Join-Path $candidate "bin\qmake.exe"))) {
-            $candidate = Split-Path $candidate -Parent
+          if (!$env:QT_ROOT_DIR) {
+            Write-Error "QT_ROOT_DIR is not set — install-qt-action may have failed."
+            exit 1
           }
-          if (!$candidate) {
-            $candidate = (Get-Item (Join-Path $env:Qt6_DIR "..\..\..")).FullName
-          }
-          Write-Host "QT_ROOT = $candidate"
-          "QT_ROOT=$candidate" >> $env:GITHUB_ENV
+          Write-Host "QT_ROOT = $env:QT_ROOT_DIR"
+          "QT_ROOT=$env:QT_ROOT_DIR" >> $env:GITHUB_ENV
 
       # ─── vcpkg: LibArchive (static) ─────────────────────────────────────
       - uses: actions/cache@v4
