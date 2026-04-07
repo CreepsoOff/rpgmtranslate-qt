@@ -4,43 +4,36 @@
 # ║  HOW TO PUBLISH A RELEASE                                               ║
 # ║  ─────────────────────────                                              ║
 # ║  1. Commit and push all changes to your branch.                         ║
-# ║  2. Create and push a semver tag:                                       ║
-# ║       git tag v1.2.3                                                    ║
-# ║       git push origin v1.2.3                                            ║
+# ║  2. Either:                                                             ║
+# ║     • Push a semver tag for a stable release:                           ║
+# ║         git tag v1.2.3                                                  ║
+# ║         git push origin v1.2.3                                          ║
+# ║     • Or trigger the workflow manually from GitHub UI.                  ║
 # ║  3. This workflow builds the app, packages it, and publishes a          ║
-# ║     GitHub Release with the ZIP asset automatically.                    ║
+# ║     GitHub Release with a .7z asset automatically.                      ║
 # ║                                                                         ║
-# ║  You can also trigger a manual build from the GitHub UI:                ║
-# ║       Actions → "Build and Release – Windows" → Run workflow            ║
-# ║  The optional "version" input (e.g. v1.2.3) lets you name the assets   ║
-# ║  and – when provided – also publishes a GitHub Release.                 ║
+# ║  Manual workflow behavior:                                              ║
+# ║     • no input            → tag "latest", asset rpgmtranslate.7z        ║
+# ║     • dev                 → tag "dev", asset rpgmtranslate-dev.7z       ║
+# ║                             pre-release                                 ║
+# ║     • version=v1.2.3      → tag "v1.2.3",                               ║
+# ║                             asset rpgmtranslate-v1.2.3.7z               ║
+# ║     • dev + version       → tag "dev",                                  ║
+# ║                             asset rpgmtranslate-dev-v1.2.3.7z           ║
+# ║                             pre-release                                 ║
 # ╠══════════════════════════════════════════════════════════════════════════╣
-# ║  VARIABLES TO ADJUST IF THE BUILD CONFIGURATION CHANGES                ║
-# ║  ───────────────────────────────────────────────────────                ║
-# ║  QT_VERSION    Qt version to install.  The project requires Qt 6.x      ║
+# ║  VARIABLES TO ADJUST IF THE BUILD CONFIGURATION CHANGES                 ║
+# ║  ───────────────────────────────────────────────────────                 ║
+# ║  QT_VERSION    Qt version to install. The project requires Qt 6.x       ║
 # ║                with MSVC 2022 64-bit support.                           ║
 # ║  BUILD_DIR     CMake build directory (relative to the repository root). ║
-# ║  EXE_NAME      Compiled executable name.  Must match PROJECT_NAME in    ║
+# ║  EXE_NAME      Compiled executable name. Must match PROJECT_NAME in     ║
 # ║                CMakeLists.txt (currently "rpgmtranslate").              ║
 # ║  EXE_REL_PATH  Path inside BUILD_DIR where the Visual Studio            ║
 # ║                multi-config generator places Release binaries.          ║
 # ║                CMakeLists.txt sets CMAKE_RUNTIME_OUTPUT_DIRECTORY =     ║
 # ║                "target/bin"; VS appends the config sub-folder, giving   ║
 # ║                "target\bin\Release".                                    ║
-# ╚══════════════════════════════════════════════════════════════════════════╝
-
-# ╔══════════════════════════════════════════════════════════════════════════╗
-# ║          rpgmtranslate-qt – Windows x64 build & release                 ║
-# ╠══════════════════════════════════════════════════════════════════════════╣
-# ║  Default (no inputs)        → tag "latest", asset: rpgmtranslate.7z    ║
-# ║  dev checked                → tag "dev", asset: rpgmtranslate-dev.7z   ║
-# ║                                pre-release                             ║
-# ║  version = "v1.2.3"         → tag "v1.2.3", asset:                     ║
-# ║                                rpgmtranslate-v1.2.3.7z                 ║
-# ║  dev + version              → tag "dev", asset:                         ║
-# ║                                rpgmtranslate-dev-v1.2.3.7z             ║
-# ║                                pre-release                             ║
-# ║  Push v* tag                → same as stable versioned release          ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 name: Build and Release – Windows
@@ -69,7 +62,6 @@ env:
   QT_VERSION: '6.8.2'
   BUILD_DIR: build
   EXE_NAME: rpgmtranslate.exe
-  # Visual Studio multi-config + CMAKE_RUNTIME_OUTPUT_DIRECTORY=target/bin
   EXE_REL_PATH: target\bin\Release
 
 jobs:
@@ -82,7 +74,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ─── Rust + cbindgen ─────────────────────────────────────────────────
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -94,14 +85,16 @@ jobs:
             ~\.cargo\registry\cache
             ~\.cargo\git\db
           key: cargo-reg-${{ hashFiles('rust/Cargo.toml') }}
-          restore-keys: cargo-reg-
+          restore-keys: |
+            cargo-reg-
 
       - name: Cache Rust/Corrosion build artefacts
         uses: actions/cache@v4
         with:
           path: ${{ env.BUILD_DIR }}\cargo
           key: cargo-build-${{ hashFiles('rust/Cargo.toml', 'rust/src/**') }}
-          restore-keys: cargo-build-
+          restore-keys: |
+            cargo-build-
 
       - name: Cache cbindgen binary
         id: cb
@@ -114,7 +107,6 @@ jobs:
         if: steps.cb.outputs.cache-hit != 'true'
         run: cargo install cbindgen --version 0.29.2
 
-      # ─── Qt 6 (dynamic, MSVC 2022 x64) ──────────────────────────────────
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -124,41 +116,44 @@ jobs:
           arch: win64_msvc2022_64
           cache: true
 
-      # install-qt-action@v4 sets QT_ROOT_DIR (not Qt6_DIR).
-      # It already points to the Qt install root containing bin/qmake.exe.
       - name: Resolve Qt root
         shell: pwsh
         run: |
-          # v4 of install-qt-action uses QT_ROOT_DIR
           $root = $env:QT_ROOT_DIR
 
-          # Fallback: if somehow Qt6_DIR is set instead (older action version)
-          if (!$root) {
+          if (-not $root) {
             $root = $env:Qt6_DIR
-            while ($root -and !(Test-Path (Join-Path $root "bin\qmake.exe"))) {
+            while ($root -and -not (Test-Path (Join-Path $root "bin\qmake.exe"))) {
               $root = Split-Path $root -Parent
             }
           }
 
-          if (!$root -or !(Test-Path (Join-Path $root "bin\qmake.exe"))) {
+          if (-not $root -or -not (Test-Path (Join-Path $root "bin\qmake.exe"))) {
             throw "Cannot resolve Qt root. QT_ROOT_DIR='$env:QT_ROOT_DIR', Qt6_DIR='$env:Qt6_DIR'"
           }
 
           Write-Host "QT_ROOT = $root"
           "QT_ROOT=$root" >> $env:GITHUB_ENV
 
-      # ─── vcpkg: LibArchive (static) ─────────────────────────────────────
-      - name: Cache vcpkg packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
-          key: vcpkg-libarchive-static-v2
-          restore-keys: vcpkg-libarchive-static-
-
       - name: Install LibArchive via vcpkg
         run: vcpkg install libarchive:x64-windows-static
 
-      # ─── rapidhash (header-only) ────────────────────────────────────────
+      - name: Resolve vcpkg toolchain file
+        shell: pwsh
+        run: |
+          if (-not $env:VCPKG_INSTALLATION_ROOT) {
+            throw "VCPKG_INSTALLATION_ROOT is not set on this runner"
+          }
+
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT "scripts\buildsystems\vcpkg.cmake"
+
+          if (-not (Test-Path $toolchain)) {
+            throw "vcpkg toolchain file not found: $toolchain"
+          }
+
+          Write-Host "VCPKG_TOOLCHAIN_FILE = $toolchain"
+          "VCPKG_TOOLCHAIN_FILE=$toolchain" >> $env:GITHUB_ENV
+
       - name: Fetch rapidhash.h
         shell: pwsh
         run: |
@@ -169,41 +164,42 @@ jobs:
             -OutFile "$dir\rapidhash.h"
           "RAPIDHASH_DIR=$dir" >> $env:GITHUB_ENV
 
-      # ─── CMake configure ────────────────────────────────────────────────
-      # CMake 3.31 + MSVC cannot enable C23. The project's CMakeLists.txt
-      # sets CMAKE_C_STANDARD=23, which overrides any -D flag (CMake normal
-      # variables take priority over cache variables from -D).
-      # We patch it to C17 on MSVC before configure. C++23 is unaffected.
-      - name: Patch C standard for MSVC compatibility
+      - name: Patch CMakeLists for MSVC C17 compatibility
         shell: pwsh
         run: |
-          (Get-Content CMakeLists.txt) -replace `
-            'set\(CMAKE_C_STANDARD 23\)', `
-            'if(MSVC)`n    set(CMAKE_C_STANDARD 17)`nelse()`n    set(CMAKE_C_STANDARD 23)`nendif()' `
-            | Set-Content CMakeLists.txt
+          $path = "CMakeLists.txt"
+          $content = Get-Content -Path $path -Raw
+
+          $pattern = '(?s)# Set standards for C and C\+\+\s*set\(CMAKE_C_STANDARD 23\)\s*set\(CMAKE_C_STANDARD_REQUIRED ON\)\s*set\(CMAKE_CXX_STANDARD 23\)\s*set\(CMAKE_CXX_STANDARD_REQUIRED ON\)'
+          $replacement = "# Set standards for C and C++`nif (MSVC)`n    set(CMAKE_C_STANDARD 17)`nelse()`n    set(CMAKE_C_STANDARD 23)`nendif()`nset(CMAKE_C_STANDARD_REQUIRED ON)`nset(CMAKE_CXX_STANDARD 23)`nset(CMAKE_CXX_STANDARD_REQUIRED ON)"
+
+          $newContent = [regex]::Replace($content, $pattern, $replacement)
+
+          if ($newContent -eq $content) {
+            throw "Expected C/C++ standard block not found in CMakeLists.txt"
+          }
+
+          Set-Content -Path $path -Value $newContent -NoNewline
+          Write-Host "Patched CMakeLists.txt for MSVC compatibility"
 
       - name: Configure
         shell: pwsh
         run: |
           cmake -S . -B ${{ env.BUILD_DIR }} `
             -G "Visual Studio 17 2022" -A x64 `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DCMAKE_PREFIX_PATH="$env:QT_ROOT" `
             -DRAPIDHASH_INCLUDE_DIRS="$env:RAPIDHASH_DIR"
 
-      # ─── Build ──────────────────────────────────────────────────────────
       - name: Build
         run: cmake --build ${{ env.BUILD_DIR }} --config Release --parallel
 
-      # ─── Deploy Qt runtime ──────────────────────────────────────────────
-      # Qt is linked dynamically — windeployqt copies Qt DLLs and plugins
-      # required at runtime into the exe directory.
       - name: Resolve deploy directory
         shell: pwsh
         run: |
           $dir = Join-Path "${{ github.workspace }}" "${{ env.BUILD_DIR }}\${{ env.EXE_REL_PATH }}"
-          if (!(Test-Path $dir)) {
+          if (-not (Test-Path $dir)) {
             throw "Deploy directory not found: $dir"
           }
           "DEPLOY_DIR=$dir" >> $env:GITHUB_ENV
@@ -211,7 +207,6 @@ jobs:
       - name: Deploy Qt runtime (windeployqt)
         run: windeployqt --release --no-translations "$env:DEPLOY_DIR\${{ env.EXE_NAME }}"
 
-      # ─── Compute release metadata ───────────────────────────────────────
       - name: Compute release metadata
         id: meta
         shell: bash
@@ -229,7 +224,6 @@ jobs:
           INPUT_VERSION="${INPUT_VERSION:-}"
           INPUT_DEV="${INPUT_DEV:-false}"
 
-          # Validate version format if provided
           if [[ -n "$INPUT_VERSION" && ! "$INPUT_VERSION" =~ $VERSION_REGEX ]]; then
             echo "::error::The version input must match v1.2.3"
             exit 1
@@ -240,7 +234,6 @@ jobs:
           VERSION_FOR_SUFFIX=""
 
           if [[ "$EVENT_NAME" == "push" && "$REF_TYPE" == "tag" ]]; then
-            # Pushed v* tag → stable versioned release
             if [[ ! "$REF_NAME" =~ $VERSION_REGEX ]]; then
               echo "::error::Pushed tag must match v1.2.3"
               exit 1
@@ -248,27 +241,20 @@ jobs:
             TAG="$REF_NAME"
             PRERELEASE="false"
             VERSION_FOR_SUFFIX="$REF_NAME"
-
           elif [[ "$INPUT_DEV" == "true" ]]; then
-            # Dev build → tag "dev", pre-release
             TAG="dev"
             PRERELEASE="true"
             VERSION_FOR_SUFFIX="$INPUT_VERSION"
-
           elif [[ -n "$INPUT_VERSION" ]]; then
-            # Version without dev → stable versioned release
             TAG="$INPUT_VERSION"
             PRERELEASE="false"
             VERSION_FOR_SUFFIX="$INPUT_VERSION"
-
           else
-            # No inputs → latest snapshot
             TAG="latest"
             PRERELEASE="false"
             VERSION_FOR_SUFFIX=""
           fi
 
-          # Build suffix: -dev, -v1.2.3, -dev-v1.2.3, or empty
           SUFFIX=""
           [[ "$TAG" == "dev" ]] && SUFFIX="${SUFFIX}-dev"
           [[ -n "$VERSION_FOR_SUFFIX" ]] && SUFFIX="${SUFFIX}-${VERSION_FOR_SUFFIX}"
@@ -276,7 +262,6 @@ jobs:
           NAME="rpgmtranslate${SUFFIX}"
           ARCHIVE="${NAME}.7z"
 
-          # Display title for the GitHub Release
           if [[ "$TAG" == "latest" ]]; then
             TITLE="Latest Build"
             MAKE_LATEST="false"
@@ -292,16 +277,22 @@ jobs:
             MAKE_LATEST="true"
           fi
 
-          echo "tag=$TAG"               >> "$GITHUB_OUTPUT"
-          echo "archive=$ARCHIVE"       >> "$GITHUB_OUTPUT"
-          echo "name=$NAME"             >> "$GITHUB_OUTPUT"
-          echo "title=$TITLE"           >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
           echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
           echo "make_latest=$MAKE_LATEST" >> "$GITHUB_OUTPUT"
 
-      # ─── Package ────────────────────────────────────────────────────────
-      # 7z is pre-installed on the runner. Archives the full deploy dir
-      # (exe + Qt DLLs + plugins).
+      - name: Ensure release tag exists for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "${{ steps.meta.outputs.tag }}" "$GITHUB_SHA"
+          git push origin "refs/tags/${{ steps.meta.outputs.tag }}" --force
+
       - name: Create .7z archive
         shell: pwsh
         run: |
@@ -309,33 +300,12 @@ jobs:
             "${{ github.workspace }}\${{ steps.meta.outputs.archive }}" `
             "$env:DEPLOY_DIR\*"
 
-      # ─── Upload artifact ────────────────────────────────────────────────
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.meta.outputs.name }}
           path: ${{ github.workspace }}\${{ steps.meta.outputs.archive }}
           if-no-files-found: error
-
-      # ─── GitHub Release ─────────────────────────────────────────────────
-      # For moving tags (latest, dev): delete old release + force-push tag
-      - name: Remove stale moving release
-        if: steps.meta.outputs.tag == 'latest' || steps.meta.outputs.tag == 'dev'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete "${{ steps.meta.outputs.tag }}" --yes 2>/dev/null || true
-          git push origin ":refs/tags/${{ steps.meta.outputs.tag }}" 2>/dev/null || true
-
-      - name: Refresh moving tag
-        if: steps.meta.outputs.tag == 'latest' || steps.meta.outputs.tag == 'dev'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -f "${{ steps.meta.outputs.tag }}" "$GITHUB_SHA"
-          git push origin "refs/tags/${{ steps.meta.outputs.tag }}" --force
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
