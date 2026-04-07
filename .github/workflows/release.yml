@@ -29,227 +29,217 @@
 # ║                "target\bin\Release".                                    ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║          rpgmtranslate-qt – Windows x64 build & release                 ║
+# ╠══════════════════════════════════════════════════════════════════════════╣
+# ║  Default (no inputs)        → "latest" release, asset: rpgmtranslate   ║
+# ║  dev checked                → "-dev" suffix, marked as pre-release     ║
+# ║  version = "v1.2.3"         → "-v1.2.3" suffix, tagged release        ║
+# ║  dev + version              → "-dev-v1.2.3", pre-release              ║
+# ║  Push v* tag                → same as providing that version manually  ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
 name: Build and Release – Windows
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: >
-          Optional version tag (e.g. v1.2.3).
-          When provided the assets are named with this version and a GitHub
-          Release is published.  Leave blank to produce a "latest" snapshot.
+        description: 'Version (e.g. v1.2.3). Empty → "latest".'
         required: false
         default: ''
+        type: string
+      dev:
+        description: 'Dev build?'
+        required: false
+        default: false
+        type: boolean
 
-env:
-  # Qt version – must have a win64_msvc2022_64 package available
-  QT_VERSION: '6.8.2'
-  # CMake build directory (relative to repo root)
-  BUILD_DIR: build
-  # Executable name = CMakeLists.txt PROJECT_NAME + .exe
-  EXE_NAME: rpgmtranslate.exe
-  # Relative path inside BUILD_DIR where VS places the Release executable
-  EXE_REL_PATH: target\bin\Release
-
-# Allow the workflow to create/update GitHub Releases
 permissions:
   contents: write
 
+env:
+  QT_VERSION: '6.8.2'
+  BUILD_DIR: build
+  EXE_NAME: rpgmtranslate.exe
+  # VS multi-config generator puts Release binaries in this subfolder.
+  # CMakeLists.txt sets CMAKE_RUNTIME_OUTPUT_DIRECTORY = target/bin
+  EXE_REL_PATH: target\bin\Release
+
 jobs:
-  build-windows:
-    name: Build (windows-latest · MSVC x64 · Release)
+  build:
     runs-on: windows-latest
-
     steps:
-      # ── 1. Source ────────────────────────────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      # ── 2. Rust toolchain & cbindgen ─────────────────────────────────────
-      # The project includes a Rust static library compiled via Corrosion
-      # (fetched automatically by CMake FetchContent at configure time).
-      # Cargo.toml declares edition = "2024" → Rust ≥ 1.85 is required.
-      # cbindgen generates the C++ header consumed by the C++ build step.
-      - name: Set up Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
+      # ─── Source ──────────────────────────────────────────────────────────
+      - uses: actions/checkout@v4
 
-      - name: Cache Cargo registry
-        uses: actions/cache@v4
+      # ─── Rust + cbindgen ─────────────────────────────────────────────────
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('rust/Cargo.toml') }}
-          restore-keys: ${{ runner.os }}-cargo-registry-
+            ~\.cargo\registry\index
+            ~\.cargo\registry\cache
+            ~\.cargo\git\db
+          key: cargo-reg-${{ hashFiles('rust/Cargo.toml') }}
 
-      # Cache the Rust build artefacts produced by Corrosion.
-      # Corrosion (v0.6.1) places the Rust output in
-      # ${CMAKE_BINARY_DIR}/cargo/build by default.
-      - name: Cache Rust/Corrosion build artefacts
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
-          path: ${{ env.BUILD_DIR }}/cargo/build
-          key: ${{ runner.os }}-rust-${{ hashFiles('rust/Cargo.toml') }}
-          restore-keys: ${{ runner.os }}-rust-
+          path: ${{ env.BUILD_DIR }}\cargo
+          key: cargo-build-${{ hashFiles('rust/Cargo.toml', 'rust/src/**') }}
+          restore-keys: cargo-build-
 
-      - name: Cache cbindgen binary
-        id: cache-cbindgen
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
+        id: cb
         with:
-          # cbindgen is compiled once and cached to avoid re-compiling it on
-          # every run.  Update the cache key if the pinned version changes.
-          path: ~/.cargo/bin/cbindgen.exe
-          key: ${{ runner.os }}-cbindgen-0.29.2
+          path: ~\.cargo\bin\cbindgen.exe
+          key: cbindgen-0.29.2
 
-      - name: Install cbindgen (pinned to Cargo.toml version)
-        if: steps.cache-cbindgen.outputs.cache-hit != 'true'
-        run: cargo install cbindgen --version "0.29.2"
+      - if: steps.cb.outputs.cache-hit != 'true'
+        run: cargo install cbindgen --version 0.29.2
 
-      # ── 3. Qt 6 (MSVC 2022, 64-bit) ──────────────────────────────────────
-      - name: Install Qt ${{ env.QT_VERSION }} (MSVC 2022 x64)
-        uses: jurplel/install-qt-action@v3
+      # ─── Qt 6 (dynamic, MSVC 2022 x64) ──────────────────────────────────
+      - uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          # Qt6::Svg (used by CMakeLists.txt) is bundled in the base Qt 6
-          # installation and is NOT a separately installable aqt module.
+          cache: true
 
-      - name: Resolve Qt installation root for CMake
+      # install-qt-action sets Qt6_DIR but CMake needs the install root.
+      # Walk up from Qt6_DIR until we find bin/qmake.exe.
+      - name: Resolve Qt root
         run: |
-          # install-qt-action sets Qt6_DIR to <root>/lib/cmake/Qt6.
-          # CMAKE_PREFIX_PATH must point to the installation root
-          # (three directory levels up).
-          $qtRoot = (Get-Item (Join-Path $env:Qt6_DIR "..\..\..") -Force).FullName
-          "QT_ROOT=$qtRoot" | Out-File -Append $env:GITHUB_ENV
+          $candidate = $env:Qt6_DIR
+          while ($candidate -and !(Test-Path (Join-Path $candidate "bin\qmake.exe"))) {
+            $candidate = Split-Path $candidate -Parent
+          }
+          if (!$candidate) {
+            $candidate = (Get-Item (Join-Path $env:Qt6_DIR "..\..\..")).FullName
+          }
+          Write-Host "QT_ROOT = $candidate"
+          "QT_ROOT=$candidate" >> $env:GITHUB_ENV
 
-      # ── 4. System dependencies ────────────────────────────────────────────
-      # LibArchive is a hard requirement of CMakeLists.txt.
-      # We use the vcpkg x64-windows-static triplet so that the static library
-      # is compiled with /MT (static CRT), matching the CMakeLists.txt setting
-      #   CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-      #
-      # rapidhash is a single-header library; CMakeLists.txt finds it via
-      #   find_path(RAPIDHASH_INCLUDE_DIRS "rapidhash.h")
-      # so we download it and pass the directory with -DRAPIDHASH_INCLUDE_DIRS.
-      - name: Cache vcpkg packages
-        uses: actions/cache@v4
+      # ─── vcpkg: LibArchive (static) ─────────────────────────────────────
+      - uses: actions/cache@v4
         with:
           path: ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
-          key: ${{ runner.os }}-vcpkg-libarchive-x64-windows-static-v1
-          restore-keys: ${{ runner.os }}-vcpkg-
+          key: vcpkg-libarchive-static-v2
+      - run: vcpkg install libarchive:x64-windows-static
 
-      - name: Install LibArchive via vcpkg (x64-windows-static)
-        run: vcpkg install "libarchive:x64-windows-static"
-
-      - name: Download rapidhash single header
+      # ─── rapidhash (header-only) ────────────────────────────────────────
+      - name: Fetch rapidhash.h
         run: |
-          $dir = Join-Path "${{ github.workspace }}" "deps\rapidhash"
+          $dir = "${{ github.workspace }}\deps\rapidhash"
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
           Invoke-WebRequest `
             -Uri "https://raw.githubusercontent.com/Nicoshev/rapidhash/master/rapidhash.h" `
-            -OutFile (Join-Path $dir "rapidhash.h")
-          "RAPIDHASH_INCLUDE_DIRS=$dir" | Out-File -Append $env:GITHUB_ENV
+            -OutFile "$dir\rapidhash.h"
+          "RAPIDHASH_DIR=$dir" >> $env:GITHUB_ENV
 
-      # ── 5. CMake configure ────────────────────────────────────────────────
-      # Notes:
-      # • Corrosion (Rust/CMake bridge, v0.6.1) is fetched automatically via
-      #   FetchContent during this step and requires internet access.
-      # • OpenSSL is only required on Linux (see CMakeLists.txt); no extra
-      #   OpenSSL setup is needed for Windows.
-      - name: Configure CMake (Visual Studio 17 2022 · x64)
+      # ─── CMake configure ────────────────────────────────────────────────
+      # -DCMAKE_C_STANDARD=17 : CMake 3.31 cannot enable C23 with MSVC.
+      #   The project declares C23 but uses no C23-specific features.
+      # Visual Studio generator is used because Qt is linked dynamically
+      # and this matches the existing proven build configuration.
+      - name: Configure
         run: |
-          cmake -S . -B "$env:BUILD_DIR" `
+          cmake -S . -B ${{ env.BUILD_DIR }} `
             -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_STANDARD=17 `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DCMAKE_PREFIX_PATH="$env:QT_ROOT" `
-            -DRAPIDHASH_INCLUDE_DIRS="$env:RAPIDHASH_INCLUDE_DIRS"
+            -DRAPIDHASH_INCLUDE_DIRS="$env:RAPIDHASH_DIR"
 
-      # ── 6. Build ──────────────────────────────────────────────────────────
-      - name: Build Release
-        run: cmake --build "$env:BUILD_DIR" --config Release --parallel
+      # ─── Build ──────────────────────────────────────────────────────────
+      - name: Build
+        run: cmake --build ${{ env.BUILD_DIR }} --config Release --parallel
 
-      # ── 7. Package (windeployqt + zip) ────────────────────────────────────
-      # windeployqt copies the Qt DLLs and plugins required at runtime into
-      # the same directory as the executable.
+      # ─── Deploy Qt DLLs + plugins ───────────────────────────────────────
+      # Qt is linked dynamically — the exe needs Qt DLLs and platform
+      # plugins at runtime. windeployqt copies everything needed.
       - name: Resolve deploy directory
         run: |
-          $dir = Join-Path "${{ github.workspace }}" "$env:BUILD_DIR\$env:EXE_REL_PATH"
-          "DEPLOY_DIR=$dir" | Out-File -Append $env:GITHUB_ENV
+          $dir = Join-Path "${{ github.workspace }}" "${{ env.BUILD_DIR }}\${{ env.EXE_REL_PATH }}"
+          "DEPLOY_DIR=$dir" >> $env:GITHUB_ENV
 
-      - name: Deploy Qt runtime (windeployqt)
-        # windeployqt is placed on PATH by install-qt-action.
-        # --release        : deploy release-mode binaries only.
-        # --no-translations: omit Qt's own translations (the app ships its own
-        #                    .qm files compiled from translations/).
-        run: windeployqt --release --no-translations "$env:DEPLOY_DIR\$env:EXE_NAME"
+      - name: windeployqt
+        run: windeployqt --release --no-translations "$env:DEPLOY_DIR\${{ env.EXE_NAME }}"
 
-      - name: Determine release version and asset names
+      # ─── Compute release metadata ───────────────────────────────────────
+      - name: Compute names
+        id: meta
+        shell: bash
         run: |
-          # Priority: push tag > workflow_dispatch "version" input > "latest"
-          $tag = if ("${{ github.ref_type }}" -eq "tag") {
-            "${{ github.ref_name }}"
-          } elseif ("${{ github.event.inputs.version }}" -ne "") {
-            "${{ github.event.inputs.version }}"
-          } else {
-            "latest"
-          }
-          "RELEASE_VERSION=$tag"                                      | Out-File -Append $env:GITHUB_ENV
-          "ZIP_NAME=rpgmtranslate-qt-windows-x64-$tag.zip"           | Out-File -Append $env:GITHUB_ENV
-          "EXE_ASSET_NAME=rpgmtranslate-qt-windows-x64-$tag.exe"     | Out-File -Append $env:GITHUB_ENV
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            TAG="${{ inputs.version }}"
+          else
+            TAG="latest"
+          fi
 
-      - name: Create ZIP archive
+          SUFFIX=""
+          [[ "${{ inputs.dev }}" == "true" ]] && SUFFIX="-dev"
+          [[ "$TAG" != "latest" ]]            && SUFFIX="${SUFFIX}-${TAG}"
+
+          ARCHIVE="rpgmtranslate${SUFFIX}.7z"
+          NAME="rpgmtranslate${SUFFIX}"
+
+          if [[ "$TAG" == "latest" ]]; then
+            TITLE="Latest Build"
+          else
+            TITLE="Release ${TAG}"
+          fi
+          [[ "${{ inputs.dev }}" == "true" ]] && TITLE="${TITLE} (dev)"
+
+          PRERELEASE="false"
+          [[ "${{ inputs.dev }}" == "true" ]] && PRERELEASE="true"
+
+          echo "tag=$TAG"             >> "$GITHUB_OUTPUT"
+          echo "archive=$ARCHIVE"     >> "$GITHUB_OUTPUT"
+          echo "name=$NAME"           >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE"         >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+      # ─── Package ────────────────────────────────────────────────────────
+      # 7z is pre-installed on the runner and faster than Compress-Archive.
+      # We archive the entire deploy directory (exe + Qt DLLs + plugins).
+      - name: Create .7z archive
         run: |
-          Compress-Archive `
-            -Path "$env:DEPLOY_DIR\*" `
-            -DestinationPath "${{ github.workspace }}\$env:ZIP_NAME" `
-            -Force
+          7z a -t7z -mx=9 `
+            "${{ github.workspace }}\${{ steps.meta.outputs.archive }}" `
+            "$env:DEPLOY_DIR\*"
 
-      - name: Copy versioned standalone EXE
-        # Upload the bare executable as a separate asset so users can grab
-        # just the .exe without unpacking the ZIP.  Note: the .exe requires
-        # the Qt DLLs from the ZIP to run; this asset is a convenience copy
-        # for environments where Qt is already deployed.
-        run: |
-          Copy-Item `
-            -Path "$env:DEPLOY_DIR\$env:EXE_NAME" `
-            -Destination "${{ github.workspace }}\$env:EXE_ASSET_NAME"
-
-      # ── 8. Upload artifacts (every run, including manual) ─────────────────
-      - name: Upload ZIP artifact
-        uses: actions/upload-artifact@v4
+      # ─── Upload artifact ────────────────────────────────────────────────
+      - uses: actions/upload-artifact@v4
         with:
-          name: rpgmtranslate-qt-windows-x64-zip
-          path: ${{ github.workspace }}\${{ env.ZIP_NAME }}
+          name: ${{ steps.meta.outputs.name }}
+          path: ${{ github.workspace }}\${{ steps.meta.outputs.archive }}
           if-no-files-found: error
 
-      - name: Upload EXE artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rpgmtranslate-qt-windows-x64-exe
-          path: ${{ github.workspace }}\${{ env.EXE_ASSET_NAME }}
-          if-no-files-found: error
+      # ─── GitHub Release ─────────────────────────────────────────────────
+      - name: Remove stale "latest" release
+        if: steps.meta.outputs.tag == 'latest'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes 2>/dev/null || true
+          git push origin :refs/tags/latest 2>/dev/null || true
 
-      # ── 9. Publish GitHub Release ─────────────────────────────────────────
-      # Triggered when:
-      #   • a v* tag is pushed, OR
-      #   • workflow_dispatch is run with a non-empty "version" input.
-      # Both the ZIP (full deployment) and the bare EXE are attached as assets.
-      - name: Publish GitHub Release
-        if: >
-          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.RELEASE_VERSION }}
-          files: |
-            ${{ github.workspace }}\${{ env.ZIP_NAME }}
-            ${{ github.workspace }}\${{ env.EXE_ASSET_NAME }}
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.title }}
+          prerelease: ${{ steps.meta.outputs.prerelease == 'true' }}
           generate_release_notes: true
+          make_latest: ${{ steps.meta.outputs.tag != 'latest' && steps.meta.outputs.prerelease != 'true' }}
+          files: ${{ github.workspace }}/${{ steps.meta.outputs.archive }}
