@@ -1222,6 +1222,11 @@
                         <string>Zhipu</string>
                        </property>
                       </item>
+                      <item>
+                       <property name="text">
+                        <string>Lingva</string>
+                       </property>
+                      </item>
                      </widget>
                     </item>
                    </layout>

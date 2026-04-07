@@ -205,6 +205,12 @@ SettingsWindow::SettingsWindow(
                 ));
                 ui->baseURLInput->setEnabled(false);
                 break;
+            case TranslationEndpoint::Lingva:
+                setDefaultBaseURL(endpoint);
+                ui->typeDescriptionLabel->setText(tr(
+                    "Lingva Translate. Free, open-source frontend for Google Translate. Set the base URL to a Lingva instance (e.g. https://lingva.ml). No API key required. Model selection, system prompts, temperature, and token limits do not apply to this endpoint."
+                ));
+                break;
             default:
                 setDefaultBaseURL(endpoint);
 
@@ -405,7 +411,8 @@ SettingsWindow::SettingsWindow(
         const auto endpoint =
             TranslationEndpoint(ui->typeSelect->currentIndex());
 
-        if (endpoint <= TranslationEndpoint::DeepL) {
+        if (endpoint <= TranslationEndpoint::DeepL ||
+            endpoint == TranslationEndpoint::Lingva) {
             // TODO: Check somehow?
             return;
         }
@@ -768,6 +775,9 @@ void SettingsWindow::setDefaultBaseURL(const TranslationEndpoint endpoint) {
             break;
         case TranslationEndpoint::Zhipu:
             ui->baseURLInput->setText(u"https://open.bigmodel.cn"_s);
+            break;
+        case TranslationEndpoint::Lingva:
+            ui->baseURLInput->setText(u"https://lingva.ml"_s);
             break;
     }
 }
