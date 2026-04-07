@@ -208,7 +208,7 @@ SettingsWindow::SettingsWindow(
             case TranslationEndpoint::Lingva:
                 setDefaultBaseURL(endpoint);
                 ui->typeDescriptionLabel->setText(tr(
-                    "Lingva Translate. Free, open-source frontend for Google Translate. Set the base URL to a Lingva instance (e.g. https://lingva.ml). No API key required. Configured options don't work with this endpoint."
+                    "Lingva Translate. Free, open-source frontend for Google Translate. Set the base URL to a Lingva instance (e.g. https://lingva.ml). No API key required. Model selection, system prompts, temperature, and token limits do not apply to this endpoint."
                 ));
                 break;
             default:
