@@ -118,8 +118,8 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          # qtsvg is required by CMakeLists.txt (Qt6::Svg)
-          modules: qtsvg
+          # Qt6::Svg (used by CMakeLists.txt) is bundled in the base Qt 6
+          # installation and is NOT a separately installable aqt module.
 
       - name: Resolve Qt installation root for CMake
         run: |
