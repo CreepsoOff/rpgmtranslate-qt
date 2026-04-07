@@ -17,7 +17,9 @@ if (LINUX)
 endif()
 
 # Set standards for C and C++
-set(CMAKE_C_STANDARD 23)
+# MSVC supports C up to C17 (/std:c17); C23 is not yet supported and causes
+# FindThreads (and therefore Qt6's cmake config) to fail on Windows.
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
