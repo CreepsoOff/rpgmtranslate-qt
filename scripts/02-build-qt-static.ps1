@@ -11,8 +11,9 @@
       1. Téléchargement de l'archive sources Qt (avec barre de progression).
       2. Extraction via 7-Zip.
       3. Détection automatique des flags configure.bat : les flags qui
-         n'existent pas dans la version choisie (ex. -no-emojisegmenter
-         absent sur Qt >= 6.9) sont silencieusement omis.
+         n'existent pas dans la version choisie (ex. -emojisegmenter
+         absent sur Qt < 6.9, -feature-c++2b disponible depuis Qt 6.7)
+         sont silencieusement omis.
       4. Écriture d'un .bat temporaire pour invoquer configure sans
          problèmes de guillemets PowerShell→cmd.
       5. Build Ninja (Release, parallèle).
@@ -280,15 +281,13 @@ $helpText = (cmd /c "cd /d `"$qtSrcDir`" && configure.bat -help 2>&1") -join "`n
 
 function Has-Flag([string]$F) { $helpText -match [regex]::Escape($F) }
 
-$hasCxxStdSpace  = Has-Flag '-c++std c++23'      # Qt <= 6.8 : deux tokens séparés
-$hasCxxStdEqual  = Has-Flag '-c++std=c++23'      # forme alternative
-$hasNoEmoji      = Has-Flag '-no-emojisegmenter' # absent Qt >= 6.9
+$hasCxxStd23     = Has-Flag '-feature-c++2b'     # Qt 6 : active C++23 pour Qt lui-même (AUTODETECT OFF)
+$hasNoEmoji      = Has-Flag '-emojisegmenter'    # présent depuis Qt 6.9 (Qt affiche la forme positive)
 $hasLtcg         = Has-Flag '-ltcg'
 $hasDisableDepr  = Has-Flag '-disable-deprecated-up-to'
 $hasSubmodules   = Has-Flag '-submodules'
 
-Write-Host "  -c++std c++23 (espace)     : $(if ($hasCxxStdSpace)  {'OUI'} else {'non (ignoré)'})"
-Write-Host "  -c++std=c++23 (=)          : $(if ($hasCxxStdEqual)  {'OUI'} else {'non (ignoré)'})"
+Write-Host "  -feature-c++2b (C++23)     : $(if ($hasCxxStd23)    {'OUI'} else {'non (ignoré)'})"
 Write-Host "  -no-emojisegmenter         : $(if ($hasNoEmoji)      {'OUI'} else {'non (ignoré)'})"
 Write-Host "  -ltcg                      : $(if ($hasLtcg)         {'OUI'} else {'non (ignoré)'})"
 Write-Host "  -disable-deprecated-up-to  : $(if ($hasDisableDepr)  {'OUI'} else {'non (ignoré)'})"
@@ -338,11 +337,7 @@ if ($hasSubmodules) {
     $cfgArgs.AddRange([string[]]@('-submodules', 'qtbase,qtsvg,qtimageformats,qttools'))
 }
 
-if ($hasCxxStdSpace) {
-    $cfgArgs.AddRange([string[]]@('-c++std', 'c++23'))
-} elseif ($hasCxxStdEqual) {
-    $cfgArgs.Add('-c++std=c++23')
-}
+if ($hasCxxStd23) { $cfgArgs.Add('-feature-c++2b') }
 
 if ($hasNoEmoji)     { $cfgArgs.Add('-no-emojisegmenter') }
 if ($hasLtcg)        { $cfgArgs.Add('-ltcg') }
