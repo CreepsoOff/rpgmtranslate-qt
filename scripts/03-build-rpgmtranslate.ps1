@@ -192,9 +192,10 @@ if (-not $QtRoot) {
         $found = Get-ChildItem $c -Filter 'Qt6Config.cmake' -Recurse -Depth 6 -ErrorAction SilentlyContinue |
             Select-Object -First 1
         if ($found) {
-            # Remonter 3 niveaux : Qt6Config.cmake → Qt6 → cmake → lib → root
-            $QtRoot = $found.FullName |
-                Split-Path | Split-Path | Split-Path | Split-Path
+            # Structure attendue : <QtRoot>\lib\cmake\Qt6\Qt6Config.cmake
+            # $found.DirectoryName pointe sur Qt6\ → remonter 3 niveaux.
+            $QtRoot = [System.IO.Path]::GetFullPath(
+                (Join-Path $found.DirectoryName '..\..\..'))
             break
         }
     }
