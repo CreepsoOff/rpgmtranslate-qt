@@ -17,7 +17,12 @@ permissions:
 
 jobs:
   windows-static:
-    runs-on: windows-2022
+    # windows-2025-vs2026 ships LLVM 20, Rust 1.94+, CMake 4.x, Ninja, and
+    # VCPKG_INSTALLATION_ROOT=C:\vcpkg. VS 2026 Build Tools are required
+    # because C23 support was only added in that toolchain version.
+    # Note: this image is currently in beta and is not covered by the
+    # GitHub Actions SLA.
+    runs-on: windows-2025-vs2026
     env:
       QT_SERIES: "6.11"
       QT_ROOT: ${{ runner.temp }}\qt-static
@@ -69,15 +74,31 @@ jobs:
 
       - name: Resolve and bootstrap vcpkg
         run: |
+          # Resolution order:
+          # 1. Repo-vendored vcpkg in workspace (rare, but respected if present)
+          # 2. VCPKG_ROOT env var (explicit user/CI override)
+          # 3. VCPKG_INSTALLATION_ROOT env var (windows-2025-vs2026 sets this to C:\vcpkg)
+          # 4. C:\vcpkg explicit literal (maintainer default path, Windows 11)
+          # 5. Bootstrap fallback in workspace
           $candidateFromWorkspace = Join-Path $env:GITHUB_WORKSPACE "vcpkg"
-          $candidateFromEnv = $env:VCPKG_INSTALLATION_ROOT
           $resolvedVcpkg = $null
 
-          if (Test-Path (Join-Path $candidateFromWorkspace "scripts/buildsystems/vcpkg.cmake")) {
-            $resolvedVcpkg = $candidateFromWorkspace
-          } elseif ($candidateFromEnv -and (Test-Path (Join-Path $candidateFromEnv "scripts/buildsystems/vcpkg.cmake"))) {
-            $resolvedVcpkg = $candidateFromEnv
-          } else {
+          $candidates = @(
+            $candidateFromWorkspace,
+            $env:VCPKG_ROOT,
+            $env:VCPKG_INSTALLATION_ROOT,
+            "C:\vcpkg"
+          )
+
+          foreach ($candidate in $candidates) {
+            if ($candidate -and (Test-Path (Join-Path $candidate "scripts/buildsystems/vcpkg.cmake"))) {
+              $resolvedVcpkg = $candidate
+              break
+            }
+          }
+
+          if (-not $resolvedVcpkg) {
+            Write-Host "No pre-installed vcpkg found; bootstrapping in workspace..."
             if (-not (Test-Path $candidateFromWorkspace)) {
               git clone https://github.com/microsoft/vcpkg.git $candidateFromWorkspace
             }
@@ -118,7 +139,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.QT_INSTALL_DIR }}
-          key: windows-2022-qt-${{ env.QT_SERIES }}-static-clang-msvc
+          key: windows-2025-vs2026-qt-${{ env.QT_SERIES }}-static-clang-msvc
 
       - name: Build Qt from source (static, clang-cl)
         if: steps.qt-cache.outputs.cache-hit != 'true'
