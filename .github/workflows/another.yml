@@ -1,0 +1,340 @@
+# Windows Static Build Workflow
+#
+# Builds a self-contained Windows .exe using:
+#   - Qt 6.11.x (built from source, statically linked)
+#   - clang-cl on MSVC x64 ABI
+#   - CMake 3.25+ with Ninja
+#   - Rust (stable, ≥ 1.85 for edition 2024) via Corrosion
+#   - LibArchive via vcpkg (x64-windows-static)
+#   - cbindgen 0.29.2
+#   - rapidhash.h (single-header)
+#
+# NOTE: docs/build.md lists Qt submodules as qtbase,qtimageformats,qttools.
+# CMakeLists.txt requires Qt6::Svg, so qtsvg is added here – that is the
+# authoritative source.
+
+name: Windows Static Build Another
+
+on:
+  push:
+    branches: [main, "copilot/**"]
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION:     "6.11.0"
+  QT_INSTALL_DIR: C:\Qt\static
+  # C:\vcpkg is the standard runner-provided path on windows-2022; used as
+  # the cache key anchor.  The resolve step bootstraps if it is absent.
+  VCPKG_ROOT:     C:\vcpkg
+
+jobs:
+  build-windows-static:
+    name: Build (Windows · Qt ${{ env.QT_VERSION }} static · clang-cl)
+    runs-on: windows-2022
+    timeout-minutes: 240          # Qt source build can take ~2 h on cold cache
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. MSVC x64 environment ───────────────────────────────────────────
+      # Provides the Windows SDK, MSVC headers, lib paths and the MSVC linker
+      # that clang-cl needs on Windows.
+      - name: Initialize MSVC x64 environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ── 3. Verify clang-cl availability ───────────────────────────────────
+      - name: Verify clang-cl
+        shell: pwsh
+        run: |
+          # VS 2022 ships its own clang-cl; LLVM also installs one.
+          $candidates = @(
+            "clang-cl",   # already on PATH
+            "C:\Program Files\LLVM\bin\clang-cl.exe",
+            "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin\clang-cl.exe",
+            "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin\clang-cl.exe"
+          )
+          $found = $null
+          foreach ($c in $candidates) {
+            $cmd = Get-Command $c -ErrorAction SilentlyContinue
+            if ($cmd) { $found = $cmd.Source; break }
+          }
+          if (-not $found) {
+            Write-Host "clang-cl not in standard locations – installing LLVM via Chocolatey..."
+            choco install llvm --yes --no-progress
+            $found = "C:\Program Files\LLVM\bin\clang-cl.exe"
+            "C:\Program Files\LLVM\bin" | Out-File $env:GITHUB_PATH -Append
+          }
+          Write-Host "[OK] clang-cl: $found"
+          & clang-cl --version
+
+      # ── 4. Rust toolchain ─────────────────────────────────────────────────
+      # edition = "2024" in Cargo.toml requires Rust ≥ 1.85.
+      # rust/.cargo/config.toml adds target-feature=+aes,+sse2.
+      - name: Setup Rust (stable, x86_64-pc-windows-msvc)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key:          cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: cargo-
+
+      # ── 5. cbindgen ───────────────────────────────────────────────────────
+      # CMakeLists.txt calls cbindgen as an add_custom_command; it must be on
+      # PATH at cmake --build time.  Version 0.29.2 is pinned in Cargo.toml.
+      - name: Install cbindgen 0.29.2
+        shell: pwsh
+        run: |
+          cargo install cbindgen --version 0.29.2 --locked
+          $cb = (Get-Command cbindgen).Source
+          Write-Host "[OK] cbindgen found at: $cb"
+          cbindgen --version
+
+      # ── 6. Resolve vcpkg ──────────────────────────────────────────────────
+      # No vcpkg.json manifest in this repo; classic-mode install is used.
+      # windows-2022 provides vcpkg at C:\vcpkg (VCPKG_INSTALLATION_ROOT).
+      # If absent, bootstrap to the same deterministic path.
+      - name: Resolve vcpkg
+        shell: pwsh
+        run: |
+          $root = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $root) { $root = $env:VCPKG_ROOT }
+
+          if ($root -and (Test-Path "$root\vcpkg.exe")) {
+            Write-Host "Using runner-provided vcpkg at: $root"
+          } else {
+            $root = "C:\vcpkg"
+            Write-Host "Runner vcpkg not found. Bootstrapping at: $root"
+            git clone --depth 1 https://github.com/microsoft/vcpkg.git "$root"
+            & "$root\bootstrap-vcpkg.bat" -disableMetrics
+          }
+
+          Write-Host "Resolved vcpkg path: $root"
+          & "$root\vcpkg.exe" version
+          # Ensure VCPKG_ROOT is consistent for all subsequent steps
+          "VCPKG_ROOT=$root" | Out-File $env:GITHUB_ENV -Append
+
+      - name: Cache vcpkg installed packages
+        uses: actions/cache@v4
+        with:
+          path:         ${{ env.VCPKG_ROOT }}\installed
+          key:          vcpkg-x64-windows-static-libarchive-v2
+          restore-keys: vcpkg-x64-windows-static-
+
+      # ── 7. LibArchive (x64-windows-static) ───────────────────────────────
+      # CMakeLists.txt: find_package(LibArchive REQUIRED)
+      # CMAKE_MSVC_RUNTIME_LIBRARY = MultiThreaded (/MT) so we must use the
+      # static triplet to avoid CRT mismatch.
+      - name: Install LibArchive via vcpkg (x64-windows-static)
+        shell: pwsh
+        run: |
+          Write-Host "Installing libarchive:x64-windows-static via vcpkg..."
+          & "$env:VCPKG_ROOT\vcpkg.exe" install "libarchive:x64-windows-static"
+          Write-Host "[OK] libarchive installed"
+
+      # ── 8. rapidhash single header ────────────────────────────────────────
+      # CMakeLists.txt: find_path(RAPIDHASH_INCLUDE_DIRS "rapidhash.h")
+      - name: Download rapidhash.h
+        shell: pwsh
+        run: |
+          $dir = "${{ github.workspace }}\rapidhash"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Invoke-WebRequest `
+            -Uri     "https://raw.githubusercontent.com/Nicoshev/rapidhash/master/rapidhash.h" `
+            -OutFile "$dir\rapidhash.h"
+          if (-not (Test-Path "$dir\rapidhash.h")) {
+            Write-Error "rapidhash.h download failed"; exit 1
+          }
+          Write-Host "[OK] rapidhash.h at: $dir"
+          "RAPIDHASH_DIR=$dir" | Out-File $env:GITHUB_ENV -Append
+
+      # ── 9. Qt static build (with caching) ─────────────────────────────────
+      - name: Cache Qt ${{ env.QT_VERSION }} static install
+        id: cache-qt
+        uses: actions/cache@v4
+        with:
+          path:         ${{ env.QT_INSTALL_DIR }}
+          key:          qt-static-win-${{ env.QT_VERSION }}-clang-msvc-v3
+          restore-keys: qt-static-win-${{ env.QT_VERSION }}-
+
+      - name: Download Qt ${{ env.QT_VERSION }} source
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ver = "${{ env.QT_VERSION }}"
+          $mm  = ($ver -split '\.')[0..1] -join '.'
+          $url = "https://download.qt.io/official_releases/qt/$mm/$ver/single/qt-everywhere-src-$ver.tar.xz"
+          Write-Host "Downloading Qt source: $url"
+          Invoke-WebRequest -Uri $url -OutFile qt-src.tar.xz -TimeoutSec 1800
+          Write-Host "Extracting..."
+          tar -xf qt-src.tar.xz
+          Rename-Item "qt-everywhere-src-$ver" "qt-src"
+          Write-Host "[OK] Qt source ready at: qt-src\"
+
+      # Build Qt statically with clang-cl.
+      # Compared to docs/build.md the only deliberate change is adding
+      # 'qtsvg' to -submodules: CMakeLists.txt links Qt6::Svg so the
+      # installed tree must contain lib/cmake/Qt6Svg/.
+      - name: Build Qt ${{ env.QT_VERSION }} static (clang-cl)
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          @echo on
+          set CC=clang-cl
+          set CXX=clang-cl
+          cd qt-src
+          call configure.bat ^
+            -prefix "%QT_INSTALL_DIR%" ^
+            -c++std c++23 ^
+            -platform win32-clang-msvc ^
+            -ltcg ^
+            -static ^
+            -static-runtime ^
+            -release ^
+            -nomake tests ^
+            -nomake examples ^
+            -nomake benchmarks ^
+            -no-feature-testlib ^
+            -no-opengl ^
+            -qt-harfbuzz ^
+            -qt-freetype ^
+            -qt-libpng ^
+            -qt-libjpeg ^
+            -qt-webp ^
+            -qt-tiff ^
+            -qt-zlib ^
+            -qt-doubleconversion ^
+            -qt-pcre ^
+            -no-emojisegmenter ^
+            -no-icu ^
+            -no-gif ^
+            -gui ^
+            -widgets ^
+            -submodules qtbase,qtimageformats,qttools,qtsvg ^
+            -qpa windows ^
+            -disable-deprecated-up-to 0x068200 ^
+            -- ^
+            -DQT_SKIP_EXCEPTIONS=ON ^
+            -DCMAKE_C_COMPILER=clang-cl ^
+            -DCMAKE_CXX_COMPILER=clang-cl
+          if errorlevel 1 (echo [FAIL] Qt configure failed & exit /b 1)
+          cmake --build . --parallel %NUMBER_OF_PROCESSORS%
+          if errorlevel 1 (echo [FAIL] Qt cmake --build failed & exit /b 1)
+          cmake --install .
+          if errorlevel 1 (echo [FAIL] Qt cmake --install failed & exit /b 1)
+          echo [OK] Qt static build and install complete
+
+      # ── 10. Verify Qt installation ────────────────────────────────────────
+      - name: Verify Qt installation
+        shell: pwsh
+        run: |
+          $qt = "${{ env.QT_INSTALL_DIR }}"
+          $ok = $true
+          foreach ($item in @(
+            @{ P = "$qt\bin\qmake.exe";             L = "qmake.exe"             },
+            @{ P = "$qt\lib\cmake\Qt6Svg";           L = "Qt6Svg"               },
+            @{ P = "$qt\lib\cmake\Qt6LinguistTools"; L = "Qt6LinguistTools"     }
+          )) {
+            if (Test-Path $item.P) {
+              Write-Host "[OK] $($item.L) present"
+            } else {
+              Write-Error "[FAIL] $($item.L) NOT found at: $($item.P)"
+              $ok = $false
+            }
+          }
+          if (-not $ok) { exit 1 }
+          & "$qt\bin\qmake.exe" -version
+
+      # ── 11. Configure rpgmtranslate ───────────────────────────────────────
+      - name: Configure rpgmtranslate
+        shell: pwsh
+        run: |
+          $qt    = "${{ env.QT_INSTALL_DIR }}"
+          $vcpkg = $env:VCPKG_ROOT
+          $rh    = $env:RAPIDHASH_DIR
+
+          # Locate clang-cl (already verified to exist in step 3)
+          $cc = (Get-Command clang-cl -ErrorAction SilentlyContinue)?.Source
+          if (-not $cc) { $cc = "C:\Program Files\LLVM\bin\clang-cl.exe" }
+          Write-Host "Compiler: $cc"
+          Write-Host "Qt prefix: $qt"
+          Write-Host "vcpkg root: $vcpkg"
+          Write-Host "rapidhash: $rh"
+
+          cmake -S . -B build `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER="$cc" `
+            -DCMAKE_CXX_COMPILER="$cc" `
+            "-DCMAKE_PREFIX_PATH=$qt;$vcpkg\installed\x64-windows-static" `
+            "-DRAPIDHASH_INCLUDE_DIRS=$rh" `
+            "-DCMAKE_TOOLCHAIN_FILE=$vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static
+
+      # ── 12. Build Release ─────────────────────────────────────────────────
+      - name: Build Release
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      # ── 13. Verify executable ─────────────────────────────────────────────
+      # configure.ps1 always uses -B build; CMAKE_RUNTIME_OUTPUT_DIRECTORY is
+      # target/bin (relative to build dir) → build/target/bin/rpgmtranslate.exe
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exe = "build\target\bin\rpgmtranslate.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "[FAIL] Executable not found at: $exe"
+            if (Test-Path "build") {
+              Write-Host "Contents of build\target (if present):"
+              Get-ChildItem -Recurse "build\target" -ErrorAction SilentlyContinue
+            }
+            exit 1
+          }
+          Write-Host "[OK] Executable found: $exe"
+          Get-Item $exe | Select-Object FullName, Length, LastWriteTime
+
+      # ── 14. Dependency check (must not contain Qt6*.dll) ──────────────────
+      - name: Inspect dependencies (expect no Qt6*.dll)
+        shell: pwsh
+        run: |
+          $exe = "build\target\bin\rpgmtranslate.exe"
+          Write-Host "=== dumpbin /dependents $exe ==="
+          $out = & dumpbin /dependents "$exe"
+          $out | Write-Host
+          $qtDlls = $out | Select-String -Pattern "Qt6.*\.dll" -CaseSensitive:$false
+          if ($qtDlls) {
+            Write-Error "[FAIL] Qt DLL dependencies detected (build is NOT fully static):"
+            $qtDlls | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          }
+          Write-Host "[OK] No Qt6*.dll dependencies – executable is statically linked"
+
+      # ── 15. Upload artifact ───────────────────────────────────────────────
+      - name: Upload rpgmtranslate.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name:              rpgmtranslate-windows-static
+          path:              build\target\bin\rpgmtranslate.exe
+          if-no-files-found: error
