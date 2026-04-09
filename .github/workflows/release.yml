@@ -156,6 +156,16 @@ jobs:
           }
           Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT  [OK]"
 
+      # Cache the entire vcpkg directory (repo checkout + compiled exe + installed
+      # packages) so subsequent runs skip the clone, bootstrap, and install steps.
+      # The bootstrap and install steps below are already idempotent, so a partial
+      # cache restore still works correctly.
+      - name: Cache vcpkg (repo, exe, installed packages)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_ROOT }}
+          key: vcpkg-x64-windows-static-libarchive-v1
+
       - name: Bootstrap vcpkg at ${{ env.VCPKG_ROOT }}
         shell: pwsh
         run: |
@@ -190,12 +200,6 @@ jobs:
           Write-Host "vcpkg resolved and bootstrapped at $env:VCPKG_ROOT"
           Write-Host "vcpkg version: $ver"
 
-      - name: Cache vcpkg installed packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.VCPKG_ROOT }}/installed
-          key: vcpkg-libarchive-x64-windows-static-v1
-
       - name: Install LibArchive (x64-windows-static, /MT)
         shell: pwsh
         run: |
@@ -207,11 +211,12 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path $env:RAPIDHASH_DIR | Out-Null
-          Invoke-WebRequest `
-            -Uri "https://raw.githubusercontent.com/Nicoshev/rapidhash/master/rapidhash.h" `
-            -OutFile "$env:RAPIDHASH_DIR\rapidhash.h"
-          if (-not (Test-Path "$env:RAPIDHASH_DIR\rapidhash.h")) {
-            throw "rapidhash.h download failed"
+          $dest = "$env:RAPIDHASH_DIR\rapidhash.h"
+          $url  = "https://raw.githubusercontent.com/Nicoshev/rapidhash/master/rapidhash.h"
+          Invoke-WebRequest -Uri $url -OutFile $dest `
+            -MaximumRetryCount 3 -RetryIntervalSec 5
+          if (-not (Test-Path $dest)) {
+            throw "rapidhash.h download failed (file not found after download)"
           }
           Write-Host "rapidhash.h downloaded to $env:RAPIDHASH_DIR"
 
