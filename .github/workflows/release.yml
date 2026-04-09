@@ -83,15 +83,29 @@ jobs:
           $candidateFromWorkspace = Join-Path $env:GITHUB_WORKSPACE "vcpkg"
           $resolvedVcpkg = $null
 
+          # ilammy/msvc-dev-cmd overwrites VCPKG_ROOT with the VS-bundled
+          # vcpkg, which is manifest-mode-only (no classic mode support).
+          # VCPKG_INSTALLATION_ROOT points to the runner's standalone vcpkg
+          # (C:\vcpkg) and supports classic mode, so it is checked first.
           $candidates = @(
             $candidateFromWorkspace,
-            $env:VCPKG_ROOT,
             $env:VCPKG_INSTALLATION_ROOT,
+            $env:VCPKG_ROOT,
             "C:\vcpkg"
           )
 
           foreach ($candidate in $candidates) {
-            if ($candidate -and (Test-Path (Join-Path $candidate "scripts/buildsystems/vcpkg.cmake"))) {
+            if (-not $candidate) { continue }
+            # Skip the VS-bundled vcpkg: it lives under VSINSTALLDIR and only
+            # supports manifest mode, not classic mode (vcpkg install <pkg>).
+            if ($env:VSINSTALLDIR -and
+                $candidate.TrimEnd('\').StartsWith(
+                  $env:VSINSTALLDIR.TrimEnd('\'),
+                  [System.StringComparison]::OrdinalIgnoreCase)) {
+              Write-Host "Skipping VS-bundled (manifest-only) vcpkg at: $candidate"
+              continue
+            }
+            if (Test-Path (Join-Path $candidate "scripts/buildsystems/vcpkg.cmake")) {
               $resolvedVcpkg = $candidate
               break
             }
