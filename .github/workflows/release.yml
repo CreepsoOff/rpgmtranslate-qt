@@ -12,6 +12,9 @@ on:
       - "translations/**"
       - "resources/**"
 
+permissions:
+  contents: read
+
 jobs:
   windows-static:
     runs-on: windows-2022
@@ -105,7 +108,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.QT_INSTALL_DIR }}
-          key: windows-qt-${{ env.QT_VERSION }}-static-clang-msvc-${{ runner.os }}
+          key: windows-2022-qt-${{ env.QT_VERSION }}-static-clang-msvc
 
       - name: Build Qt from source (static, clang-cl)
         if: steps.qt-cache.outputs.cache-hit != 'true'
@@ -123,7 +126,40 @@ jobs:
           tar -xf $archive -C $srcRoot --strip-components=1
 
           Push-Location $buildRoot
-          cmd /c "$srcRoot\configure.bat -prefix $env:QT_INSTALL_DIR -platform win32-clang-msvc -c++std c++23 -ltcg -static -static-runtime -release -nomake tests -nomake examples -nomake benchmarks -no-feature-testlib -no-opengl -qt-harfbuzz -qt-freetype -qt-libpng -qt-libjpeg -qt-webp -qt-tiff -qt-zlib -qt-doubleconversion -qt-pcre -no-emojisegmenter -no-icu -no-gif -gui -widgets -submodules qtbase,qtimageformats,qtsvg,qttools -qpa windows -disable-deprecated-up-to 0x068200 QT_SKIP_EXCEPTIONS=ON"
+          $qtArgs = @(
+            "-prefix `"$env:QT_INSTALL_DIR`""
+            "-platform win32-clang-msvc"
+            "-c++std c++23"
+            "-ltcg"
+            "-static"
+            "-static-runtime"
+            "-release"
+            "-nomake tests"
+            "-nomake examples"
+            "-nomake benchmarks"
+            "-no-feature-testlib"
+            "-no-opengl"
+            "-qt-harfbuzz"
+            "-qt-freetype"
+            "-qt-libpng"
+            "-qt-libjpeg"
+            "-qt-webp"
+            "-qt-tiff"
+            "-qt-zlib"
+            "-qt-doubleconversion"
+            "-qt-pcre"
+            "-no-emojisegmenter"
+            "-no-icu"
+            "-no-gif"
+            "-gui"
+            "-widgets"
+            "-submodules qtbase,qtimageformats,qtsvg,qttools"
+            "-qpa windows"
+            "-disable-deprecated-up-to 0x068200"
+            "QT_SKIP_EXCEPTIONS=ON"
+          )
+          $configureCmd = "`"$srcRoot\configure.bat`" $($qtArgs -join ' ')"
+          cmd /c $configureCmd
           cmake --build . --parallel
           cmake --install .
           Pop-Location
