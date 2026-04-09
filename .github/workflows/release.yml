@@ -39,7 +39,7 @@ env:
 
 jobs:
   build-windows-static:
-    name: Build (Windows · Qt ${{ env.QT_VERSION }} static · clang-cl)
+    name: Build (Windows · Qt 6.11.0 static · clang-cl)
     runs-on: windows-2022
     timeout-minutes: 240          # Qt source build can take ~2 h on cold cache
 
