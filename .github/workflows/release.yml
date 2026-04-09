@@ -25,10 +25,10 @@ jobs:
     runs-on: windows-2025-vs2026
     env:
       QT_SERIES: "6.11"
-      QT_ROOT: ${{ runner.temp }}\qt-static
-      QT_INSTALL_DIR: ${{ runner.temp }}\qt-static\install\6.11\clang-static
+      QT_ROOT: ${{ github.workspace }}\_qt-static
+      QT_INSTALL_DIR: ${{ github.workspace }}\_qt-static\install\6.11\clang-static
       VCPKG_DIR: ${{ github.workspace }}\vcpkg
-      RAPIDHASH_DIR: ${{ runner.temp }}\rapidhash
+      RAPIDHASH_DIR: ${{ github.workspace }}\_rapidhash
       BUILD_DIR: ${{ github.workspace }}\build
       EXE_PATH: ${{ github.workspace }}\build\target\bin\rpgmtranslate.exe
     defaults:
