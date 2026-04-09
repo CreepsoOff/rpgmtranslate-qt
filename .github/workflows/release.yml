@@ -19,9 +19,9 @@ jobs:
   windows-static:
     runs-on: windows-2022
     env:
-      QT_VERSION: "6.11.0"
+      QT_SERIES: "6.11"
       QT_ROOT: ${{ runner.temp }}\qt-static
-      QT_INSTALL_DIR: ${{ runner.temp }}\qt-static\install\6.11.0\clang-static
+      QT_INSTALL_DIR: ${{ runner.temp }}\qt-static\install\6.11\clang-static
       VCPKG_DIR: ${{ github.workspace }}\vcpkg
       RAPIDHASH_DIR: ${{ runner.temp }}\rapidhash
       BUILD_DIR: ${{ github.workspace }}\build
@@ -118,19 +118,39 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.QT_INSTALL_DIR }}
-          key: windows-2022-qt-${{ env.QT_VERSION }}-static-clang-msvc
+          key: windows-2022-qt-${{ env.QT_SERIES }}-static-clang-msvc
 
       - name: Build Qt from source (static, clang-cl)
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
-          $srcRoot = Join-Path $env:QT_ROOT "src\$env:QT_VERSION"
-          $buildRoot = Join-Path $env:QT_ROOT "build\$env:QT_VERSION\clang-static"
+          $candidateVersions = @("6.11.3", "6.11.2", "6.11.1", "6.11.0")
+          $selectedVersion = $null
+          $url = $null
+          foreach ($candidate in $candidateVersions) {
+            $candidateUrl = "https://download.qt.io/official_releases/qt/$env:QT_SERIES/$candidate/single/qt-everywhere-src-$candidate.tar.xz"
+            try {
+              Invoke-WebRequest -Uri $candidateUrl -Method Head -TimeoutSec 30 | Out-Null
+              $selectedVersion = $candidate
+              $url = $candidateUrl
+              break
+            } catch {
+            }
+          }
+
+          if (-not $selectedVersion) {
+            throw "Unable to resolve a downloadable Qt $env:QT_SERIES.x source archive."
+          }
+
+          Write-Host "Resolved Qt source version: $selectedVersion"
+          "QT_VERSION=$selectedVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $srcRoot = Join-Path $env:QT_ROOT "src\$selectedVersion"
+          $buildRoot = Join-Path $env:QT_ROOT "build\$selectedVersion\clang-static"
           New-Item -ItemType Directory -Path $srcRoot -Force | Out-Null
           New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
           New-Item -ItemType Directory -Path $env:QT_INSTALL_DIR -Force | Out-Null
 
-          $archive = Join-Path $env:RUNNER_TEMP "qt-everywhere-src-$env:QT_VERSION.tar.xz"
-          $url = "https://download.qt.io/official_releases/qt/6.11/$env:QT_VERSION/single/qt-everywhere-src-$env:QT_VERSION.tar.xz"
+          $archive = Join-Path $env:RUNNER_TEMP "qt-everywhere-src-$selectedVersion.tar.xz"
           Invoke-WebRequest -Uri $url -OutFile $archive
 
           tar -xf $archive -C $srcRoot --strip-components=1
@@ -165,7 +185,7 @@ jobs:
             "-widgets"
             "-submodules qtbase,qtimageformats,qtsvg,qttools"
             "-qpa windows"
-            "-disable-deprecated-up-to 0x068200"
+            "-disable-deprecated-up-to 0x060800"
             "QT_SKIP_EXCEPTIONS=ON"
           )
           $configureCmd = "`"$srcRoot\configure.bat`" $($qtArgs -join ' ')"
