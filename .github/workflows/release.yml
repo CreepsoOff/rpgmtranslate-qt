@@ -23,6 +23,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -38,7 +41,7 @@ jobs:
   build-windows-static:
     name: Build (Windows · Qt ${{ env.QT_VERSION }} static · clang-cl)
     runs-on: windows-2022
-    timeout-minutes: 360          # Qt source build can take ~2 h on cold cache
+    timeout-minutes: 240          # Qt source build can take ~2 h on cold cache
 
     steps:
       # ── 1. Checkout ───────────────────────────────────────────────────────
