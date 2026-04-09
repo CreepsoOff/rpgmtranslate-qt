@@ -118,7 +118,22 @@ TranslationTable::TranslationTable(QWidget* const parent) :
             return;
         }
 
-        if (!model_->item(index.row(), 1).editable()) {
+        const auto targetColumn = [this, index]() -> i32 {
+            if (index.column() > 0 &&
+                model_->item(index.row(), index.column()).editable()) {
+                return index.column();
+            }
+
+            for (const u8 column : range<u8>(1, model_->columnCount())) {
+                if (model_->item(index.row(), column).editable()) {
+                    return column;
+                }
+            }
+
+            return -1;
+        }();
+
+        if (targetColumn < 0) {
             return;
         }
 
@@ -128,6 +143,8 @@ TranslationTable::TranslationTable(QWidget* const parent) :
             menu->addAction(tr("Remove Row"));
         const QAction* const bookmarkRowAction =
             menu->addAction(tr("Bookmark Row"));
+        const QAction* const copyOriginalToTranslationAction =
+            menu->addAction(tr("Copy Original To Translation"));
 
         const QAction* const selectedAction = menu->exec(QCursor::pos());
         delete menu;
@@ -137,6 +154,18 @@ TranslationTable::TranslationTable(QWidget* const parent) :
         } else if (selectedAction == bookmarkRowAction) {
             model_->insertRow(index.row(), { BOOKMARK_COMMENT.toString() });
             emit bookmarked(index.row() + 1);
+        } else if (selectedAction == copyOriginalToTranslationAction) {
+            const QString source = model_
+                                       ->data(
+                                           model_->index(index.row(), 0),
+                                           Qt::EditRole
+                                       )
+                                       .toString();
+            model_->setData(
+                model_->index(index.row(), targetColumn),
+                source,
+                Qt::EditRole
+            );
         }
     }
     );
@@ -322,6 +351,13 @@ void TranslationTable::keyPressEvent(QKeyEvent* const event) {
         return;
     }
 
+    if (event->key() == Qt::Key_Delete && state() != QTableView::EditingState) {
+        const u32 count = clearSelectedTranslations();
+        emit multilineAction(MultilineAction::Delete, count);
+        event->accept();
+        return;
+    }
+
     QTableView::keyPressEvent(event);
 }
 
@@ -342,6 +378,12 @@ auto TranslationTable::copy() -> u32 {
     QStringList rowData;
 
     for (const QModelIndex& index : indexes) {
+        if (!index.isValid() || index.row() < 0 || index.column() < 0 ||
+            index.row() >= model_->rowCount(index.parent()) ||
+            index.column() >= model_->columnCount(index.parent())) {
+            continue;
+        }
+
         QString cellData = model()->data(index, Qt::EditRole).toString();
         cellData.replace("\\"_L1, "\\\\"_L1);
         cellData.replace("\n"_L1, "\\n"_L1);
@@ -368,6 +410,16 @@ auto TranslationTable::cut() -> u32 {
     u32 cut = 0;
 
     for (const QModelIndex& index : indexes) {
+        if (!index.isValid() || index.row() < 0 || index.column() < 0 ||
+            index.row() >= model_->rowCount(index.parent()) ||
+            index.column() >= model_->columnCount(index.parent())) {
+            continue;
+        }
+
+        if ((model_->flags(index) & Qt::ItemIsEditable) == 0) {
+            continue;
+        }
+
         if (!model_->data(index, Qt::EditRole).toString().isEmpty()) {
             cut++;
         }
@@ -381,6 +433,14 @@ auto TranslationTable::cut() -> u32 {
 auto TranslationTable::paste() -> u32 {
     const QModelIndexList indexes = selectionModel()->selectedIndexes();
     if (indexes.isEmpty()) {
+        return 0;
+    }
+
+    if (!indexes.front().isValid() || indexes.front().row() < 0 ||
+        indexes.front().column() < 0 ||
+        indexes.front().row() >= model_->rowCount(indexes.front().parent()) ||
+        indexes.front().column() >=
+            model_->columnCount(indexes.front().parent())) {
         return 0;
     }
 
@@ -421,4 +481,36 @@ auto TranslationTable::paste() -> u32 {
     }
 
     return pasted;
+}
+
+auto TranslationTable::clearSelectedTranslations() -> u32 {
+    const QModelIndexList indexes = selectionModel()->selectedIndexes();
+
+    if (indexes.isEmpty()) {
+        return 0;
+    }
+
+    u32 cleared = 0;
+
+    for (const QModelIndex& index : indexes) {
+        if (!index.isValid() || index.row() < 0 || index.column() < 0 ||
+            index.row() >= model_->rowCount(index.parent()) ||
+            index.column() >= model_->columnCount(index.parent())) {
+            continue;
+        }
+
+        if ((model_->flags(index) & Qt::ItemIsEditable) == 0) {
+            continue;
+        }
+
+        if (model_->data(index, Qt::EditRole).toString().isEmpty()) {
+            continue;
+        }
+
+        if (model_->setData(index, QString(), Qt::EditRole)) {
+            cleared++;
+        }
+    }
+
+    return cleared;
 }

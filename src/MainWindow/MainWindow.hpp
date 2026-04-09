@@ -11,6 +11,7 @@
 #include <QLocale>
 #include <QMainWindow>
 #include <QTimer>
+#include <QElapsedTimer>
 
 QT_BEGIN_NAMESPACE
 
@@ -89,6 +90,9 @@ class MainWindow final : public QMainWindow {
     shared_ptr<ProjectSettings> projectSettings;
 
     QTimer backupTimer;
+    QTimer batchTranslateHeartbeatTimer;
+    QElapsedTimer batchTranslateElapsedTimer;
+    bool batchTranslateInFlight = false;
 
     // UI
     Ui::mainWindow* const ui;

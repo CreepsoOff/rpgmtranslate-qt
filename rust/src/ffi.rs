@@ -8,7 +8,10 @@ use std::{
     ffi::c_char,
     fs::read_to_string,
     path::Path,
-    sync::{LazyLock, OnceLock},
+    sync::{
+        LazyLock, OnceLock,
+        atomic::{AtomicU32, Ordering},
+    },
 };
 use tokio::runtime::{Builder, Runtime};
 
@@ -502,7 +505,8 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
             filenames.len,
         );
 
-        let mut ordered_filenames: Vec<&str> = Vec::with_capacity(filenames.len());
+        let mut ordered_filenames: Vec<&str> =
+            Vec::with_capacity(filenames.len());
         let mut files: HashMap<&str, Vec<String>> =
             HashMap::with_capacity(filenames.len());
 
@@ -838,6 +842,8 @@ pub extern "C" fn rpgm_get_detected_lang(out_string: *mut FFIString) {
 type LogCallback = extern "C" fn(level: u8, str: FFIString);
 
 static LOG_CALLBACK: OnceLock<LogCallback> = OnceLock::new();
+static RETRY_LOG_COUNT: AtomicU32 = AtomicU32::new(0);
+static CONNECT_LOG_COUNT: AtomicU32 = AtomicU32::new(0);
 
 struct FFILogger;
 
@@ -847,17 +853,48 @@ impl Log for FFILogger {
     }
 
     fn log(&self, record: &Record) {
+        // Keep network activity feedback, but throttle noisy reqwest internals.
+        let reqwest_internal = record.target() == "reqwest::retry"
+            || record.target() == "reqwest::connect";
+
+        if record.target() == "reqwest::retry" {
+            let count = RETRY_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+            if count % 25 != 1 {
+                return;
+            }
+        } else if record.target() == "reqwest::connect" {
+            let count = CONNECT_LOG_COUNT.fetch_add(1, Ordering::Relaxed) + 1;
+            if count % 10 != 1 {
+                return;
+            }
+        }
+
         let Some(cb) = LOG_CALLBACK.get() else { return };
 
-        let text = format!("[{}] {}", record.target(), record.args());
+        let mut text = format!("[{}] {}", record.target(), record.args());
+        const MAX_LOG_CHARS: usize = 2048;
+        if text.chars().count() > MAX_LOG_CHARS {
+            text = text.chars().take(MAX_LOG_CHARS).collect::<String>()
+                + " ...[truncated]";
+        }
 
-        cb(
-            record.level() as u8,
-            FFIString {
-                ptr: text.as_ptr().cast::<std::ffi::c_char>(),
-                len: text.len(),
-            },
-        );
+        let mut level = match record.level() {
+            log::Level::Error => 0,
+            log::Level::Warn => 1,
+            log::Level::Info => 2,
+            log::Level::Debug | log::Level::Trace => 3,
+        };
+
+        // Release builds can drop qDebug output. Promote throttled reqwest internals
+        // to INFO so users still see network heartbeat during long batch requests.
+        if reqwest_internal && level >= 3 {
+            level = 2;
+        }
+
+        cb(level, FFIString {
+            ptr: text.as_ptr().cast::<std::ffi::c_char>(),
+            len: text.len(),
+        });
     }
 
     fn flush(&self) {}

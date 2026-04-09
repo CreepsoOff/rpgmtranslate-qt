@@ -38,6 +38,7 @@ constexpr QLatin1StringView JSON_EXTENSION = ".json"_L1;
 constexpr QLatin1StringView COMMENT_SUFFIX = " -->"_L1;
 constexpr QLatin1StringView COMMENT_PREFIX = "<!--"_L1;
 constexpr QLatin1StringView BOOKMARK_COMMENT = "<!-- BOOKMARK -->"_L1;
+constexpr QLatin1StringView CONTINUE_COMMENT = "<!-- CONTINUE -->"_L1;
 constexpr QLatin1StringView ID_COMMENT = "<!-- ID -->"_L1;
 constexpr QLatin1StringView NAME_COMMENT = "<!-- NAME -->"_L1;
 

@@ -229,6 +229,10 @@ struct Selected {
     [[nodiscard]] auto filenames(const EngineType engineType) const
         -> vector<FilenameArray> {
         vector<FilenameArray> filenames;
+        // FileFlags are bit flags up to bit 12 (Scripts). Do not use
+        // magic_enum::enum_count here, because values above 128 are not
+        // reflected by default and would silently drop flags like System/Scripts.
+        constexpr u16 FILE_FLAGS_BIT_COUNT = 13;
 
         u16 mapFileCount = 0;
 
@@ -252,8 +256,7 @@ struct Selected {
 
         u16 flagFileCount = 0;
 
-        for (u16 flagIdx :
-             range<u16>(0, magic_enum::enum_count<FileFlags>() - 2)) {
+        for (u16 flagIdx : range<u16>(0, FILE_FLAGS_BIT_COUNT)) {
             const auto flag = FileFlags(1 << flagIdx);
 
             if ((flags & flag) != 0 && flag != Map) {
@@ -289,8 +292,7 @@ struct Selected {
             ++dense;
         }
 
-        for (u16 flagIdx :
-             range<u16>(1, magic_enum::enum_count<FileFlags>() - 2)) {
+        for (u16 flagIdx : range<u16>(1, FILE_FLAGS_BIT_COUNT)) {
             const auto flag = FileFlags(1 << flagIdx);
 
             if ((flags & flag) == 0) {

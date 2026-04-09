@@ -49,7 +49,8 @@ class TranslationTable final : public QTableView {
     enum class MultilineAction : u8 {
         Cut,
         Copy,
-        Paste
+        Paste,
+        Delete
     };
 
     explicit TranslationTable(QWidget* parent = nullptr);
@@ -80,6 +81,7 @@ class TranslationTable final : public QTableView {
     auto cut() -> u32;
     auto copy() -> u32;
     auto paste() -> u32;
+    auto clearSelectedTranslations() -> u32;
 
    signals:
     void bookmarked(u32 row);

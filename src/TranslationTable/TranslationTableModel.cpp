@@ -6,6 +6,28 @@
 TranslationTableModel::TranslationTableModel(QObject* const parent) :
     QAbstractItemModel(parent) {}
 
+namespace {
+[[nodiscard]] auto isInBounds(
+    const QModelIndex& index,
+    const QList<array<QString, TranslationTableModel::MAX_COLUMNS>>& rows,
+    const i32 columnCount
+) -> bool {
+    if (!index.isValid()) {
+        return false;
+    }
+
+    if (index.row() < 0 || index.column() < 0) {
+        return false;
+    }
+
+    if (index.row() >= rows.size() || index.column() >= columnCount) {
+        return false;
+    }
+
+    return true;
+}
+}  // namespace
+
 auto TranslationTableModel::rowCount(const QModelIndex& parent) const -> i32 {
     return i32(rows.size());
 }
@@ -35,7 +57,7 @@ TranslationTableModel::parent(const QModelIndex& /* index */) const
 
 auto TranslationTableModel::data(const QModelIndex& index, const i32 role) const
     -> QVariant {
-    if (!index.isValid()) {
+    if (!isInBounds(index, rows, colCount)) {
         return {};
     }
 
@@ -89,7 +111,7 @@ auto TranslationTableModel::setHeaderData(
 
 auto TranslationTableModel::flags(const QModelIndex& index) const
     -> Qt::ItemFlags {
-    if (!index.isValid()) {
+    if (!isInBounds(index, rows, colCount)) {
         return Qt::NoItemFlags;
     }
 
@@ -110,7 +132,7 @@ auto TranslationTableModel::setData(
     const QVariant& value,
     const i32 role
 ) -> bool {
-    if (!index.isValid()) {
+    if (!isInBounds(index, rows, colCount)) {
         return false;
     }
 

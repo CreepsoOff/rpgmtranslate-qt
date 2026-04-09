@@ -112,6 +112,23 @@ MainWindow::MainWindow(QWidget* const parent) :
 
     taskWorker->start();
 
+    batchTranslateHeartbeatTimer.setInterval(1000);
+    connect(
+        &batchTranslateHeartbeatTimer,
+        &QTimer::timeout,
+        this,
+        [this] -> void {
+        if (!batchTranslateInFlight) {
+            return;
+        }
+
+        const i64 elapsedSeconds = i64(batchTranslateElapsedTimer.elapsed()) / 1000;
+        ui->taskLabel->setText(
+            tr("Sending translation request... (%1s)").arg(elapsedSeconds)
+        );
+    }
+    );
+
     connect(
         &ffiLogger,
         &FFILogger::logReceived,
@@ -765,6 +782,10 @@ MainWindow::MainWindow(QWidget* const parent) :
         );
 
         if (action == BatchAction::Translate) {
+            batchTranslateInFlight = true;
+            batchTranslateElapsedTimer.start();
+            batchTranslateHeartbeatTimer.start();
+
             connect(
                 taskWorker,
                 &TaskWorker::translateFinished,
@@ -774,6 +795,9 @@ MainWindow::MainWindow(QWidget* const parent) :
                         std::tuple<ByteBuffer, ByteBuffer>,
                         FFIString>& results
                 ) -> void {
+                batchTranslateInFlight = false;
+                batchTranslateHeartbeatTimer.stop();
+
                 if (!results) {
                     const auto error = results.error();
 
@@ -909,6 +933,7 @@ MainWindow::MainWindow(QWidget* const parent) :
 
                     isize lineStart = 0;
                     bool hasLines = false;
+                    u32 missingEntriesCount = 0;
 
                     while (lineStart < size) {
                         isize lineEnd = lineStart;
@@ -923,6 +948,11 @@ MainWindow::MainWindow(QWidget* const parent) :
                                 ++progress,
                                 total
                             );
+                            if ((progress & 0xFFu) == 0) {
+                                QApplication::processEvents(
+                                    QEventLoop::ExcludeUserInputEvents
+                                );
+                            }
 
                             if (hasLines) {
                                 replaced.push_back(u'\n');
@@ -959,20 +989,15 @@ MainWindow::MainWindow(QWidget* const parent) :
                                 }
 
                                 if (stringsIterator == filteredStrings.end()) {
-                                    qWarning()
-                                        << "Missing translated entry for file "
-                                        << filename
-                                        << " while applying batch result. "
-                                        << "Keeping original line.";
+                                    missingEntriesCount++;
                                     replaced.append(linePtr, lineSize);
                                     continue;
                                 }
 
-                                const auto translated = *stringsIterator++;
-
                                 if (malformed) {
                                     replaced.append(linePtr, lineSize);
                                 } else {
+                                    const auto translated = *stringsIterator++;
                                     const usize fieldEnd = lineView.find(
                                         SEPARATOR_UTF8,
                                         fieldStart
@@ -995,6 +1020,13 @@ MainWindow::MainWindow(QWidget* const parent) :
                         }
 
                         lineStart = lineEnd + 1;
+                    }
+
+                    if (missingEntriesCount != 0) {
+                        qWarning()
+                            << "Missing translated entries for file "_L1
+                            << filename << ": "_L1 << missingEntriesCount
+                            << ". Keeping original lines."_L1;
                     }
 
                     const u16 tabIndex = ui->tabPanel->tabIndex(filename);
@@ -2188,6 +2220,9 @@ void MainWindow::checkForUpdates(bool manual) {
                 break;
             case TranslationTable::MultilineAction::Paste:
                 ui->statusBar->showMessage(tr("%1 rows pasted.").arg(count));
+                break;
+            case TranslationTable::MultilineAction::Delete:
+                ui->statusBar->showMessage(tr("%1 rows cleared.").arg(count));
                 break;
         }
     }

@@ -12,6 +12,7 @@
 #include <QFileInfo>
 #include <QModelIndex>
 #include <QPainter>
+#include <QSignalBlocker>
 #include <QSyntaxHighlighter>
 #include <QTimer>
 
@@ -51,9 +52,20 @@ auto TranslationTableDelegate::createEditor(
         auto* const that = const_cast<TranslationTableDelegate*>(this);
         auto* const tableView = as<TranslationTable*>(that->parent());
         if (auto* const model = tableView->model()) {
+            if (index.row() < 0 || index.column() < 0 ||
+                index.row() >= model->rowCount(index.parent()) ||
+                index.column() >= model->columnCount(index.parent())) {
+                return;
+            }
+
+            const QString text = editor->toPlainText();
+            const QString current =
+                model->data(index, Qt::EditRole).toString();
             // Keep model in sync while typing so closing the app does not lose
             // the current editor contents.
-            model->setData(index, editor->toPlainText(), Qt::EditRole);
+            if (current != text) {
+                model->setData(index, text, Qt::EditRole);
+            }
         }
         emit that->sizeHintChanged(index);
         emit that->textChanged(editor->toPlainText());
@@ -65,6 +77,9 @@ auto TranslationTableDelegate::createEditor(
         activeInput = nullptr;
     });
 
+    auto* const that = const_cast<TranslationTableDelegate*>(this);
+    emit that->inputFocused();
+
     return editor;
 }
 
@@ -72,16 +87,28 @@ void TranslationTableDelegate::setEditorData(
     QWidget* const editor,
     const QModelIndex& index
 ) const {
+    if (!index.isValid()) {
+        return;
+    }
+
+    if (index.row() < 0 || index.column() < 0 ||
+        index.row() >= index.model()->rowCount(index.parent()) ||
+        index.column() >= index.model()->columnCount(index.parent())) {
+        return;
+    }
+
     const QString value = index.model()->data(index, Qt::EditRole).toString();
     auto* const textEdit = as<TranslationInput*>(editor);
-    textEdit->setPlainText(value);
+    const bool changed = textEdit->toPlainText() != value;
 
-    auto* const that = const_cast<TranslationTableDelegate*>(this);
-    emit that->inputFocused();
-
-    QTextCursor cursor = textEdit->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    textEdit->setTextCursor(cursor);
+    // Prevent model->view feedback loops while we keep edits synchronized.
+    if (changed) {
+        const QSignalBlocker blocker(textEdit);
+        textEdit->setPlainText(value);
+        QTextCursor cursor = textEdit->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        textEdit->setTextCursor(cursor);
+    }
 }
 
 void TranslationTableDelegate::setModelData(
@@ -89,6 +116,16 @@ void TranslationTableDelegate::setModelData(
     QAbstractItemModel* const model,
     const QModelIndex& index
 ) const {
+    if (!index.isValid()) {
+        return;
+    }
+
+    if (index.row() < 0 || index.column() < 0 ||
+        index.row() >= model->rowCount(index.parent()) ||
+        index.column() >= model->columnCount(index.parent())) {
+        return;
+    }
+
     const auto* const textEdit = as<TranslationInput*>(editor);
     model->setData(index, textEdit->toPlainText(), Qt::EditRole);
 }

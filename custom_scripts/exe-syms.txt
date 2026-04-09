@@ -1,0 +1,4 @@
+
+F:\Desktop\rpgmtranslate-qt\build\target\bin\rpgmtranslate.exe:	file format coff-x86-64
+
+SYMBOL TABLE:

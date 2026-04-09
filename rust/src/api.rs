@@ -28,7 +28,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::{Arc, LazyLock, Mutex},
-    time::Instant,
+    time::{Duration, Instant},
 };
 use thiserror::Error;
 use tiktoken_rs::o200k_base;
@@ -142,6 +142,8 @@ pub(crate) enum Error {
     LanguageTool(#[from] languagetool_rust::error::Error),
     #[error(transparent)]
     AssetDecrypt(#[from] rpgm_asset_decrypter_lib::Error),
+    #[error("{0}")]
+    GoogleNew(String),
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
 }
@@ -221,8 +223,48 @@ pub(crate) fn write(
         flags.contains(BaseFlags::DisableCustomProcessing),
     );
 
+    // Some projects legitimately do not have every translation file
+    // (for example `armors.txt` when source data is effectively null).
+    // Skip missing translation files automatically instead of failing Write.
+    let mut effective_skip_files = skip_files;
+    let mut auto_skipped = Vec::<&'static str>::new();
+    let mut auto_skip = |flag: FileFlags, filename: &'static str| {
+        if !translation_path.join(filename).exists() {
+            effective_skip_files |= flag;
+            auto_skipped.push(filename);
+        }
+    };
+
+    auto_skip(FileFlags::Map, "maps.txt");
+    auto_skip(FileFlags::Actors, "actors.txt");
+    auto_skip(FileFlags::Armors, "armors.txt");
+    auto_skip(FileFlags::Classes, "classes.txt");
+    auto_skip(FileFlags::CommonEvents, "commonevents.txt");
+    auto_skip(FileFlags::Enemies, "enemies.txt");
+    auto_skip(FileFlags::Items, "items.txt");
+    auto_skip(FileFlags::Skills, "skills.txt");
+    auto_skip(FileFlags::States, "states.txt");
+    auto_skip(FileFlags::Troops, "troops.txt");
+    auto_skip(FileFlags::Weapons, "weapons.txt");
+    auto_skip(FileFlags::System, "system.txt");
+
+    // Engine-dependent naming for scripts/plugins.
+    if !translation_path.join("scripts.txt").exists()
+        && !translation_path.join("plugins.txt").exists()
+    {
+        effective_skip_files |= FileFlags::Scripts;
+        auto_skipped.push("scripts/plugins.txt");
+    }
+
+    if !auto_skipped.is_empty() {
+        info!(
+            "Write: auto-skipping missing translation file(s): {}",
+            auto_skipped.join(", ")
+        );
+    }
+
     let mut writer = WriterBuilder::new()
-        .with_files(FileFlags::all() & !skip_files)
+        .with_files(FileFlags::all() & !effective_skip_files)
         .with_flags(flags)
         .game_type(game_type)
         .duplicate_mode(duplicate_mode)
@@ -417,6 +459,280 @@ fn parse_google_mobile_translation(body: &str) -> Option<String> {
     Some(text)
 }
 
+const GOOGLE_NEW_DIRECT_MAX_CHARS: usize = 5_000;
+const GOOGLE_NEW_CHUNK_MAX_CHARS: usize = 1_500;
+const GOOGLE_NEW_MAX_CHUNKS: usize = 128;
+
+fn is_google_mobile_endpoint(base_url: &str) -> bool {
+    let Some(url) = reqwest::Url::parse(base_url).ok() else {
+        return false;
+    };
+
+    let is_translate_google = url
+        .host_str()
+        .map(|host| host.eq_ignore_ascii_case("translate.google.com"))
+        .unwrap_or(false);
+    let normalized_path = url.path().trim_end_matches('/');
+
+    is_translate_google && normalized_path.eq_ignore_ascii_case("/m")
+}
+
+fn split_text_for_google_new(
+    text: &str,
+    max_chars: usize,
+    max_chunks: usize,
+) -> Option<Vec<String>> {
+    if text.is_empty() {
+        return Some(vec![String::new()]);
+    }
+
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    let mut current_chars = 0usize;
+
+    let push_piece = |piece: &str, chunks: &mut Vec<String>| -> bool {
+        let mut piece_buf = String::new();
+        let mut piece_chars = 0usize;
+
+        for ch in piece.chars() {
+            piece_buf.push(ch);
+            piece_chars += 1;
+
+            if piece_chars >= max_chars {
+                chunks.push(std::mem::take(&mut piece_buf));
+                piece_chars = 0;
+
+                if chunks.len() > max_chunks {
+                    return false;
+                }
+            }
+        }
+
+        if !piece_buf.is_empty() {
+            chunks.push(piece_buf);
+        }
+
+        chunks.len() <= max_chunks
+    };
+
+    for segment in text.split_inclusive('\n') {
+        let segment_chars = segment.chars().count();
+
+        if segment_chars > max_chars {
+            if !current.is_empty() {
+                chunks.push(std::mem::take(&mut current));
+                current_chars = 0;
+
+                if chunks.len() > max_chunks {
+                    return None;
+                }
+            }
+
+            if !push_piece(segment, &mut chunks) {
+                return None;
+            }
+
+            continue;
+        }
+
+        if current_chars + segment_chars > max_chars {
+            chunks.push(std::mem::take(&mut current));
+            current_chars = 0;
+
+            if chunks.len() > max_chunks {
+                return None;
+            }
+        }
+
+        current.push_str(segment);
+        current_chars += segment_chars;
+    }
+
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+
+    (chunks.len() <= max_chunks).then_some(chunks)
+}
+
+fn build_google_new_client() -> Result<reqwest::Client, Error> {
+    Ok(reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(40))
+        .pool_max_idle_per_host(4)
+        .build()?)
+}
+
+async fn request_google_new_once(
+    client: &reqwest::Client,
+    base_url: &str,
+    source_language: &str,
+    translation_language: &str,
+    text: &str,
+    use_post: bool,
+    is_mobile_endpoint: bool,
+) -> Result<String, Error> {
+    let source_language = if source_language.is_empty() {
+        "auto"
+    } else {
+        source_language
+    };
+
+    let request = if use_post {
+        if is_mobile_endpoint {
+            client.post(base_url).form(&[
+                ("sl", source_language),
+                ("tl", translation_language),
+                ("q", text),
+            ])
+        } else {
+            client.post(base_url).form(&[
+                ("client", "dict-chrome-ex"),
+                ("sl", source_language),
+                ("tl", translation_language),
+                ("dt", "t"),
+                ("q", text),
+            ])
+        }
+    } else if is_mobile_endpoint {
+        client.get(base_url).query(&[
+            ("sl", source_language),
+            ("tl", translation_language),
+            ("q", text),
+        ])
+    } else {
+        client.get(base_url).query(&[
+            ("client", "dict-chrome-ex"),
+            ("sl", source_language),
+            ("tl", translation_language),
+            ("dt", "t"),
+            ("q", text),
+        ])
+    };
+
+    let body = request
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        )
+        .header(
+            "Accept",
+            if is_mobile_endpoint {
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            } else {
+                "application/json,text/plain,*/*"
+            },
+        )
+        .header("Referer", "https://translate.google.com/")
+        .send()
+        .await?;
+
+    let status = body.status();
+    let text_body = body.text().await?;
+
+    if !status.is_success() {
+        return Err(Error::GoogleNew(format!(
+            "Google NEW request failed with HTTP status {}.",
+            status.as_u16()
+        )));
+    }
+
+    if let Ok(json) = serde_json::from_str::<Value>(&text_body) {
+        return Ok(parse_google_new_json_translation(&json));
+    }
+
+    if let Some(parsed) = parse_google_mobile_translation(&text_body) {
+        return Ok(parsed);
+    }
+
+    Err(Error::GoogleNew(
+        "Google NEW returned an unsupported response format.".to_string(),
+    ))
+}
+
+async fn translate_google_new_chunked(
+    client: &reqwest::Client,
+    base_url: &str,
+    source_language: &str,
+    translation_language: &str,
+    text: &str,
+    is_mobile_endpoint: bool,
+) -> Result<String, Error> {
+    let Some(chunks) = split_text_for_google_new(
+        text,
+        GOOGLE_NEW_CHUNK_MAX_CHARS,
+        GOOGLE_NEW_MAX_CHUNKS,
+    ) else {
+        return Err(Error::GoogleNew(format!(
+            "Google NEW payload is too large ({} chars). Reduce batch size or use another provider for this file.",
+            text.chars().count()
+        )));
+    };
+
+    debug!(
+        "Google NEW chunking enabled: {} chunks for {} chars",
+        chunks.len(),
+        text.chars().count()
+    );
+
+    let mut translated = String::new();
+    let total_chunks = chunks.len();
+
+    for (chunk_index, chunk) in chunks.into_iter().enumerate() {
+        if total_chunks > 1 {
+            info!(
+                "Google NEW chunk {}/{} ({} chars)",
+                chunk_index + 1,
+                total_chunks,
+                chunk.chars().count()
+            );
+        }
+
+        let translated_chunk = if is_mobile_endpoint {
+            request_google_new_once(
+                client,
+                base_url,
+                source_language,
+                translation_language,
+                &chunk,
+                false,
+                true,
+            )
+            .await?
+        } else {
+            match request_google_new_once(
+                client,
+                base_url,
+                source_language,
+                translation_language,
+                &chunk,
+                false,
+                false,
+            )
+            .await
+            {
+                Ok(value) => value,
+                Err(_) => {
+                    request_google_new_once(
+                        client,
+                        base_url,
+                        source_language,
+                        translation_language,
+                        &chunk,
+                        true,
+                        false,
+                    )
+                    .await?
+                }
+            }
+        };
+
+        translated.push_str(&translated_chunk);
+    }
+
+    Ok(translated)
+}
+
 async fn translate_google_new(
     client: &reqwest::Client,
     base_url: &str,
@@ -424,33 +740,78 @@ async fn translate_google_new(
     translation_language: &str,
     text: &str,
 ) -> Result<String, Error> {
-    let body = client
-        .get(base_url)
-        .query(&[
-            ("client", "dict-chrome-ex"),
-            ("sl", source_language),
-            ("tl", translation_language),
-            ("dt", "t"),
-            ("q", text),
-        ])
-        .header("User-Agent", "Mozilla/5.0")
-        .header("Accept", "application/json,text/plain,*/*")
-        .header("Referer", "https://translate.google.com/")
-        .send()
-        .await?
-        .error_for_status()?
-        .text()
-        .await?;
+    let is_mobile_endpoint = is_google_mobile_endpoint(base_url);
+    let input_chars = text.chars().count();
 
-    if let Ok(json) = serde_json::from_str::<Value>(&body) {
-        return Ok(parse_google_new_json_translation(&json));
+    if !is_mobile_endpoint && input_chars > GOOGLE_NEW_DIRECT_MAX_CHARS {
+        return translate_google_new_chunked(
+            client,
+            base_url,
+            source_language,
+            translation_language,
+            text,
+            is_mobile_endpoint,
+        )
+        .await;
     }
 
-    if let Some(text) = parse_google_mobile_translation(&body) {
-        return Ok(text);
-    }
+    let direct_result = if is_mobile_endpoint {
+        request_google_new_once(
+            client,
+            base_url,
+            source_language,
+            translation_language,
+            text,
+            false,
+            true,
+        )
+        .await
+    } else {
+        match request_google_new_once(
+            client,
+            base_url,
+            source_language,
+            translation_language,
+            text,
+            false,
+            false,
+        )
+        .await
+        {
+            Ok(result) => Ok(result),
+            Err(_) => {
+                request_google_new_once(
+                    client,
+                    base_url,
+                    source_language,
+                    translation_language,
+                    text,
+                    true,
+                    false,
+                )
+                .await
+            }
+        }
+    };
 
-    Ok(String::new())
+    match direct_result {
+        Ok(translated) => Ok(translated),
+        Err(error) => {
+            if !is_mobile_endpoint && input_chars > GOOGLE_NEW_CHUNK_MAX_CHARS {
+                translate_google_new_chunked(
+                    client,
+                    base_url,
+                    source_language,
+                    translation_language,
+                    text,
+                    is_mobile_endpoint,
+                )
+                .await
+            } else {
+                Err(error)
+            }
+        }
+    }
 }
 
 pub(crate) async fn translate_single<'a>(
@@ -500,7 +861,7 @@ pub(crate) async fn translate_single<'a>(
             let base_url = unsafe {
                 endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
             };
-            let client = reqwest::Client::new();
+            let client = build_google_new_client()?;
             translate_google_new(
                 &client,
                 base_url,
@@ -731,7 +1092,10 @@ pub(crate) async fn translate<'a>(
                     let encoded = urlencoding::encode(string);
                     let url = format!(
                         "{}/api/v1/{}/{}/{}",
-                        base_url, source_language, translation_language, encoded
+                        base_url,
+                        source_language,
+                        translation_language,
+                        encoded
                     );
                     let json: serde_json::Value =
                         client.get(&url).send().await?.json().await?;
@@ -748,7 +1112,7 @@ pub(crate) async fn translate<'a>(
             let base_url = unsafe {
                 endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
             };
-            let client = reqwest::Client::new();
+            let client = build_google_new_client()?;
 
             for (&file, strings) in &files {
                 response.insert(
@@ -756,8 +1120,21 @@ pub(crate) async fn translate<'a>(
                     Vec::with_capacity(strings.len()),
                 );
                 let response_file = response.get_mut(file).unwrap();
+                let total = strings.len();
+                let report_every = std::cmp::max(1, total / 10);
 
-                for string in strings {
+                info!("Google NEW batch: file '{}' ({} strings)", file, total);
+
+                for (idx, string) in strings.iter().enumerate() {
+                    if idx == 0 || (idx + 1) % report_every == 0 || idx + 1 == total {
+                        info!(
+                            "Google NEW progress '{}' {}/{}",
+                            file,
+                            idx + 1,
+                            total
+                        );
+                    }
+
                     let translated = translate_google_new(
                         &client,
                         base_url,
