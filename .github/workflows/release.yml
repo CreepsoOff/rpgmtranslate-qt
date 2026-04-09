@@ -83,6 +83,16 @@ jobs:
         with:
           arch: x64
 
+      # ilammy/msvc-dev-cmd overwrites VCPKG_ROOT with the VS-bundled vcpkg path
+      # (manifest-only mode, under VSINSTALLDIR\VC\vcpkg). Re-pin it to the
+      # CI-owned location before any subsequent step uses $env:VCPKG_ROOT.
+      - name: Re-pin VCPKG_ROOT to CI-owned location
+        shell: pwsh
+        run: |
+          $target = "C:\ci-vcpkg"
+          Write-Host "Overriding VCPKG_ROOT: was '$env:VCPKG_ROOT' → setting to '$target'"
+          "VCPKG_ROOT=$target" | Out-File -Append $env:GITHUB_ENV
+
       # ── clang-cl ─────────────────────────────────────────────────────────────
       # VS 2022 ships LLVM/clang-cl under VC/Tools/Llvm; add it to PATH.
       - name: Detect and add clang-cl to PATH
@@ -136,13 +146,47 @@ jobs:
           Write-Host "cbindgen found"
 
       # ── vcpkg (CI-owned, bootstrapped deterministically) ─────────────────────
+      # Sanity-check: refuse to use vcpkg under Program Files (would fail with
+      # permission errors and is never the right location in CI).
+      - name: Sanity-check VCPKG_ROOT is not under Program Files
+        shell: pwsh
+        run: |
+          if ($env:VCPKG_ROOT -match '^[A-Z]:\\Program Files') {
+            throw "Refusing to use vcpkg under Program Files. VCPKG_ROOT=$env:VCPKG_ROOT"
+          }
+          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT  [OK]"
+
       - name: Bootstrap vcpkg at ${{ env.VCPKG_ROOT }}
         shell: pwsh
         run: |
-          Write-Host "Bootstrapping vcpkg at $env:VCPKG_ROOT"
-          git clone --depth 1 https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
-          & "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics
-          $ver = (& "$env:VCPKG_ROOT\vcpkg.exe" version) -join ' '
+          Write-Host "Using VCPKG_ROOT=$env:VCPKG_ROOT"
+
+          # If the directory exists but has no .git, it is not a vcpkg checkout
+          # (e.g. a stale artifact or a path the runner pre-populated).  Remove it
+          # so the clone below starts from a clean slate.
+          if ((Test-Path $env:VCPKG_ROOT) -and
+              -not (Test-Path (Join-Path $env:VCPKG_ROOT ".git"))) {
+            Write-Host "Existing VCPKG_ROOT has no .git; removing stale directory..."
+            Remove-Item $env:VCPKG_ROOT -Recurse -Force
+          }
+
+          # Clone only when a valid git checkout is not already present.
+          if (-not (Test-Path (Join-Path $env:VCPKG_ROOT ".git"))) {
+            git clone --depth 1 https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          } else {
+            Write-Host "vcpkg repo already present; skipping clone"
+          }
+
+          # Bootstrap only when the compiled executable is missing (e.g. first run
+          # or after the repo was just cloned without a cached installed/ tree).
+          if (-not (Test-Path (Join-Path $env:VCPKG_ROOT "vcpkg.exe"))) {
+            & (Join-Path $env:VCPKG_ROOT "bootstrap-vcpkg.bat") -disableMetrics
+            if ($LASTEXITCODE -ne 0) {
+              throw "bootstrap-vcpkg.bat failed with exit code $LASTEXITCODE"
+            }
+          }
+
+          $ver = (& (Join-Path $env:VCPKG_ROOT "vcpkg.exe") version) -join ' '
           Write-Host "vcpkg resolved and bootstrapped at $env:VCPKG_ROOT"
           Write-Host "vcpkg version: $ver"
 
