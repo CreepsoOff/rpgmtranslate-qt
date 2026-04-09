@@ -141,7 +141,7 @@ jobs:
         run: |
           $includeDir = Join-Path $env:RAPIDHASH_DIR "include"
           New-Item -ItemType Directory -Path $includeDir -Force | Out-Null
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Nicoshev/rapidhash/9f2f5c6e9d0f6e0f0ff4f7ac7b5f4fd2720e8d5f/rapidhash.h" -OutFile (Join-Path $includeDir "rapidhash.h")
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Nicoshev/rapidhash/master/rapidhash.h" -OutFile (Join-Path $includeDir "rapidhash.h")
           if (-not (Test-Path (Join-Path $includeDir "rapidhash.h"))) {
             throw "rapidhash.h download failed."
           }
