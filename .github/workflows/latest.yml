@@ -1,0 +1,265 @@
+name: Windows Static Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "CMakeLists.txt"
+      - "configure.ps1"
+      - "rust/**"
+      - "src/**"
+      - "translations/**"
+      - "resources/**"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-static:
+    # windows-2025-vs2026 ships LLVM 20, Rust 1.94+, CMake 4.x, Ninja, and
+    # VCPKG_INSTALLATION_ROOT=C:\vcpkg. VS 2026 Build Tools are required
+    # because C23 support was only added in that toolchain version.
+    # Note: this image is currently in beta and is not covered by the
+    # GitHub Actions SLA.
+    runs-on: windows-2025-vs2026
+    env:
+      QT_SERIES: "6.11"
+      QT_ROOT: ${{ runner.temp }}\qt-static
+      QT_INSTALL_DIR: ${{ runner.temp }}\qt-static\install\6.11\clang-static
+      VCPKG_DIR: ${{ github.workspace }}\vcpkg
+      RAPIDHASH_DIR: ${{ runner.temp }}\rapidhash
+      BUILD_DIR: ${{ github.workspace }}\build
+      EXE_PATH: ${{ github.workspace }}\build\target\bin\rpgmtranslate.exe
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Verify clang-cl toolchain
+        run: |
+          $clang = Get-Command clang-cl -ErrorAction Stop
+          Write-Host "clang-cl found at: $($clang.Source)"
+          clang-cl --version
+          ninja --version
+          cmake --version
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cbindgen
+        run: |
+          $installedVersion = $null
+          try {
+            $installedVersion = (cbindgen --version) -replace '^cbindgen '
+          } catch {
+            $installedVersion = $null
+          }
+
+          if ($installedVersion -ne "0.29.2") {
+            cargo install --locked cbindgen --version 0.29.2
+          }
+
+          $cbindgen = Get-Command cbindgen -ErrorAction Stop
+          Write-Host "cbindgen found at: $($cbindgen.Source)"
+          cbindgen --version
+
+      - name: Resolve and bootstrap vcpkg
+        run: |
+          # Resolution order:
+          # 1. Repo-vendored vcpkg in workspace (rare, but respected if present)
+          # 2. VCPKG_ROOT env var (explicit user/CI override)
+          # 3. VCPKG_INSTALLATION_ROOT env var (windows-2025-vs2026 sets this to C:\vcpkg)
+          # 4. C:\vcpkg explicit literal (maintainer default path, Windows 11)
+          # 5. Bootstrap fallback in workspace
+          $candidateFromWorkspace = Join-Path $env:GITHUB_WORKSPACE "vcpkg"
+          $resolvedVcpkg = $null
+
+          $candidates = @(
+            $candidateFromWorkspace,
+            $env:VCPKG_ROOT,
+            $env:VCPKG_INSTALLATION_ROOT,
+            "C:\vcpkg"
+          )
+
+          foreach ($candidate in $candidates) {
+            if ($candidate -and (Test-Path (Join-Path $candidate "scripts/buildsystems/vcpkg.cmake"))) {
+              $resolvedVcpkg = $candidate
+              break
+            }
+          }
+
+          if (-not $resolvedVcpkg) {
+            Write-Host "No pre-installed vcpkg found; bootstrapping in workspace..."
+            if (-not (Test-Path $candidateFromWorkspace)) {
+              git clone https://github.com/microsoft/vcpkg.git $candidateFromWorkspace
+            }
+            & (Join-Path $candidateFromWorkspace "bootstrap-vcpkg.bat")
+            $resolvedVcpkg = $candidateFromWorkspace
+          }
+
+          $toolchain = Join-Path $resolvedVcpkg "scripts/buildsystems/vcpkg.cmake"
+          if (-not (Test-Path $toolchain)) {
+            throw "vcpkg toolchain file not found at $toolchain"
+          }
+
+          Write-Host "Resolved vcpkg path: $resolvedVcpkg"
+          Write-Host "Resolved vcpkg toolchain: $toolchain"
+          "VCPKG_ROOT=$resolvedVcpkg" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "VCPKG_TOOLCHAIN_FILE=$toolchain" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install vcpkg dependencies
+        run: |
+          & "$env:VCPKG_ROOT\vcpkg.exe" install libarchive:x64-windows-static
+          if (-not (Test-Path "$env:VCPKG_ROOT\installed\x64-windows-static\share\libarchive")) {
+            throw "LibArchive package files were not found in vcpkg static triplet."
+          }
+
+      - name: Download rapidhash header
+        run: |
+          $includeDir = Join-Path $env:RAPIDHASH_DIR "include"
+          New-Item -ItemType Directory -Path $includeDir -Force | Out-Null
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Nicoshev/rapidhash/9f2f5c6e9d0f6e0f0ff4f7ac7b5f4fd2720e8d5f/rapidhash.h" -OutFile (Join-Path $includeDir "rapidhash.h")
+          if (-not (Test-Path (Join-Path $includeDir "rapidhash.h"))) {
+            throw "rapidhash.h download failed."
+          }
+          "RAPIDHASH_INCLUDE_DIRS=$includeDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "rapidhash include dir: $includeDir"
+
+      - name: Cache static Qt install
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.QT_INSTALL_DIR }}
+          key: windows-2025-vs2026-qt-${{ env.QT_SERIES }}-static-clang-msvc
+
+      - name: Build Qt from source (static, clang-cl)
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          $candidateVersions = @("6.11.3", "6.11.2", "6.11.1", "6.11.0")
+          $selectedVersion = $null
+          $url = $null
+          foreach ($candidate in $candidateVersions) {
+            $candidateUrl = "https://download.qt.io/official_releases/qt/$env:QT_SERIES/$candidate/single/qt-everywhere-src-$candidate.tar.xz"
+            try {
+              Invoke-WebRequest -Uri $candidateUrl -Method Head -TimeoutSec 30 | Out-Null
+              $selectedVersion = $candidate
+              $url = $candidateUrl
+              break
+            } catch {
+            }
+          }
+
+          if (-not $selectedVersion) {
+            throw "Unable to resolve a downloadable Qt $env:QT_SERIES.x source archive."
+          }
+
+          Write-Host "Resolved Qt source version: $selectedVersion"
+          "QT_VERSION=$selectedVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $srcRoot = Join-Path $env:QT_ROOT "src\$selectedVersion"
+          $buildRoot = Join-Path $env:QT_ROOT "build\$selectedVersion\clang-static"
+          New-Item -ItemType Directory -Path $srcRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
+          New-Item -ItemType Directory -Path $env:QT_INSTALL_DIR -Force | Out-Null
+
+          $archive = Join-Path $env:RUNNER_TEMP "qt-everywhere-src-$selectedVersion.tar.xz"
+          Invoke-WebRequest -Uri $url -OutFile $archive
+
+          tar -xf $archive -C $srcRoot --strip-components=1
+
+          Push-Location $buildRoot
+          $qtArgs = @(
+            "-prefix `"$env:QT_INSTALL_DIR`""
+            "-platform win32-clang-msvc"
+            "-c++std c++23"
+            "-ltcg"
+            "-static"
+            "-static-runtime"
+            "-release"
+            "-nomake tests"
+            "-nomake examples"
+            "-nomake benchmarks"
+            "-no-feature-testlib"
+            "-no-opengl"
+            "-qt-harfbuzz"
+            "-qt-freetype"
+            "-qt-libpng"
+            "-qt-libjpeg"
+            "-qt-webp"
+            "-qt-tiff"
+            "-qt-zlib"
+            "-qt-doubleconversion"
+            "-qt-pcre"
+            "-no-emojisegmenter"
+            "-no-icu"
+            "-no-gif"
+            "-gui"
+            "-widgets"
+            "-submodules qtbase,qtimageformats,qtsvg,qttools"
+            "-qpa windows"
+            "-disable-deprecated-up-to 0x060800"
+            "QT_SKIP_EXCEPTIONS=ON"
+          )
+          $configureCmd = "`"$srcRoot\configure.bat`" $($qtArgs -join ' ')"
+          cmd /c $configureCmd
+          cmake --build . --parallel
+          cmake --install .
+          Pop-Location
+
+      - name: Validate static Qt install content
+        run: |
+          $qmake = Join-Path $env:QT_INSTALL_DIR "bin\qmake.exe"
+          $svgCmakeDir = Join-Path $env:QT_INSTALL_DIR "lib\cmake\Qt6Svg"
+          $linguistCmakeDir = Join-Path $env:QT_INSTALL_DIR "lib\cmake\Qt6LinguistTools"
+
+          if (-not (Test-Path $qmake)) { throw "Missing Qt qmake.exe at $qmake" }
+          if (-not (Test-Path $svgCmakeDir)) { throw "Missing Qt6Svg CMake package at $svgCmakeDir" }
+          if (-not (Test-Path $linguistCmakeDir)) { throw "Missing Qt6LinguistTools CMake package at $linguistCmakeDir" }
+
+          Write-Host "Qt static install validated: qmake.exe present."
+          Write-Host "Qt6Svg present: $svgCmakeDir"
+          Write-Host "Qt6LinguistTools present: $linguistCmakeDir"
+
+      - name: Configure project with repository configure.ps1
+        run: |
+          ./configure.ps1 `
+            -G=Ninja `
+            CMAKE_BUILD_TYPE=Release `
+            CMAKE_C_COMPILER=clang-cl `
+            CMAKE_CXX_COMPILER=clang-cl `
+            CMAKE_TOOLCHAIN_FILE="$env:VCPKG_TOOLCHAIN_FILE" `
+            VCPKG_TARGET_TRIPLET=x64-windows-static `
+            CMAKE_PREFIX_PATH="$env:QT_INSTALL_DIR" `
+            RAPIDHASH_INCLUDE_DIRS="$env:RAPIDHASH_INCLUDE_DIRS"
+
+      - name: Build Release executable
+        run: cmake --build build --parallel
+
+      - name: Verify final executable and inspect dependencies
+        run: |
+          if (-not (Test-Path $env:EXE_PATH)) {
+            throw "Final executable not found at expected path: $env:EXE_PATH"
+          }
+          Write-Host "Final executable found: $env:EXE_PATH"
+          $dependents = & dumpbin /dependents $env:EXE_PATH | Out-String
+          $dependents | Write-Host
+          if ($dependents -match 'Qt6.*\.dll') {
+            throw "Qt DLL dependency detected in final executable."
+          }
+          Write-Host "No Qt6*.dll dependency detected by dumpbin."
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpgmtranslate-windows-static-exe
+          path: ${{ env.EXE_PATH }}
+          if-no-files-found: error
