@@ -190,6 +190,16 @@ jobs:
 
           tar -xf $archive -C $srcRoot --strip-components=1
 
+          # Qt's win32-clang-msvc platform uses clang-cl to compile but
+          # expects MSVC's link.exe for linking. CMake derives the linker
+          # from the compiler's directory: if clang-cl is at
+          # C:\Program Files\LLVM\bin\clang-cl.exe, CMake automatically
+          # picks lld-link.exe from that same directory — PATH order is
+          # irrelevant. This causes unresolved symbols (e.g.
+          # QOperatingSystemVersion::current()) on windows-2025-vs2026.
+          # Fix: pass CMAKE_LINKER=link explicitly so Qt's cmake configure
+          # uses MSVC's link.exe. The MSVC bin dir is first on PATH (set by
+          # ilammy/msvc-dev-cmd), so 'link' resolves to the correct tool.
           Push-Location $buildRoot
           $qtArgs = @(
             "-prefix `"$env:QT_INSTALL_DIR`""
@@ -222,6 +232,7 @@ jobs:
             "-qpa windows"
             "-disable-deprecated-up-to 0x060800"
             "QT_SKIP_EXCEPTIONS=ON"
+            "CMAKE_LINKER=link"
           )
           $configureCmd = "`"$srcRoot\configure.bat`" $($qtArgs -join ' ')"
           cmd /c $configureCmd
