@@ -169,6 +169,7 @@ pub enum TranslationEndpoint {
     Xinference,
     Zhipu,
     Lingva,
+    GoogleNew,
 }
 
 impl Default for TranslationEndpoint {
@@ -311,7 +312,8 @@ pub(crate) async fn get_models(
         TranslationEndpoint::Google
         | TranslationEndpoint::Yandex
         | TranslationEndpoint::DeepL
-        | TranslationEndpoint::Lingva => unreachable!(),
+        | TranslationEndpoint::Lingva
+        | TranslationEndpoint::GoogleNew => unreachable!(),
         TranslationEndpoint::OpenAI
         | TranslationEndpoint::Longcat
         | TranslationEndpoint::Moonshot
@@ -362,6 +364,95 @@ pub(crate) async fn get_models(
     })
 }
 
+fn parse_google_new_json_translation(json: &Value) -> String {
+    if let Some(text) = json.as_str() {
+        return text.to_string();
+    }
+
+    let Some(top) = json.as_array() else {
+        return String::new();
+    };
+
+    let Some(first) = top.first() else {
+        return String::new();
+    };
+
+    if let Some(text) = first.as_str() {
+        return text.to_string();
+    }
+
+    let Some(first_arr) = first.as_array() else {
+        return String::new();
+    };
+
+    if let Some(text) = first_arr.first().and_then(Value::as_str) {
+        return text.to_string();
+    }
+
+    first_arr
+        .first()
+        .and_then(Value::as_array)
+        .and_then(|nested| nested.first())
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn parse_google_mobile_translation(body: &str) -> Option<String> {
+    static RESULT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r#"(?s)<div[^>]*class=['"]result-container['"][^>]*>(?P<text>.*?)</div>"#,
+        )
+        .expect("Google mobile result regex must be valid")
+    });
+
+    let captures = RESULT_REGEX.captures(body)?;
+    let html = captures.name("text")?.as_str();
+    let text = html
+        .replace("&amp;", "&")
+        .replace("&#39;", "'")
+        .replace("&quot;", "\"")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">");
+    Some(text)
+}
+
+async fn translate_google_new(
+    client: &reqwest::Client,
+    base_url: &str,
+    source_language: &str,
+    translation_language: &str,
+    text: &str,
+) -> Result<String, Error> {
+    let body = client
+        .get(base_url)
+        .query(&[
+            ("client", "dict-chrome-ex"),
+            ("sl", source_language),
+            ("tl", translation_language),
+            ("dt", "t"),
+            ("q", text),
+        ])
+        .header("User-Agent", "Mozilla/5.0")
+        .header("Accept", "application/json,text/plain,*/*")
+        .header("Referer", "https://translate.google.com/")
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
+
+    if let Ok(json) = serde_json::from_str::<Value>(&body) {
+        return Ok(parse_google_new_json_translation(&json));
+    }
+
+    if let Some(text) = parse_google_mobile_translation(&body) {
+        return Ok(text);
+    }
+
+    Ok(String::new())
+}
+
 pub(crate) async fn translate_single<'a>(
     endpoint_settings: &str,
     source_language: Algorithm,
@@ -403,6 +494,21 @@ pub(crate) async fn translate_single<'a>(
             let json: serde_json::Value =
                 reqwest::get(&url).await?.json().await?;
             json["translation"].as_str().unwrap_or("").to_string()
+        }
+
+        TranslationEndpoint::GoogleNew => {
+            let base_url = unsafe {
+                endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
+            };
+            let client = reqwest::Client::new();
+            translate_google_new(
+                &client,
+                base_url,
+                source_language,
+                translation_language,
+                text,
+            )
+            .await?
         }
 
         _ => {
@@ -462,7 +568,8 @@ pub(crate) async fn translate_single<'a>(
                         TranslationEndpoint::Google
                         | TranslationEndpoint::Yandex
                         | TranslationEndpoint::DeepL
-                        | TranslationEndpoint::Lingva => unreachable!(),
+                        | TranslationEndpoint::Lingva
+                        | TranslationEndpoint::GoogleNew => unreachable!(),
                         TranslationEndpoint::OpenAI
                         | TranslationEndpoint::Longcat
                         | TranslationEndpoint::Moonshot
@@ -637,6 +744,35 @@ pub(crate) async fn translate<'a>(
             response
         }
 
+        TranslationEndpoint::GoogleNew => {
+            let base_url = unsafe {
+                endpoint_settings["baseUrl"].as_str().unwrap_unchecked()
+            };
+            let client = reqwest::Client::new();
+
+            for (&file, strings) in &files {
+                response.insert(
+                    file.to_string(),
+                    Vec::with_capacity(strings.len()),
+                );
+                let response_file = response.get_mut(file).unwrap();
+
+                for string in strings {
+                    let translated = translate_google_new(
+                        &client,
+                        base_url,
+                        source_language,
+                        translation_language,
+                        string,
+                    )
+                    .await?;
+                    response_file.push(translated.replace('\n', NEW_LINE));
+                }
+            }
+
+            response
+        }
+
         _ => {
             let api_key = unsafe {
                 endpoint_settings["apiKey"].as_str().unwrap_unchecked()
@@ -745,7 +881,8 @@ pub(crate) async fn translate<'a>(
                         TranslationEndpoint::Google
                         | TranslationEndpoint::Yandex
                         | TranslationEndpoint::DeepL
-                        | TranslationEndpoint::Lingva => unreachable!(),
+                        | TranslationEndpoint::Lingva
+                        | TranslationEndpoint::GoogleNew => unreachable!(),
                         TranslationEndpoint::OpenAI
                         | TranslationEndpoint::Longcat
                         | TranslationEndpoint::Moonshot

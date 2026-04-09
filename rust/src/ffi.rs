@@ -502,6 +502,7 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
             filenames.len,
         );
 
+        let mut ordered_filenames: Vec<&str> = Vec::with_capacity(filenames.len());
         let mut files: HashMap<&str, Vec<String>> =
             HashMap::with_capacity(filenames.len());
 
@@ -509,6 +510,7 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
             let filename = str::from_utf8_unchecked(filename);
             let filename = &filename
                 [..=filename.rfind(|chr| chr != '\0').unwrap_unchecked()];
+            ordered_filenames.push(filename);
 
             if filename.starts_with("map") {
                 if map_content.is_empty() {
@@ -626,11 +628,19 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
             .await
         })?;
 
+        let mut results = results;
         let mut translations: Vec<Vec<String>> =
-            Vec::with_capacity(results.len());
+            Vec::with_capacity(ordered_filenames.len());
 
-        for translated in results.into_values() {
-            translations.push(translated);
+        for filename in ordered_filenames {
+            if let Some(translated) = results.remove(filename) {
+                translations.push(translated);
+            } else {
+                log::warn!(
+                    "No translated payload found for file {filename}, keeping it empty"
+                );
+                translations.push(Vec::new());
+            }
         }
 
         Ok(translations)
@@ -649,13 +659,6 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                 let mut strings_ffi: Vec<FFIString> =
                     Vec::with_capacity(translated_strings.len());
 
-                if translated_strings.is_empty() {
-                    translated_files_ffi.push(ByteBuffer {
-                        ptr: std::ptr::null(),
-                        len: 0,
-                    });
-                }
-
                 for string in translated_strings {
                     strings_ffi.push(FFIString {
                         ptr: string.as_ptr().cast::<c_char>(),
@@ -666,7 +669,11 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                 debug_assert!(strings_ffi.len() == strings_ffi.capacity());
 
                 translated_files_ffi.push(ByteBuffer {
-                    ptr: strings_ffi.as_ptr().cast::<u8>(),
+                    ptr: if strings_ffi.is_empty() {
+                        std::ptr::null()
+                    } else {
+                        strings_ffi.as_ptr().cast::<u8>()
+                    },
                     len: strings_ffi.len(),
                 });
 

@@ -272,7 +272,7 @@ struct Selected {
             }
 
             if (mapIndices[dense]) {
-                FilenameArray name;
+                FilenameArray name = {};
 
                 name[0] = 'm';
                 name[1] = 'a';
@@ -297,7 +297,7 @@ struct Selected {
                 continue;
             }
 
-            FilenameArray name;
+            FilenameArray name = {};
 
             switch (flag) {
                 case FileFlags::Actors:

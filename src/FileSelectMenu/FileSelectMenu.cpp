@@ -80,7 +80,7 @@ auto FileSelectMenu::selected(const bool skipped) -> Selected {
             as<const QCheckBox*>(ui->gridLayout->itemAt(idx)->widget());
 
         if (checkbox->isChecked() ^ skipped) {
-            const QString file = checkbox->text();
+            const QString file = checkbox->text().trimmed().toLower();
 
             if (file == "actors"_L1) {
                 selected.flags |= FileFlags::Actors;
@@ -104,7 +104,7 @@ auto FileSelectMenu::selected(const bool skipped) -> Selected {
                 selected.flags |= FileFlags::Weapons;
             } else if (file == "system"_L1) {
                 selected.flags |= FileFlags::System;
-            } else if (file == "scripts"_L1) {
+            } else if (file == "scripts"_L1 || file == "plugins"_L1) {
                 selected.flags |= FileFlags::Scripts;
             } else if (file.startsWith("map"_L1)) {
                 const u16 index = QStringView(file).sliced(3).toUInt();

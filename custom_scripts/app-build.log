@@ -1,0 +1,215 @@
+Compilateur: clang version 22.1.2 (https://github.com/llvm/llvm-project 1ab49a973e210e97d61e5db6557180dcb92c3e98)
+vcpkg retenu: C:\vcpkg
+CMake actif: cmake version 4.2.3-msvc3
+
+Configuration CMake (clang-cl + MSVC linker)...
+-- The C compiler identification is Clang 22.1.2 with MSVC-like command-line
+-- The CXX compiler identification is Clang 22.1.2 with MSVC-like command-line
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/LLVM/bin/clang-cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/LLVM/bin/clang-cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Using Qt bundled ZLIB.
+-- Found WrapZLIB: TRUE (found version "6.11.0")
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Using Qt bundled PCRE2.
+-- Found WrapPCRE2: TRUE (found version "6.11.0")
+-- Using Qt bundled PNG.
+-- Found WrapPNG: TRUE (found version "6.11.0")
+-- Using Qt bundled Harfbuzz.
+-- Found WrapHarfbuzz: TRUE (found version "6.11.0")
+-- Using Qt bundled Freetype.
+-- Found WrapFreetype: TRUE (found version "6.11.0")
+-- Found WrapVulkanHeaders: C:/VulkanSDK/1.3.290.0/include
+-- Using Qt bundled Jpeg.
+-- Found WrapJpeg: TRUE (found version "6.11.0")
+-- Found LibArchive: C:/vcpkg/installed/x64-windows-static/lib/archive.lib (found version "3.8.6")
+-- Found ZLIB: optimized;C:/vcpkg/installed/x64-windows-static/lib/zlib.lib;debug;C:/vcpkg/installed/x64-windows-static/debug/lib/zlibd.lib (found version "1.3.1")
+-- Found BZip2: optimized;C:/vcpkg/installed/x64-windows-static/lib/bz2.lib;debug;C:/vcpkg/installed/x64-windows-static/debug/lib/bz2d.lib (found version "1.0.8")
+-- Looking for BZ2_bzCompressInit
+-- Looking for BZ2_bzCompressInit - found
+-- Found LibLZMA: optimized;C:/vcpkg/installed/x64-windows-static/lib/lzma.lib;debug;C:/vcpkg/installed/x64-windows-static/debug/lib/lzma.lib (found version "5.8.3")
+-- Found OpenSSL: optimized;C:/vcpkg/installed/x64-windows-static/lib/libcrypto.lib;debug;C:/vcpkg/installed/x64-windows-static/debug/lib/libcrypto.lib (found version "3.6.1")
+-- Rust Toolchain: stable-x86_64-pc-windows-msvc
+-- Rust Target: x86_64-pc-windows-msvc
+-- Determining required link libraries for target x86_64-pc-windows-msvc
+-- Required static libs for target x86_64-pc-windows-msvc: kernel32;ntdll;userenv;ws2_32;dbghelp
+-- Required link flags for target x86_64-pc-windows-msvc: 
+-- Found Rust: C:/Users/Fabian/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/rustc.exe (found version "1.94.1")
+-- Configuring done (10.0s)
+-- Generating done (0.3s)
+-- Build files have been written to: F:/Desktop/rpgmtranslate-qt/build
+
+Build...
+[0/2] Re-checking globbed directories...
+[0/50] C:\WINDOWS\system32\cmd.exe /C "cd /D F:\Desktop\rpgmtranslate-qt\rust && "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E env "CC_x86_64-pc-windows-msvc=C:/Program Files/LLVM/bin/clang-cl.exe" "CXX_x86_64-pc-windows-msvc=C:/Program Files/LLVM/bin/clang-cl.exe" CORROSION_BUILD_DIR=F:/Desktop/rpgmtranslate-qt/build CARGO_BUILD_RUSTC=C:/Users/Fabian/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/rustc.exe C:/Users/Fabian/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/cargo.exe rustc --lib --target=x86_64-pc-windows-msvc --package rpgmtranslate_rs --crate-type=staticlib --manifest-path F:/Desktop/rpgmtranslate-qt/rust/Cargo.toml --target-dir F:/Desktop/rpgmtranslate-qt/build/cargo/rust_ac0bc --release -- -Cdefault-linker-libraries=yes"
+    Finished `release` profile [optimized] target(s) in 0.88s
+[2/50] Copying byproducts `rpgmtranslate_rs.lib` to F:/Desktop/rpgmtranslate-qt/build
+[3/50] Automatic MOC and UIC for target rpgmtranslate
+AutoGen warning: "SRC:/src/AssetMenu/AssetMenu.cpp" is empty.
+
+AutoMoc: F:/Desktop/rpgmtranslate-qt/src/SourceControlDock/SourceControlDock.hpp: note: No relevant classes found. No output generated.
+[4/50] Automatic RCC for resources.qrc
+[5/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\AssetMenu\AssetMenu.cpp.obj
+[6/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\PopupInput\PopupInput.cpp.obj
+[7/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\AutoUpdater\AutoUpdater.cpp.obj
+[8/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\FFILogger\FFILogger.cpp.obj
+[9/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\PersistentMenu\PersistentMenu.cpp.obj
+[10/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\AboutWindow\AboutWindow.cpp.obj
+[11/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\BookmarkMenu\BookmarkMenu.cpp.obj
+[12/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\BookmarkMenu\BookmarkList.cpp.obj
+[13/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\MatchMenu\MatchMenu.cpp.obj
+[14/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\FileSelectMenu\FileSelectMenu.cpp.obj
+[15/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\GlossaryMenu\GlossaryMenu.cpp.obj
+[16/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\BatchMenu\BatchMenu.cpp.obj
+[17/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SourceControlDock\SourceControlDock.cpp.obj
+[18/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\MatchMenu\MatchTable.cpp.obj
+[19/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\PurgeMenu\PurgeMenu.cpp.obj
+[20/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SourceControlDock\GitChangesList.cpp.obj
+[21/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\Settings\ProjectSettings.cpp.obj
+[22/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\ReadMenu\ReadMenu.cpp.obj
+[23/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SearchMenu\SearchMenu.cpp.obj
+[24/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\Settings\Settings.cpp.obj
+[25/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SearchPanelDock\SearchResultList.cpp.obj
+[26/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SearchPanelDock\SearchPanelDock.cpp.obj
+[27/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SourceControlDock\GitCommitList.cpp.obj
+[28/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TabPanel\TabListDelegate.cpp.obj
+[29/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TabPanel\TabList.cpp.obj
+[30/50] Building CXX object CMakeFiles\rpgmtranslate.dir\rpgmtranslate_autogen\mocs_compilation.cpp.obj
+[31/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TabPanel\TabListModel.cpp.obj
+[32/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\SettingsWindow\SettingsWindow.cpp.obj
+[33/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\LabelInput.cpp.obj
+[34/50] Building RC object CMakeFiles\rpgmtranslate.dir\resources\rpgmtranslate-logo.rc.res
+[35/50] Building CXX object CMakeFiles\rpgmtranslate.dir\rpgmtranslate_autogen\EWIEGA46WW\qrc_resources.cpp.obj
+[36/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\TranslationHighlighter.cpp.obj
+[37/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\TranslationInput.cpp.obj
+[38/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TabPanel\TabPanel.cpp.obj
+[39/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\TranslationTableModel.cpp.obj
+[40/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\TranslationTableDelegate.cpp.obj
+[41/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationsMenu\TranslationsMenu.cpp.obj
+[42/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\TranslationTableHeader.cpp.obj
+[43/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\WriteMenu\WriteMenu.cpp.obj
+[44/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TranslationTable\TranslationTable.cpp.obj
+[45/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\MainWindow\MainWindow.cpp.obj
+[46/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\utilities\Utils.cpp.obj
+[47/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\TaskWorker\TaskWorker.cpp.obj
+[48/50] Building CXX object CMakeFiles\rpgmtranslate.dir\src\main.cpp.obj
+[49/50] Linking CXX executable target\bin\rpgmtranslate.exe
+FAILED: [code=4294967295] target/bin/rpgmtranslate.exe 
+C:\WINDOWS\system32\cmd.exe /C "cd . && "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\rpgmtranslate.dir --rc=C:\PROGRA~2\WI3CF2~1\10\bin\100261~1.0\x64\rc.exe --mt=C:\PROGRA~1\LLVM\bin\llvm-mt.exe --manifests  -- C:\PROGRA~2\MICROS~3\18\BUILDT~1\VC\Tools\MSVC\1450~1.357\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\rpgmtranslate.rsp  /out:target\bin\rpgmtranslate.exe /implib:rpgmtranslate.lib /pdb:target\bin\rpgmtranslate.pdb /version:0.0 /machine:x64 /INCREMENTAL:NO /subsystem:windows && C:\WINDOWS\system32\cmd.exe /C "cd /D F:\Desktop\rpgmtranslate-qt\build && "C:\Program Files\PowerShell\7\pwsh.exe" -noprofile -executionpolicy Bypass -file C:/vcpkg/scripts/buildsystems/msbuild/applocal.ps1 -targetBinary F:/Desktop/rpgmtranslate-qt/build/target/bin/rpgmtranslate.exe -installedDir C:/vcpkg/installed/x64-windows-static/bin -OutVariable out""
+LINK: command "C:\PROGRA~2\MICROS~3\18\BUILDT~1\VC\Tools\MSVC\1450~1.357\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\rpgmtranslate.rsp /out:target\bin\rpgmtranslate.exe /implib:rpgmtranslate.lib /pdb:target\bin\rpgmtranslate.pdb /version:0.0 /machine:x64 /INCREMENTAL:NO /subsystem:windows /MANIFEST:EMBED,ID=1" failed (exit code 1120) with the following output:
+   Création de la bibliothèque rpgmtranslate.lib et de l'objet rpgmtranslate.exp
+LINK : warning LNK4098: conflit entre la bibliothèque par défaut 'msvcrt.lib' et les autres bibliothèques ; utilisez /NODEFAULTLIB:library
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(bd1a0f655ace03cf-digest_extra.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(10ffda9389ab7476-windows.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(a3f63feefd602046-rsa_crypt.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(269f87dfadc78f80-obj.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-refcount_c11.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-ex_data.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(74be7a8787aeb0e6-dsa.o)'
+LINK : warning LNK4217: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'aws_lc_0_39_1_bn_big_endian_to_words'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-crypto.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)'
+LINK : warning LNK4286: le symbole 'abort' défini dans 'libucrt.lib(abort.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-thread_win.o)'
+LINK : warning LNK4217: le symbole 'getenv' défini dans 'libucrt.lib(getenv.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'aws_lc_0_39_1_OPENSSL_cpuid_setup'
+LINK : warning LNK4286: le symbole 'getenv' défini dans 'libucrt.lib(getenv.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)'
+LINK : warning LNK4217: le symbole '__acrt_iob_func' défini dans 'libucrt.lib(_file.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'aws_lc_0_39_1_handle_cpu_env'
+LINK : warning LNK4286: le symbole '__acrt_iob_func' défini dans 'libucrt.lib(_file.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)'
+LINK : warning LNK4217: le symbole 'strncmp' défini dans 'libucrt.lib(strncmp.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'aws_lc_0_39_1_EVP_read_pw_string_min'
+LINK : warning LNK4217: le symbole 'fflush' défini dans 'libucrt.lib(fflush.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'check_test'
+LINK : warning LNK4286: le symbole 'fflush' défini dans 'libucrt.lib(fflush.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)'
+LINK : warning LNK4286: le symbole 'fflush' défini dans 'libucrt.lib(fflush.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)'
+LINK : warning LNK4217: le symbole '__stdio_common_vfprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'fprintf'
+LINK : warning LNK4217: le symbole '__stdio_common_vsscanf' défini dans 'libucrt.lib(input.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'sscanf'
+LINK : warning LNK4217: le symbole 'strtol' défini dans 'libucrt.lib(strtox.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'pkey_rsa_ctrl_str'
+LINK : warning LNK4286: le symbole 'strtol' défini dans 'libucrt.lib(strtox.obj)' est importé par 'rpgmtranslate_rs.lib(11ba1c435692038d-p_dh.o)'
+LINK : warning LNK4286: le symbole 'strtol' défini dans 'libucrt.lib(strtox.obj)' est importé par 'rpgmtranslate_rs.lib(11ba1c435692038d-p_dsa.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(307a1cf338c197ca-jitterentropy-gcd.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-printf.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(307a1cf338c197ca-jitterentropy-base.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(307a1cf338c197ca-jitterentropy-noise.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(307a1cf338c197ca-jitterentropy-health.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(307a1cf338c197ca-jitterentropy-sha3.o)'
+LINK : warning LNK4217: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o)' dans la fonction 'snprintf'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(aa3883b9c76e19d7-cbs.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-mem.o)'
+LINK : warning LNK4286: le symbole '__stdio_common_vsprintf' défini dans 'libucrt.lib(output.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)'
+LINK : warning LNK4217: le symbole 'malloc' défini dans 'libucrt.lib(malloc.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-mem.o)' dans la fonction 'aws_lc_0_39_1_OPENSSL_malloc'
+LINK : warning LNK4286: le symbole 'malloc' défini dans 'libucrt.lib(malloc.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)'
+LINK : warning LNK4217: le symbole 'free' défini dans 'libucrt.lib(free.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-mem.o)' dans la fonction 'aws_lc_0_39_1_OPENSSL_free'
+LINK : warning LNK4286: le symbole 'free' défini dans 'libucrt.lib(free.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)'
+LINK : warning LNK4286: le symbole 'free' défini dans 'libucrt.lib(free.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-thread_win.o)'
+LINK : warning LNK4217: le symbole 'realloc' défini dans 'libucrt.lib(realloc.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-mem.o)' dans la fonction 'aws_lc_0_39_1_OPENSSL_vasprintf_internal'
+LINK : warning LNK4217: le symbole '_errno' défini dans 'libucrt.lib(errno.obj)' est importé par 'rpgmtranslate_rs.lib(dca3e397edfb2cc7-mem.o)' dans la fonction 'aws_lc_0_39_1_OPENSSL_vasprintf_internal'
+LINK : warning LNK4286: le symbole '_errno' défini dans 'libucrt.lib(errno.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)'
+LINK : warning LNK4286: le symbole '_errno' défini dans 'libucrt.lib(errno.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)'
+LINK : warning LNK4286: le symbole '_errno' défini dans 'libucrt.lib(errno.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)'
+LINK : warning LNK4217: le symbole 'qsort' défini dans 'libucrt.lib(qsort.obj)' est importé par 'rpgmtranslate_rs.lib(aa3883b9c76e19d7-cbb.o)' dans la fonction 'aws_lc_0_39_1_CBB_flush_asn1_set_of'
+LINK : warning LNK4217: le symbole 'strerror' défini dans 'libucrt.lib(strerror.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)' dans la fonction 'aws_lc_0_39_1_ERR_reason_error_string'
+LINK : warning LNK4286: le symbole 'strerror' défini dans 'libucrt.lib(strerror.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)'
+LINK : warning LNK4217: le symbole 'bsearch' défini dans 'libucrt.lib(bsearch.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)' dans la fonction 'aws_lc_0_39_1_ERR_reason_error_string'
+LINK : warning LNK4286: le symbole 'bsearch' défini dans 'libucrt.lib(bsearch.obj)' est importé par 'rpgmtranslate_rs.lib(269f87dfadc78f80-obj.o)'
+LINK : warning LNK4217: le symbole 'fputs' défini dans 'libucrt.lib(fputs.obj)' est importé par 'rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o)' dans la fonction 'print_errors_to_file'
+LINK : warning LNK4286: le symbole 'fputs' défini dans 'libucrt.lib(fputs.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)'
+LINK : warning LNK4217: le symbole 'fopen' défini dans 'libucrt.lib(fopen.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)' dans la fonction 'aws_lc_0_39_1_openssl_console_open'
+LINK : warning LNK4286: le symbole 'fopen' défini dans 'libucrt.lib(fopen.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)'
+LINK : warning LNK4217: le symbole 'fclose' défini dans 'libucrt.lib(fclose.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)' dans la fonction 'aws_lc_0_39_1_openssl_console_close'
+LINK : warning LNK4286: le symbole 'fclose' défini dans 'libucrt.lib(fclose.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)'
+LINK : warning LNK4217: le symbole 'ferror' défini dans 'libucrt.lib(feoferr.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)' dans la fonction 'aws_lc_0_39_1_openssl_console_write'
+LINK : warning LNK4286: le symbole 'ferror' défini dans 'libucrt.lib(feoferr.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)'
+LINK : warning LNK4217: le symbole 'signal' défini dans 'libucrt.lib(signal.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)' dans la fonction 'aws_lc_0_39_1_openssl_console_read'
+LINK : warning LNK4217: le symbole 'fgets' défini dans 'libucrt.lib(fgets.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)' dans la fonction 'aws_lc_0_39_1_openssl_console_read'
+LINK : warning LNK4286: le symbole 'fgets' défini dans 'libucrt.lib(fgets.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)'
+LINK : warning LNK4217: le symbole 'feof' défini dans 'libucrt.lib(feoferr.obj)' est importé par 'rpgmtranslate_rs.lib(24088763753c1a80-console.o)' dans la fonction 'aws_lc_0_39_1_openssl_console_read'
+LINK : warning LNK4217: le symbole 'feof' défini dans 'libucrt.lib(feoferr.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'aws_lc_0_39_1_BIO_new_file'
+LINK : warning LNK4217: le symbole 'fwrite' défini dans 'libucrt.lib(fwrite.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'file_write'
+LINK : warning LNK4217: le symbole 'fread' défini dans 'libucrt.lib(fread.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'file_read'
+LINK : warning LNK4217: le symbole '_fileno' défini dans 'libucrt.lib(fileno.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'file_ctrl'
+LINK : warning LNK4217: le symbole '_setmode' défini dans 'libucrt.lib(setmode.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'file_ctrl'
+LINK : warning LNK4217: le symbole 'fseek' défini dans 'libucrt.lib(fseek.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'file_ctrl'
+LINK : warning LNK4217: le symbole 'ftell' défini dans 'libucrt.lib(ftell.obj)' est importé par 'rpgmtranslate_rs.lib(ebffcd00b33ce285-file.o)' dans la fonction 'file_ctrl'
+SearchResultList.cpp.obj : error LNK2019: symbole externe non résolu "public: class QMetaType __cdecl QVariant::metaType(void)const " (?metaType@QVariant@@QEBA?AVQMetaType@@XZ) référencé dans la fonction "public: virtual void __cdecl SearchResultListDelegate::paint(class QPainter *,class QStyleOptionViewItem const &,class QModelIndex const &)const " (?paint@SearchResultListDelegate@@UEBAXPEAVQPainter@@AEBVQStyleOptionViewItem@@AEBVQModelIndex@@@Z)
+rpgmtranslate_rs.lib(11ba1c435692038d-p_dh.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(8806a65501cb5d99-md4.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(a79698bcfe7af24e-blake2.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(ebffcd00b33ce285-printf.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(ebffcd00b33ce285-bio.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(12ac6ac83b700053-a_object.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(ae09488282793820-lhash.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(2d792cc1910c1f1f-dh_asn1.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(1a8cd16084f4713d-ripemd.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(c43f8ebc3523362c-convert.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(aa3883b9c76e19d7-asn1_compat.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(74be7a8787aeb0e6-dsa_asn1.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(dca3e397edfb2cc7-thread_win.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(84416aafcc71485c-stack.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(dca3e397edfb2cc7-ex_data.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(24088763753c1a80-console.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(aa3883b9c76e19d7-cbb.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(05e200adf7708fba-e_chacha20poly1305.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(3e0e353108465e78-chacha.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(1e8e05d4f84122b9-err.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(5e7b0e08b07b6019-bcm.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(a3f63feefd602046-rsa_asn1.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(aa3883b9c76e19d7-cbs.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(dca3e397edfb2cc7-mem.o) : error LNK2001: symbole externe non résolu __imp__wassert
+rpgmtranslate_rs.lib(84416aafcc71485c-stack.o) : error LNK2019: symbole externe non résolu __imp_qsort_s référencé dans la fonction aws_lc_0_39_1_OPENSSL_sk_sort
+rpgmtranslate_rs.lib(24088763753c1a80-console.o) : error LNK2019: symbole externe non résolu __imp_clearerr référencé dans la fonction aws_lc_0_39_1_openssl_console_write
+target\bin\rpgmtranslate.exe : fatal error LNK1120: 4 externes non résolus
+ninja: build stopped: subcommand failed.
+ERREUR: Le build a echoue.

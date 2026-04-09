@@ -707,10 +707,22 @@ MainWindow::MainWindow(QWidget* const parent) :
                 variant<BatchMenu::TrimFlags, std::tuple<u8, QString>, u8>&
                     variant
         ) -> void {
+        const auto filenames = selected.filenames(projectSettings->engineType);
+
+        if (filenames.empty()) {
+            QMessageBox::warning(
+                this,
+                tr("No files resolved"),
+                tr(
+                    "The current batch selection resolved to 0 files. Open File Select and choose at least one valid file."
+                )
+            );
+            return;
+        }
+
         const QString currentTabName = ui->tabPanel->currentTabName();
 
-        for (const auto filenameArray :
-             selected.filenames(projectSettings->engineType)) {
+        for (const auto filenameArray : filenames) {
             if (QLatin1StringView(filenameArray.data()) == currentTabName) {
                 ui->tabPanel->changeTab(QString());
             }
@@ -757,7 +769,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 taskWorker,
                 &TaskWorker::translateFinished,
                 this,
-                [this, columnIndex, selected](
+                [this, columnIndex, filenames](
                     const expected<
                         std::tuple<ByteBuffer, ByteBuffer>,
                         FFIString>& results
@@ -785,18 +797,18 @@ MainWindow::MainWindow(QWidget* const parent) :
                 );
 
                 u16 skippedCount = 0;
-                auto filenames =
-                    selected.filenames(projectSettings->engineType);
+                auto mutableFilenames = filenames;
 
                 u32 total = 0;
                 u32 progress = 0;
 
                 for (const auto [idx, filenameArray] :
-                     views::enumerate(filenames)) {
+                     views::enumerate(mutableFilenames)) {
                     if (stringsArray[idx].len == 0) {
                         qInfo()
                             << "Translated strings array at index "_L1 << idx
-                            << "in file "_L1 << QLatin1StringView(filenameArray)
+                            << "in file "_L1
+                            << QLatin1StringView(filenameArray.data())
                             << " is empty."_L1;
                         continue;
                     }
@@ -838,8 +850,8 @@ MainWindow::MainWindow(QWidget* const parent) :
                                        .arg(file->errorString());
 
                             std::swap(
-                                filenames[idx],
-                                filenames[skippedCount++]
+                                mutableFilenames[idx],
+                                mutableFilenames[skippedCount++]
                             );
                             continue;
                         }
@@ -946,6 +958,16 @@ MainWindow::MainWindow(QWidget* const parent) :
                                         separatorPos + SEPARATOR_UTF8.size();
                                 }
 
+                                if (stringsIterator == filteredStrings.end()) {
+                                    qWarning()
+                                        << "Missing translated entry for file "
+                                        << filename
+                                        << " while applying batch result. "
+                                        << "Keeping original line.";
+                                    replaced.append(linePtr, lineSize);
+                                    continue;
+                                }
+
                                 const auto translated = *stringsIterator++;
 
                                 if (malformed) {
@@ -1005,7 +1027,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                     QString skippedString;
 
                     for (const auto filename :
-                         views::take(filenames, skippedCount)) {
+                         views::take(mutableFilenames, skippedCount)) {
                         skippedString += QLatin1StringView(filename.data());
                         skippedString += u'\n';
                     }
@@ -1533,7 +1555,9 @@ MainWindow::MainWindow(QWidget* const parent) :
 
     ui->actionRecentProjects->setMenu(recentProjectsMenu);
 
-    checkForUpdates();
+    // Keep update checks manual to avoid startup instability on some Windows static builds.
+    // Users can still use Help -> Check for updates.
+    // checkForUpdates();
 
     if (!settings->core.projectPath.isEmpty()) {
         openProject(settings->core.projectPath, false);
@@ -1614,8 +1638,11 @@ void MainWindow::loadSettings() {
 #endif
 
     batchMenu->setEndpoints(settings->translation.endpoints);
+    if (projectSettings != nullptr) {
+        batchMenu->setFileContexts(projectSettings->fileContexts);
+    }
 
-    retranslate(settings->appearance.language);
+    // Disabled runtime retranslation for startup stability on this static build.
 }
 
 auto MainWindow::saveSettings() -> bool {
@@ -1851,17 +1878,7 @@ auto MainWindow::saveEverything() -> bool {
 }
 
 void MainWindow::retranslate(const QLocale::Language language) {
-    qApp->removeTranslator(translator);
-    delete translator;
-
-    translator = new QTranslator(this);
-    const bool success = translator->load(
-        ":/%1.qm"_L1.arg(QLocale(language).bcp47Name().split(u'-').first())
-    );
-
-    qApp->installTranslator(translator);
-
-    ui->retranslateUi(this);
+    Q_UNUSED(language);
 }
 
 void MainWindow::showSettingsWindow() {
@@ -2499,6 +2516,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 
         searchMenu->setFiles(tabs);
         batchMenu->setFiles(tabs);
+        batchMenu->setFileContexts(projectSettings->fileContexts);
         glossaryMenu->setFiles(tabs);
         readMenu->setFiles(tabs);
         purgeMenu->setFiles(tabs);

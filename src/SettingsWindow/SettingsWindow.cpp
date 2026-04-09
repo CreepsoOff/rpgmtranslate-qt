@@ -211,6 +211,12 @@ SettingsWindow::SettingsWindow(
                     "Lingva Translate. Free, open-source frontend for Google Translate. Set the base URL to a Lingva instance (e.g. https://lingva.ml). No API key required. Model selection, system prompts, temperature, and token limits do not apply to this endpoint."
                 ));
                 break;
+            case TranslationEndpoint::GoogleNew:
+                setDefaultBaseURL(endpoint);
+                ui->typeDescriptionLabel->setText(tr(
+                    "Google NEW. Unofficial Google Translate endpoint using a configurable base URL (default: clients5). No API key required. Model selection, system prompts, temperature, and token limits do not apply to this endpoint."
+                ));
+                break;
             default:
                 setDefaultBaseURL(endpoint);
 
@@ -412,7 +418,8 @@ SettingsWindow::SettingsWindow(
             TranslationEndpoint(ui->typeSelect->currentIndex());
 
         if (endpoint <= TranslationEndpoint::DeepL ||
-            endpoint == TranslationEndpoint::Lingva) {
+            endpoint == TranslationEndpoint::Lingva ||
+            endpoint == TranslationEndpoint::GoogleNew) {
             // TODO: Check somehow?
             return;
         }
@@ -778,6 +785,11 @@ void SettingsWindow::setDefaultBaseURL(const TranslationEndpoint endpoint) {
             break;
         case TranslationEndpoint::Lingva:
             ui->baseURLInput->setText(u"https://lingva.ml"_s);
+            break;
+        case TranslationEndpoint::GoogleNew:
+            ui->baseURLInput->setText(
+                u"https://clients5.google.com/translate_a/t"_s
+            );
             break;
     }
 }

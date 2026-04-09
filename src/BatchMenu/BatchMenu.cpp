@@ -168,6 +168,21 @@ BatchMenu::BatchMenu(QWidget* const parent) :
         fileSelectMenu->move(mapToGlobal(QPoint(width(), 0)));
     });
 
+    connect(
+        ui->fileContextList,
+        &QListWidget::currentTextChanged,
+        this,
+        [this](const QString& filename) -> void {
+        if (filename.isEmpty()) {
+            return;
+        }
+
+        if (fileContexts.contains(filename)) {
+            ui->contextInput->setPlainText(fileContexts[filename]);
+        }
+    }
+    );
+
     adjustSize();
 };
 
@@ -203,6 +218,7 @@ void BatchMenu::clear() {
 
     ui->contextInput->clear();
     ui->fileContextList->clear();
+    fileContexts.clear();
 
     fileSelectMenu->clear();
 }
@@ -227,4 +243,24 @@ void BatchMenu::setEndpoints(const vector<EndpointSettings>& endpoints) {
     for (const auto& endpoint : endpoints) {
         ui->translationEndpointSelect->addItem(endpoint.name);
     }
+}
+
+void BatchMenu::setFileContexts(
+    const HashMap<QString, QString>& fileContexts
+) {
+    this->fileContexts = fileContexts;
+    ui->fileContextList->clear();
+
+    QStringList keys;
+    keys.reserve(isize(fileContexts.size()));
+
+    for (const auto& [key, value] : fileContexts) {
+        if (value.isEmpty()) {
+            continue;
+        }
+        keys.push_back(key);
+    }
+
+    keys.sort(Qt::CaseInsensitive);
+    ui->fileContextList->addItems(keys);
 }

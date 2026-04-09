@@ -32,6 +32,7 @@ class BatchMenu final : public PersistentMenu {
     void addColumn(const QString& name);
     void renameColumn(u8 index, const QString& name);
     void setEndpoints(const vector<EndpointSettings>& endpoints);
+    void setFileContexts(const HashMap<QString, QString>& fileContexts);
 
    signals:
     void actionRequested(
@@ -50,6 +51,7 @@ class BatchMenu final : public PersistentMenu {
     Ui::BatchMenu* const ui;
 
     FileSelectMenu* fileSelectMenu;
+    HashMap<QString, QString> fileContexts;
 
     bool dragging = false;
     bool dragSetValue = false;

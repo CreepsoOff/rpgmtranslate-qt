@@ -478,6 +478,11 @@ void TaskWorker::performBatchAction(
 
     auto filenames = selected.filenames(projectSettings->engineType);
 
+    if (filenames.empty()) {
+        qWarning() << "Batch action skipped: selected set resolved to 0 files."_L1;
+        return;
+    }
+
     if (action == BatchAction::Translate) {
         const auto [endpointIndex, context] = std::get<1>(variant);
 
@@ -492,8 +497,7 @@ void TaskWorker::performBatchAction(
 
         const QByteArray projectContext =
             projectSettings->projectContext.toUtf8();
-        const QByteArray localContext =
-            projectSettings->projectContext.toUtf8();
+        const QByteArray localContext = context.toUtf8();
         const QByteArray translationPath =
             projectSettings->translationPath().toUtf8();
 
@@ -501,6 +505,8 @@ void TaskWorker::performBatchAction(
         ByteBuffer translatedFilesFFI;
 
         emit progressChanged(Task::BatchTranslate, 0, 0);
+        qInfo() << "Sending batch translation request for "_L1
+                << filenames.size() << " file(s)."_L1;
 
         const FFIString error = rpgm_translate(
             toFFIString(endpointSettingsJSON),
@@ -517,8 +523,11 @@ void TaskWorker::performBatchAction(
         );
 
         if (error.ptr != nullptr) {
+            qWarning() << "Batch translation request failed: "_L1
+                       << QString::fromUtf8(error.ptr, isize(error.len));
             emit translateFinished(Err(error));
         } else {
+            qInfo() << "Batch translation payload received."_L1;
             emit translateFinished(
                 std::tuple(translatedFiles, translatedFilesFFI)
             );
@@ -852,7 +861,7 @@ void TaskWorker::translateSingle(
     QString localContext;
 
     if (projectSettings->fileContexts.contains(filename)) {
-        const QString localContext = projectSettings->fileContexts[filename];
+        localContext = projectSettings->fileContexts[filename];
     }
 
     const auto glossaryJSON =

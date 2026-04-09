@@ -50,6 +50,11 @@ auto TranslationTableDelegate::createEditor(
         [this, editor, index] -> void {
         auto* const that = const_cast<TranslationTableDelegate*>(this);
         auto* const tableView = as<TranslationTable*>(that->parent());
+        if (auto* const model = tableView->model()) {
+            // Keep model in sync while typing so closing the app does not lose
+            // the current editor contents.
+            model->setData(index, editor->toPlainText(), Qt::EditRole);
+        }
         emit that->sizeHintChanged(index);
         emit that->textChanged(editor->toPlainText());
         tableView->resizeRowToContents(index.row());
