@@ -52,7 +52,17 @@ jobs:
 
       - name: Install cbindgen
         run: |
-          cargo install --locked cbindgen --version 0.29.2 --force
+          $installedVersion = $null
+          try {
+            $installedVersion = (cbindgen --version) -replace '^cbindgen '
+          } catch {
+            $installedVersion = $null
+          }
+
+          if ($installedVersion -ne "0.29.2") {
+            cargo install --locked cbindgen --version 0.29.2
+          }
+
           $cbindgen = Get-Command cbindgen -ErrorAction Stop
           Write-Host "cbindgen found at: $($cbindgen.Source)"
           cbindgen --version
