@@ -58,6 +58,42 @@ class MainWindow final : public QMainWindow {
     inline void checkForUpdates(bool manual = false);
     inline void retranslate(QLocale::Language language);
     inline void exit();
+    [[nodiscard]] inline auto ensureSourceBaseline(
+        const shared_ptr<ProjectSettings>& settings,
+        bool interactive
+    ) -> bool;
+    [[nodiscard]] inline auto syncSourceBaselineFromGameData(
+        bool appendForceRead
+    ) -> bool;
+    inline void promptForChangedGameData();
+    [[nodiscard]] inline auto currentGameDataPath(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto defaultSourceBaselinePath(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto sourceLockRootPath(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto latestSourceBaselineBackupPath(
+        const shared_ptr<ProjectSettings>& settings,
+        const QString& leafDirName
+    ) const -> QString;
+    [[nodiscard]] inline auto fingerprintGameSource(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto syncBaselineSupplementaryFiles(
+        const shared_ptr<ProjectSettings>& settings,
+        QString* error = nullptr
+    ) const -> bool;
+    [[nodiscard]] inline auto fingerprintDirectory(
+        const QString& path
+    ) const -> QString;
+    [[nodiscard]] inline auto copyDirectoryRecursive(
+        const QString& sourcePath,
+        const QString& targetPath,
+        QString* error = nullptr
+    ) const -> bool;
 
     inline auto search(
         Selected selected,
@@ -93,6 +129,7 @@ class MainWindow final : public QMainWindow {
     QTimer batchTranslateHeartbeatTimer;
     QElapsedTimer batchTranslateElapsedTimer;
     bool batchTranslateInFlight = false;
+    bool sourceSyncInFlight = false;
 
     // UI
     Ui::mainWindow* const ui;
@@ -126,6 +163,11 @@ class MainWindow final : public QMainWindow {
         new QAction(QIcon(u":/icons/save.svg"_s), tr("Save"), this);
     QAction* const actionWrite =
         new QAction(QIcon(u":/icons/manufacturing.svg"_s), tr("Write"), this);
+    QAction* const actionSyncSourceBaseline = new QAction(
+        QIcon(u":/icons/refresh.svg"_s),
+        tr("Sync Source Baseline From Game Data"),
+        this
+    );
     QAction* const actionSearch =
         new QAction(QIcon(u":/icons/search.svg"_s), tr("Search"), this);
     QAction* const actionBatchMenu = new QAction(

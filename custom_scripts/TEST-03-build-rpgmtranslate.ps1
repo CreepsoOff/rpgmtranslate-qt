@@ -9,36 +9,21 @@ param(
     [string]$RepoDir    = "F:\Desktop\rpgmtranslate-qt",
     [string]$QtInstall  = "F:\dev\qt-6.11.0-static-msvc",
     [string]$VcpkgRoot  = "",
-    [ValidateSet("Debug","Release","RelWithDebInfo","MinSizeRel")]
-    [string]$BuildType  = "RelWithDebInfo",
     [switch]$Clean
 )
 
 $ErrorActionPreference = "Stop"
 $RequiredCMakeVersion = [version]"3.31.11"
 
-function Fail([string]$Message) {
-    Write-Host "ERREUR: $Message" -ForegroundColor Red
+# ── Verifier le shell MSVC ───────────────────────────────────────────
+if (-not $env:VSINSTALLDIR) {
+    Write-Host "ERREUR: Lance ce script depuis 'Developer PowerShell for VS'." -ForegroundColor Red
     exit 1
 }
 
-function Get-CMakeVersion {
-    try {
-        $line = (cmake --version 2>$null | Select-Object -First 1)
-        if ($line -match "cmake version (\d+)\.(\d+)\.(\d+)") {
-            return [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])"
-        }
-    } catch {}
-    return $null
-}
-
-# ── Verifier le shell MSVC ───────────────────────────────────────────
-if (-not $env:VSINSTALLDIR) {
-    Fail "Lance ce script depuis 'Developer PowerShell for VS'."
-}
-
 if (-not (Get-Command cl -ErrorAction SilentlyContinue)) {
-    Fail "cl.exe introuvable."
+    Write-Host "ERREUR: cl.exe introuvable." -ForegroundColor Red
+    exit 1
 }
 
 # ── Verifier que cl.exe est en mode x64 ─────────────────────────────
@@ -56,7 +41,8 @@ if (-not (Get-Command clang-cl -ErrorAction SilentlyContinue)) {
     } elseif (Test-Path "${env:ProgramFiles(x86)}\LLVM\bin\clang-cl.exe") {
         $env:Path = "${env:ProgramFiles(x86)}\LLVM\bin;$env:Path"
     } else {
-        Fail "clang-cl introuvable. Installe LLVM (.\01-check-prerequisites.ps1)."
+        Write-Host "ERREUR: clang-cl introuvable. Installe LLVM (.\01-check-prerequisites.ps1)" -ForegroundColor Red
+        exit 1
     }
 }
 Write-Host "Compilateur: $(clang-cl --version | Select-Object -First 1)" -ForegroundColor Gray
@@ -70,10 +56,21 @@ if (-not (Test-Path "$QtInstall\bin\qmake.exe")) {
 
 # ── Verifier le repo ────────────────────────────────────────────────
 if (-not (Test-Path "$RepoDir\CMakeLists.txt")) {
-    Fail "CMakeLists.txt introuvable dans $RepoDir."
+    Write-Host "ERREUR: CMakeLists.txt introuvable dans $RepoDir" -ForegroundColor Red
+    exit 1
 }
 
 # ── Verifier CMake actif (strict 3.31.11) ───────────────────────────
+function Get-CMakeVersion {
+    try {
+        $line = (cmake --version 2>$null | Select-Object -First 1)
+        if ($line -match "cmake version (\d+)\.(\d+)\.(\d+)") {
+            return [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])"
+        }
+    } catch {}
+    return $null
+}
+
 $cmakeVersion = Get-CMakeVersion
 if (-not $cmakeVersion) {
     Write-Host "ERREUR: cmake introuvable dans le PATH." -ForegroundColor Red
@@ -92,11 +89,11 @@ Write-Host "CMake actif: $(cmake --version | Select-Object -First 1)" -Foregroun
 if ($VcpkgRoot) {
     $VcpkgRoot = $VcpkgRoot.Trim('"').Trim("'")
     if (-not (Test-Path "$VcpkgRoot\vcpkg.exe")) {
-        Fail "-VcpkgRoot fourni mais vcpkg.exe introuvable dans '$VcpkgRoot'."
+        Write-Host "ERREUR: -VcpkgRoot fourni mais vcpkg.exe introuvable dans '$VcpkgRoot'." -ForegroundColor Red
+        exit 1
     }
 } else {
     $candidates = @()
-
     if ($env:VCPKG_ROOT) {
         $envVcpkg = $env:VCPKG_ROOT.Trim('"').Trim("'")
         $isVsBundled = $envVcpkg -match "\\Microsoft Visual Studio\\.+\\VC\\vcpkg$"
@@ -106,7 +103,6 @@ if ($VcpkgRoot) {
             $candidates += $envVcpkg
         }
     }
-
     $candidates += @("C:\vcpkg", "F:\vcpkg")
     $candidates = $candidates | Where-Object { $_ } | Select-Object -Unique
 
@@ -133,7 +129,6 @@ if ($VcpkgRoot) {
 
 Set-Location $RepoDir
 Write-Host "vcpkg retenu: $VcpkgRoot" -ForegroundColor Gray
-Write-Host "BuildType: $BuildType" -ForegroundColor Gray
 
 # ── Clean si demande ────────────────────────────────────────────────
 if ($Clean -and (Test-Path "build")) {
@@ -181,7 +176,6 @@ Write-Host "RUSTFLAGS: $env:RUSTFLAGS" -ForegroundColor Gray
 # ── Aligner QT_DISABLE_DEPRECATED_UP_TO avec la build Qt installee ──
 $qtDeprecationHeader = Join-Path $QtInstall "include\QtCore\qtdeprecationdefinitions.h"
 $qtDeprecationUpTo = $null
-
 if (Test-Path $qtDeprecationHeader) {
     $depMatch = Select-String `
         -Path $qtDeprecationHeader `
@@ -205,13 +199,15 @@ if ($qtDeprecationUpTo) {
 Write-Host ""
 Write-Host "Configuration CMake (clang-cl + MSVC linker)..." -ForegroundColor Cyan
 
+# On utilise clang-cl comme le developpeur upstream.
+# configure.ps1 est le script du repo, on ne le modifie pas.
 $commonConfigureArgs = @(
     "--fresh",
     "-G=Ninja",
     "--cc=clang-cl",
     "--cxx=clang-cl",
     "--ld=link",
-    "CMAKE_BUILD_TYPE=$BuildType",
+    "CMAKE_BUILD_TYPE=Release",
     "RAPIDHASH_INCLUDE_DIRS=$RepoDir/deps/rapidhash",
     "CMAKE_PREFIX_PATH=$QtInstall",
     "CMAKE_TOOLCHAIN_FILE=$VcpkgRoot/scripts/buildsystems/vcpkg.cmake",
@@ -223,48 +219,35 @@ $commonConfigureArgs = @(
     "CMAKE_CXX_FLAGS=$cxxFlags"
 )
 
-# Pour garantir un .pdb en Release/RelWithDebInfo avec clang-cl + link.exe
-if ($BuildType -in @("Release", "RelWithDebInfo")) {
-    $commonConfigureArgs += @(
-        "CMAKE_C_FLAGS_${BuildType}=/Zi",
-        "CMAKE_CXX_FLAGS_${BuildType}=/Zi",
-        "CMAKE_EXE_LINKER_FLAGS_${BuildType}=/DEBUG"
-    )
-}
-
 & .\configure.ps1 @commonConfigureArgs
 
 if ($LASTEXITCODE -ne 0) {
-    Fail "cmake configure a echoue."
+    Write-Host "ERREUR: cmake configure a echoue." -ForegroundColor Red
+    exit 1
 }
 
 # ── Build ────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "Build..." -ForegroundColor Cyan
 
-cmake --build build --config $BuildType --parallel
+cmake --build build --config Release --parallel
 
 if ($LASTEXITCODE -ne 0) {
-    Fail "Le build a echoue."
+    Write-Host "ERREUR: Le build a echoue." -ForegroundColor Red
+    exit 1
 }
 
 # ── Verification ─────────────────────────────────────────────────────
 $exe = "build\target\bin\rpgmtranslate.exe"
-$pdb = "build\target\bin\rpgmtranslate.pdb"
 
 if (-not (Test-Path $exe)) {
-    Fail "$exe introuvable."
+    Write-Host "ERREUR: $exe introuvable." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host ""
 Write-Host "Build reussi !" -ForegroundColor Green
 Write-Host "  Binaire: $RepoDir\$exe" -ForegroundColor White
-
-if (Test-Path $pdb) {
-    Write-Host "  PDB:     $RepoDir\$pdb" -ForegroundColor White
-} else {
-    Write-Host "  PDB:     non trouve a l'emplacement attendu ($RepoDir\$pdb)" -ForegroundColor Yellow
-}
 
 # Verifier le linkage statique
 Write-Host ""

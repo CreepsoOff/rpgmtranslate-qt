@@ -27,6 +27,9 @@ struct ProjectSettings {
 
     QString projectPath;
     QString spellcheckDictionary;
+    QString sourceLockPath;
+    QString lastSeenGameDataFingerprint;
+    QString lastPromptedGameDataFingerprint;
 
     QString projectContext;
     HashMap<QString, QString> fileContexts;
@@ -57,6 +60,10 @@ struct ProjectSettings {
             default:
                 return {};
         }
+    }
+
+    [[nodiscard]] auto resolvedSourcePath() const -> QString {
+        return sourceLockPath.isEmpty() ? sourcePath() : sourceLockPath;
     }
 
     [[nodiscard]] auto translationPath() const -> QString {

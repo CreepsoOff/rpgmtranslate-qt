@@ -18,6 +18,9 @@ constexpr QLatin1StringView TEMP_MAPS_DIRECTORY = "/temp-maps"_L1;
 constexpr QLatin1StringView LOG_FILE = "/replacement-log.json"_L1;
 constexpr QLatin1StringView PROJECT_SETTINGS_FILE = "/project-settings.json"_L1;
 constexpr QLatin1StringView BACKUP_DIRECTORY = "/backups"_L1;
+constexpr QLatin1StringView SOURCE_BASELINE_DIRECTORY = "/source-baseline"_L1;
+constexpr QLatin1StringView SOURCE_BASELINE_BACKUPS_DIRECTORY =
+    "/source-baseline-backups"_L1;
 constexpr QLatin1StringView GLOSSARY_FILE = "/glossary.json"_L1;
 constexpr QLatin1StringView OUTPUT_DIRECTORY = "/output"_L1;
 constexpr QLatin1StringView RVPACKER_METADATA_FILE = "/.rvpacker-metadata"_L1;

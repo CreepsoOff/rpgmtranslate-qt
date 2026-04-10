@@ -269,7 +269,6 @@ pub(crate) fn write(
         .game_type(game_type)
         .duplicate_mode(duplicate_mode)
         .build();
-
     writer.write(source_path, translation_path, output_path, engine_type)?;
 
     Ok(start_time.elapsed().as_secs_f32())
