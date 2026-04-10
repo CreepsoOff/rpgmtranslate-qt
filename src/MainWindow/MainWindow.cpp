@@ -356,6 +356,10 @@ MainWindow::MainWindow(QWidget* const parent) :
             return;
         }
 
+        if (!saveCurrentTab() || !saveMaps()) {
+            return;
+        }
+
         const QString gameTitle = ui->gameTitleInput->placeholderText();
 
         QMetaObject::invokeMethod(
@@ -1491,6 +1495,10 @@ MainWindow::MainWindow(QWidget* const parent) :
     });
 
     connect(writeMenu, &WriteMenu::accepted, this, [this] -> void {
+        if (!saveCurrentTab() || !saveMaps()) {
+            return;
+        }
+
         QMetaObject::invokeMethod(
             taskWorker,
             &TaskWorker::write,
@@ -1672,6 +1680,12 @@ void MainWindow::loadSettings() {
     batchMenu->setEndpoints(settings->translation.endpoints);
     if (projectSettings != nullptr) {
         batchMenu->setFileContexts(projectSettings->fileContexts);
+
+        if (settings->core.backup.enabled) {
+            backupTimer.start(settings->core.backup.period * SECOND_MS);
+        } else {
+            backupTimer.stop();
+        }
     }
 
     // Disabled runtime retranslation for startup stability on this static build.
@@ -3143,34 +3157,51 @@ start:
 }
 
 void MainWindow::saveBackup() {
-    const auto saveSuccess = saveCurrentTab();
+    if (projectSettings == nullptr || !settings->core.backup.enabled) {
+        return;
+    }
 
-    if (!saveSuccess) {
+    if (!saveCurrentTab() || !saveMaps()) {
         return;
     }
 
     const QString backupPath = projectSettings->backupPath();
-    const QList<QFileInfo> entries =
-        QDir(backupPath).entryInfoList(QDir::Dirs, QDir::Time);
+    QDir backupDir(backupPath);
 
-    if (entries.size() > settings->core.backup.max) {
-        QFile::remove(entries.first().filePath());
+    if (!backupDir.exists() && !QDir().mkpath(backupPath)) {
+        qWarning() << u"Failed to create backup directory: "_s << backupPath;
+        return;
+    }
+
+    const u8 maxBackups = std::max<u8>(1, settings->core.backup.max);
+    const QList<QFileInfo> entries = backupDir.entryInfoList(
+        QDir::Dirs | QDir::NoDotAndDotDot,
+        QDir::Time
+    );
+
+    for (const i32 idx : range<i32>(maxBackups - 1, entries.size())) {
+        QDir dir(entries[idx].filePath());
+        if (!dir.removeRecursively()) {
+            qWarning() << u"Failed to remove old backup directory: "_s
+                       << entries[idx].filePath();
+        }
     }
 
     const auto date = QDate::currentDate();
     const auto time = QTime::currentTime();
 
-    auto backupDirName = u"/%1-%2-%3_%4-%5-%6"_s.arg(date.day())
+    auto backupDirName = u"/%1-%2-%3_%4-%5-%6-%7"_s.arg(date.day())
                              .arg(date.month())
                              .arg(date.year())
                              .arg(time.hour())
                              .arg(time.minute())
-                             .arg(time.second());
+                             .arg(time.second())
+                             .arg(time.msec());
 
     try {
         fs::copy(
             projectSettings->translationPath().toStdString(),
-            (projectSettings->backupPath() + backupDirName).toStdString(),
+            (backupPath + backupDirName).toStdString(),
             fs::copy_options::recursive | fs::copy_options::overwrite_existing
         );
     } catch (const fs::filesystem_error& error) {
