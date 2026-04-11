@@ -1,25 +1,22 @@
 #![allow(unsafe_op_in_unsafe_fn)]
-use crate::api::{self, *};
-use language_tokenizer::{Algorithm, MatchMode, MatchResult};
+use crate::api::*;
+use language_tokenizer::{Algorithm, MatchResult};
 use log::{Log, Metadata, Record};
-use rvpacker_txt_rs_lib::{BaseFlags, DuplicateMode, EngineType, FileFlags};
+use rvpacker_txt_rs_lib::{
+    BaseFlags, DuplicateMode, EngineType, FileFlags, ReadMode,
+};
 use std::{
     collections::HashMap,
     ffi::c_char,
-    fs::read_to_string,
+    fs::{self, read_to_string},
+    mem::{self},
     path::Path,
+    ptr::{self},
     sync::{LazyLock, OnceLock},
 };
 use tokio::runtime::{Builder, Runtime};
 
-#[repr(u8)]
-#[derive(Clone, Copy, Debug)]
-pub enum ReadMode {
-    Default,
-    DefaultForce,
-    AppendDefault,
-    AppendForce,
-}
+// TODO: Docs for all this
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,27 +44,25 @@ pub struct Selected {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+/// Byte buffer with FFI-compatible layout.
+///
+/// This struct shouldn't be used for UTF-8 string. Instead, [`FFIString`] should be used.
+///
+/// If `cap == 0`, then this is just a view.
 pub struct ByteBuffer {
     pub ptr: *const u8,
-    pub len: usize,
+    pub len: u32,
+    pub cap: u32,
 }
 
 impl ByteBuffer {
     pub const fn null() -> Self {
         Self {
-            ptr: std::ptr::null(),
+            ptr: ptr::null(),
             len: 0,
+            cap: 0,
         }
     }
-}
-
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct MatchModeInfo {
-    fuzzy_threshold: f32,
-    mode: u8,
-    case_sensitive: bool,
-    permissive: bool,
 }
 
 static TOKIO_RT: LazyLock<Runtime> =
@@ -75,47 +70,73 @@ static TOKIO_RT: LazyLock<Runtime> =
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+/// UTF-8 string with FFI-compatible layout.
+///
+/// Use [`str_to_ffi`] and [`ffi_to_str`] for conversions.
+///
+/// Use [`FFIString::null`] to default-initialize to null.
+///
+/// If `cap == 0`, then this is just a view.
 pub struct FFIString {
     pub ptr: *const c_char,
-    pub len: usize,
+    pub len: u32,
+    pub cap: u32,
 }
 
 impl FFIString {
     pub const fn null() -> Self {
         Self {
-            ptr: std::ptr::null(),
+            ptr: ptr::null(),
             len: 0,
+            cap: 0,
         }
     }
 }
 
 #[inline]
 unsafe fn ffi_to_str<'a>(string: FFIString) -> &'a str {
-    let slice = std::slice::from_raw_parts(string.ptr.cast::<u8>(), string.len);
+    let slice = std::slice::from_raw_parts(
+        string.ptr.cast::<u8>(),
+        string.len as usize,
+    );
     str::from_utf8_unchecked(slice)
 }
 
 #[inline]
-fn str_to_ffi(str: &str) -> FFIString {
-    let vec = str.to_owned().into_bytes();
-    let len = vec.len();
-    let ptr = vec.as_ptr().cast::<c_char>();
-    std::mem::forget(vec);
-    FFIString { ptr, len }
+fn str_to_ffi(str: &String) -> FFIString {
+    let len = str.len();
+    let ptr = str.as_ptr().cast::<c_char>();
+    FFIString {
+        ptr,
+        len: len as u32,
+        cap: str.capacity() as u32,
+    }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rpgm_string_free(ffi_string: FFIString) {
+    if ffi_string.cap == 0 {
+        return;
+    }
+
     let _ = Vec::from_raw_parts(
         ffi_string.ptr.cast_mut(),
-        ffi_string.len,
-        ffi_string.len,
+        ffi_string.len as usize,
+        ffi_string.cap as usize,
     );
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn rpgm_buffer_free(buffer: ByteBuffer) {
-    let _ = Vec::from_raw_parts(buffer.ptr.cast_mut(), buffer.len, buffer.len);
+    if buffer.cap == 0 {
+        return;
+    }
+
+    let _ = Vec::from_raw_parts(
+        buffer.ptr.cast_mut(),
+        buffer.len as usize,
+        buffer.cap as usize,
+    );
 }
 
 #[unsafe(no_mangle)]
@@ -125,8 +146,8 @@ pub unsafe extern "C" fn rpgm_free_translated_files(
 ) {
     let rebuilt_files_ffi: Vec<ByteBuffer> = Vec::from_raw_parts(
         translated_files_ffi.ptr.cast_mut().cast::<ByteBuffer>(),
-        translated_files_ffi.len,
-        translated_files_ffi.len,
+        translated_files_ffi.len as usize,
+        translated_files_ffi.cap as usize,
     );
 
     for buffer in &rebuilt_files_ffi {
@@ -136,21 +157,21 @@ pub unsafe extern "C" fn rpgm_free_translated_files(
 
         let _: Vec<FFIString> = Vec::from_raw_parts(
             buffer.ptr.cast_mut().cast::<FFIString>(),
-            buffer.len,
-            buffer.len,
+            buffer.len as usize,
+            buffer.cap as usize,
         );
     }
 
     let _: Vec<Vec<String>> = Vec::from_raw_parts(
         translated_files.ptr.cast_mut().cast::<Vec<String>>(),
-        translated_files.len,
-        translated_files.len,
+        translated_files.len as usize,
+        translated_files.cap as usize,
     );
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_read(
-    project_path: FFIString,
     source_path: FFIString,
     translation_path: FFIString,
     read_mode: ReadMode,
@@ -160,34 +181,24 @@ pub unsafe extern "C" fn rpgm_read(
     flags: BaseFlags,
     map_events: bool,
     hashes: ByteBuffer,
+    ini_title: FFIString,
     out_hashes: *mut ByteBuffer,
 ) -> FFIString {
     let result = (|| -> Result<_, Error> {
-        let project_path = ffi_to_str(project_path);
         let source_path = ffi_to_str(source_path);
         let translation_path = ffi_to_str(translation_path);
+        let ini_title = ffi_to_str(ini_title);
 
         let hashes = if hashes.ptr.is_null() {
             &[]
         } else {
-            std::slice::from_raw_parts(hashes.ptr.cast::<u128>(), hashes.len)
-        };
-
-        let read_mode = match read_mode {
-            ReadMode::Default => rvpacker_txt_rs_lib::ReadMode::Default(false),
-            ReadMode::DefaultForce => {
-                rvpacker_txt_rs_lib::ReadMode::Default(true)
-            }
-            ReadMode::AppendDefault => {
-                rvpacker_txt_rs_lib::ReadMode::Append(false)
-            }
-            ReadMode::AppendForce => {
-                rvpacker_txt_rs_lib::ReadMode::Append(true)
-            }
+            std::slice::from_raw_parts(
+                hashes.ptr.cast::<u128>(),
+                hashes.len as usize,
+            )
         };
 
         let out = read(
-            Path::new(&project_path),
             Path::new(&source_path),
             Path::new(&translation_path),
             read_mode,
@@ -197,6 +208,7 @@ pub unsafe extern "C" fn rpgm_read(
             flags,
             map_events,
             hashes.to_vec(),
+            ini_title,
         )?;
 
         Ok(out)
@@ -204,25 +216,27 @@ pub unsafe extern "C" fn rpgm_read(
 
     match result {
         Ok(mut serialized) => {
-            debug_assert!(serialized.len() == serialized.capacity());
-
             *out_hashes = ByteBuffer {
                 ptr: serialized.as_mut_ptr().cast::<u8>(),
-                len: serialized.len(),
+                len: serialized.len() as u32,
+                cap: serialized.capacity() as u32,
             };
 
-            std::mem::forget(serialized);
+            mem::forget(serialized);
 
             FFIString::null()
         }
         Err(err) => {
             let msg = err.to_string();
-            str_to_ffi(&msg)
+            let ffi = str_to_ffi(&msg);
+            mem::forget(msg);
+            ffi
         }
     }
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_write(
     source_path: FFIString,
     translation_path: FFIString,
@@ -259,11 +273,17 @@ pub unsafe extern "C" fn rpgm_write(
             *elapsed_out = elapsed;
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_purge(
     source_path: FFIString,
     translation_path: FFIString,
@@ -293,11 +313,17 @@ pub unsafe extern "C" fn rpgm_purge(
 
     match result {
         Ok(_) => FFIString::null(),
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_extract_archive(
     input_path: FFIString,
     output_path: FFIString,
@@ -311,11 +337,17 @@ pub unsafe extern "C" fn rpgm_extract_archive(
 
     match result {
         Ok(()) => FFIString::null(),
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_get_models(
     endpoint: TranslationEndpoint,
     api_key: FFIString,
@@ -341,21 +373,26 @@ pub unsafe extern "C" fn rpgm_get_models(
                 buffer.extend_from_slice(string.as_bytes());
             }
 
-            debug_assert!(buffer.len() == buffer.capacity());
-
             *out = ByteBuffer {
                 ptr: buffer.as_mut_ptr(),
-                len: buffer.len(),
+                len: buffer.len() as u32,
+                cap: buffer.capacity() as u32,
             };
 
-            std::mem::forget(buffer);
+            mem::forget(buffer);
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_translate_single(
     endpoint_settings: FFIString,
     project_context: FFIString,
@@ -363,16 +400,13 @@ pub unsafe extern "C" fn rpgm_translate_single(
     source_language: Algorithm,
     translation_language: Algorithm,
     text: FFIString,
-    glossary: ByteBuffer,
+    glossary: FFIString,
     out_string: *mut FFIString,
 ) -> FFIString {
     let project_context = ffi_to_str(project_context);
     let local_context = ffi_to_str(local_context);
     let text = ffi_to_str(text);
-    let glossary = str::from_utf8_unchecked(std::slice::from_raw_parts(
-        glossary.ptr,
-        glossary.len,
-    ));
+    let glossary = ffi_to_str(glossary);
     let endpoint_settings = ffi_to_str(endpoint_settings);
 
     let glossary: Vec<GlossaryEntry> =
@@ -398,10 +432,16 @@ pub unsafe extern "C" fn rpgm_translate_single(
     match result {
         Ok(results) => {
             let str = str_to_ffi(&results);
+            mem::forget(results);
             *out_string = str;
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
@@ -472,6 +512,7 @@ pub fn split_into_sections(input: &str) -> Vec<&str> {
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_translate<'a>(
     endpoint_settings: FFIString,
     project_context: FFIString,
@@ -499,7 +540,7 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
     let result = (|| -> Result<_, Error> {
         let filenames = std::slice::from_raw_parts::<[u8; 13]>(
             filenames.ptr.cast::<[u8; 13]>(),
-            filenames.len,
+            filenames.len as usize,
         );
 
         let mut files: HashMap<&str, Vec<String>> =
@@ -638,10 +679,6 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
     match result {
         Ok(translated_files) => {
-            debug_assert!(
-                translated_files.len() == translated_files.capacity()
-            );
-
             let mut translated_files_ffi =
                 Vec::with_capacity(translated_files.len());
 
@@ -651,52 +688,53 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
 
                 if translated_strings.is_empty() {
                     translated_files_ffi.push(ByteBuffer {
-                        ptr: std::ptr::null(),
+                        ptr: ptr::null(),
                         len: 0,
+                        cap: 0,
                     });
                 }
 
                 for string in translated_strings {
-                    strings_ffi.push(FFIString {
-                        ptr: string.as_ptr().cast::<c_char>(),
-                        len: string.len(),
-                    });
+                    strings_ffi.push(str_to_ffi(string));
                 }
-
-                debug_assert!(strings_ffi.len() == strings_ffi.capacity());
 
                 translated_files_ffi.push(ByteBuffer {
                     ptr: strings_ffi.as_ptr().cast::<u8>(),
-                    len: strings_ffi.len(),
+                    len: strings_ffi.len() as u32,
+                    cap: strings_ffi.capacity() as u32,
                 });
 
-                std::mem::forget(strings_ffi);
+                mem::forget(strings_ffi);
             }
-
-            debug_assert!(
-                translated_files_ffi.len() == translated_files_ffi.capacity()
-            );
 
             *out_translated_ffi = ByteBuffer {
                 ptr: translated_files_ffi.as_ptr().cast::<u8>(),
-                len: translated_files_ffi.len(),
+                len: translated_files_ffi.len() as u32,
+                cap: translated_files_ffi.capacity() as u32,
             };
 
             *out_translated = ByteBuffer {
                 ptr: translated_files.as_ptr().cast::<u8>(),
-                len: translated_files.len(),
+                len: translated_files.len() as u32,
+                cap: translated_files.capacity() as u32,
             };
 
-            std::mem::forget(translated_files);
-            std::mem::forget(translated_files_ffi);
+            mem::forget(translated_files);
+            mem::forget(translated_files_ffi);
 
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_find_all_matches(
     source_haystack: FFIString,
     source_needle: FFIString,
@@ -713,28 +751,6 @@ pub unsafe extern "C" fn rpgm_find_all_matches(
         let source_needle = ffi_to_str(source_needle);
         let tr_haystack = ffi_to_str(tr_haystack);
         let tr_needle = ffi_to_str(tr_needle);
-
-        let source_mode = api::MatchModeInfo {
-            mode: match source_mode.mode {
-                0 => MatchMode::Exact,
-                1 => MatchMode::Fuzzy(source_mode.fuzzy_threshold as f64),
-                2 => MatchMode::Both(source_mode.fuzzy_threshold as f64),
-                _ => unreachable!(),
-            },
-            case_sensitive: source_mode.case_sensitive,
-            permissive: source_mode.permissive,
-        };
-
-        let tr_mode = api::MatchModeInfo {
-            mode: match tr_mode.mode {
-                0 => MatchMode::Exact,
-                1 => MatchMode::Fuzzy(tr_mode.fuzzy_threshold as f64),
-                2 => MatchMode::Both(tr_mode.fuzzy_threshold as f64),
-                _ => unreachable!(),
-            },
-            case_sensitive: tr_mode.case_sensitive,
-            permissive: tr_mode.permissive,
-        };
 
         let m = find_all_matches(
             &source_haystack,
@@ -759,13 +775,13 @@ pub unsafe extern "C" fn rpgm_find_all_matches(
 
                 for m in src {
                     match m {
-                        MatchResult::Exact((start, len)) => {
-                            vec.extend((start as u32).to_le_bytes());
+                        MatchResult::Exact { offset, len } => {
+                            vec.extend((offset as u32).to_le_bytes());
                             vec.extend((len as u32).to_le_bytes());
                             vec.extend(0f32.to_le_bytes());
                         }
-                        MatchResult::Fuzzy((start, len), score) => {
-                            vec.extend((start as u32).to_le_bytes());
+                        MatchResult::Fuzzy { offset, len, score } => {
+                            vec.extend((offset as u32).to_le_bytes());
                             vec.extend((len as u32).to_le_bytes());
                             vec.extend((score as f32).to_le_bytes());
                         }
@@ -776,13 +792,13 @@ pub unsafe extern "C" fn rpgm_find_all_matches(
 
                 for m in tr {
                     match m {
-                        MatchResult::Exact((start, len)) => {
-                            vec.extend((start as u32).to_le_bytes());
+                        MatchResult::Exact { offset, len } => {
+                            vec.extend((offset as u32).to_le_bytes());
                             vec.extend((len as u32).to_le_bytes());
                             vec.extend(0f32.to_le_bytes());
                         }
-                        MatchResult::Fuzzy((start, len), score) => {
-                            vec.extend((start as u32).to_le_bytes());
+                        MatchResult::Fuzzy { offset, len, score } => {
+                            vec.extend((offset as u32).to_le_bytes());
                             vec.extend((len as u32).to_le_bytes());
                             vec.extend((score as f32).to_le_bytes());
                         }
@@ -798,18 +814,22 @@ pub unsafe extern "C" fn rpgm_find_all_matches(
 
     match result {
         Ok(mut serialized) => {
-            debug_assert!(serialized.len() == serialized.capacity());
-
             *out = ByteBuffer {
                 ptr: serialized.as_mut_ptr(),
-                len: serialized.len(),
+                len: serialized.len() as u32,
+                cap: serialized.capacity() as u32,
             };
 
-            std::mem::forget(serialized);
+            mem::forget(serialized);
 
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
@@ -824,7 +844,7 @@ pub extern "C" fn rpgm_get_detected_lang(out_string: *mut FFIString) {
     let lang = get_lang().unwrap_or("");
 
     unsafe {
-        *out_string = str_to_ffi(lang);
+        *out_string = str_to_ffi(&lang.to_string());
     }
 }
 
@@ -844,13 +864,8 @@ impl Log for FFILogger {
 
         let text = format!("[{}] {}", record.target(), record.args());
 
-        cb(
-            record.level() as u8,
-            FFIString {
-                ptr: text.as_ptr().cast::<std::ffi::c_char>(),
-                len: text.len(),
-            },
-        );
+        cb(record.level() as u8, str_to_ffi(&text));
+        mem::forget(text);
     }
 
     fn flush(&self) {}
@@ -870,6 +885,7 @@ pub extern "C" fn init_rust_logger(callback: LogCallback) {
 }
 
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_count_words(
     text: FFIString,
     algorithm: Algorithm,
@@ -885,12 +901,18 @@ pub unsafe extern "C" fn rpgm_count_words(
             *out = count;
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }
 
 #[cfg(feature = "languagetool")]
 #[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_language_tool_lint(
     text: FFIString,
     base_url: FFIString,
@@ -902,6 +924,8 @@ pub unsafe extern "C" fn rpgm_language_tool_lint(
     FFIString::null()
 }
 
+#[unsafe(no_mangle)]
+#[must_use]
 pub unsafe extern "C" fn rpgm_decrypt_asset(
     path: FFIString,
     out: *mut ByteBuffer,
@@ -913,17 +937,118 @@ pub unsafe extern "C" fn rpgm_decrypt_asset(
 
     match result {
         Ok(decrypted) => {
-            debug_assert!(decrypted.len() == decrypted.capacity());
-
             *out = ByteBuffer {
                 ptr: decrypted.as_ptr(),
-                len: decrypted.len(),
+                len: decrypted.len() as u32,
+                cap: decrypted.capacity() as u32,
             };
 
-            std::mem::forget(decrypted);
+            mem::forget(decrypted);
 
             FFIString::null()
         }
-        Err(error) => str_to_ffi(&error.to_string()),
+        Err(error) => {
+            let err = error.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
+    }
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rpgm_highlight_code(
+    input: FFIString,
+    lang: HighlightLanguage,
+    out: *mut ByteBuffer,
+) {
+    let input = ffi_to_str(input);
+    let tokens = highlight_code(input, lang);
+
+    *out = ByteBuffer {
+        ptr: tokens.as_ptr().cast::<u8>(),
+        len: tokens.len() as u32,
+        cap: tokens.capacity() as u32,
+    };
+
+    mem::forget(tokens);
+}
+
+#[unsafe(no_mangle)]
+#[must_use]
+pub unsafe extern "C" fn rpgm_generate_json(
+    content: FFIString,
+    filename: FFIString,
+    json_out: *mut FFIString,
+) -> FFIString {
+    let result = (|| -> Result<_, Error> {
+        let json = generate_json(
+            ffi_to_str(content).as_bytes(),
+            ffi_to_str(filename),
+        )?;
+        Ok(json)
+    })();
+
+    match result {
+        Ok(json) => {
+            *json_out = str_to_ffi(&json);
+            mem::forget(json);
+
+            FFIString::null()
+        }
+        Err(err) => {
+            let err = err.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rpgm_beautify_json(
+    json: FFIString,
+    out: *mut FFIString,
+) {
+    let beautified = beautify_json(ffi_to_str(json));
+    *out = str_to_ffi(&beautified);
+    mem::forget(beautified);
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rpgm_get_ini_title(
+    project_path: FFIString,
+    out: *mut ByteBuffer,
+) -> FFIString {
+    let project_path = ffi_to_str(project_path);
+
+    let result = (|| -> Result<_, Error> {
+        let title = get_ini_title(project_path)?;
+        Ok(title)
+    })();
+
+    match result {
+        Ok(title) => {
+            *out = ByteBuffer {
+                ptr: title.as_ptr(),
+                len: title.len() as u32,
+                cap: title.capacity() as u32,
+            };
+
+            mem::forget(title);
+
+            FFIString::null()
+        }
+        Err(err) => {
+            let err = err.to_string();
+            let ffi = str_to_ffi(&err);
+            mem::forget(err);
+            ffi
+        }
     }
 }

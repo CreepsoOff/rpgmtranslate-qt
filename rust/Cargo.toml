@@ -10,33 +10,47 @@ crate-type = ["staticlib"]
 [profile.release]
 lto = true
 codegen-units = 1
+opt-level = 3
 panic = "abort"
 strip = "symbols"
 
 [dependencies]
-language-tokenizer = { version = "0.1.0", features = ["snowball"] }
-llm-connector = "1.1.17"
 log = "0.4.29"
 num_enum = "0.7.6"
 regex = "1.12.3"
-rpgmad-lib = "5.0.0"
-rvpacker-txt-rs-lib = "11.2.0"
 serde = "1.0.228"
 serde_json = "1.0.149"
 strum_macros = "0.28.0"
 thiserror = "2.0.18"
-tiktoken-rs = "0.9.1"
 walkdir = "2.5.0"
 whatlang = "0.18.0"
-cbindgen = "0.29.2"
-tokio = "1.51.0"
+tokio = "1.51.1"
+serde-transcode = "1.1.1"
+
+rpgmad-lib = "5.0.0"
+rvpacker-txt-rs-lib = "12.1.0"
+rpgm-asset-decrypter-lib = "3.2.2"
+marshal-rs = "2.0.1"
+
+# Translation
+llm-connector = "1.1.17"
+deepl = "0.7.3"
 yandex-translate-v2 = { version = "0.1.3", features = [
     "async",
 ], default-features = false }
 translators = { version = "0.1.5", features = ["google", "tokio-async"] }
-deepl = "0.7.3"
+tiktoken-rs = "0.11.0"
 languagetool-rust = { version = "3.0.1", default-features = false, optional = true }
-rpgm-asset-decrypter-lib = "3.2.1"
+language-tokenizer = { version = "0.3.0", features = ["snowball"] }
+
+# tree-sitter (Syntax highlighting)
+tree-sitter-highlight = { version = "0.26.8", optional = true }
+tree-sitter-json = { version = "0.24.8", optional = true }
+tree-sitter-javascript = { version = "0.25.0", optional = true }
+tree-sitter-ruby = { version = "0.23.1", optional = true }
 
 [features]
 languagetool = ["dep:languagetool-rust"]
+json-highlighting = ["dep:tree-sitter-highlight", "dep:tree-sitter-json"]
+js-highlighting = ["dep:tree-sitter-highlight", "dep:tree-sitter-javascript"]
+ruby-highlighting = ["dep:tree-sitter-highlight", "dep:tree-sitter-ruby"]

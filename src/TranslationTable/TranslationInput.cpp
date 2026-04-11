@@ -96,15 +96,16 @@ void TranslationInput::performAutoReplacements() {
     const i32 originalPosition = cursor.position();
     const QString text = toPlainText();
 
-    constexpr array<std::pair<QLatin1StringView, QStringView>, 5>
-        replacements = { std::pair{ "<<"_L1, u"«" },
-                         { ">>"_L1, u"»" },
-                         { "--"_L1, u"—" },
-                         { ",,"_L1, u"„" },
-                         { "u''"_L1, u"“" } };
+    constexpr array<std::pair<QL1SV, QStringView>, 5> replacements = {
+        std::pair{ "<<"_L1, u"«" },
+        { ">>"_L1, u"»" },
+        { "--"_L1, u"—" },
+        { ",,"_L1, u"„" },
+        { "u''"_L1, u"“" }
+    };
 
     for (const auto& pair : replacements) {
-        const QLatin1StringView source = pair.first;
+        const QL1SV source = pair.first;
         const QStringView replacement = pair.second;
 
         if (originalPosition >= source.size()) {

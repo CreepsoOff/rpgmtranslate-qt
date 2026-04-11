@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>362</width>
-    <height>652</height>
+    <height>814</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -506,6 +506,91 @@
         </property>
         <property name="text">
          <string>Parse Map Events: Parses map events metadata, such as event ID, name, x/y position.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="iniTitleWidget" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout_10">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QCheckBox" name="useIniTitleCheckbox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Use title from Game.ini: If game is RPG Maker XP/VX/VX Ace, it may not necessarily contain game title in the system file. Use this option to take it from Game.ini. You will have to pick the right encoding. If this option is not set, we'll try to use the title from system file, if it's there.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="iniTitleDisplayWidget" native="true">
+     <layout class="QHBoxLayout" name="horizontalLayout_11">
+      <item>
+       <widget class="QComboBox" name="titleEncodingSelect">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <item>
+         <property name="text">
+          <string>UTF-8</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Shift_JIS</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>GB18030</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="iniTitleLabel">
+        <property name="text">
+         <string/>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

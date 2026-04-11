@@ -22,8 +22,6 @@ TranslationTableHeader::TranslationTableHeader(QWidget* const parent) :
     );
 }
 
-TranslationTableHeader::~TranslationTableHeader() {}
-
 void TranslationTableHeader::paintSection(
     QPainter* const painter,
     const QRect& rect,

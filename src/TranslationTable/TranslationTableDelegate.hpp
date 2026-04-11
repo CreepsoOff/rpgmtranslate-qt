@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Enums.hpp"
+#include "Aliases.hpp"
 #include "FWD.hpp"
 
 #ifdef ENABLE_NUSPELL

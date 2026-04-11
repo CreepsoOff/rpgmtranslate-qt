@@ -31,17 +31,18 @@ class MainWindow final : public QMainWindow {
     void closeEvent(QCloseEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::mainWindow*;
+    [[nodiscard]] inline auto setupUi() -> Ui::mainWindow*;
 
     inline void initializeSettings();
 
-    inline auto saveSettings() -> bool;
-    inline auto saveProjectSettings() -> bool;
-    inline auto saveGlossary() -> bool;
-    inline auto saveEverything() -> bool;
+    [[nodiscard]] inline auto saveSettings() -> bool;
+    [[nodiscard]] inline auto saveProjectSettings() -> bool;
+    [[nodiscard]] inline auto saveGlossary() -> bool;
+    [[nodiscard]] inline auto saveEverything() -> bool;
 
-    inline auto saveCurrentTab(QString tabName = QString()) -> bool;
-    inline auto saveMaps() -> bool;
+    [[nodiscard]] inline auto saveCurrentTab(QString tabName = QString())
+        -> bool;
+    [[nodiscard]] inline auto saveMaps() -> bool;
     inline void saveBackup();
 
     inline void loadSettings();
@@ -58,7 +59,7 @@ class MainWindow final : public QMainWindow {
     inline void retranslate(QLocale::Language language);
     inline void exit();
 
-    inline auto search(
+    [[nodiscard]] inline auto search(
         Selected selected,
         const QString& searchText,
         SearchLocation searchLocation,

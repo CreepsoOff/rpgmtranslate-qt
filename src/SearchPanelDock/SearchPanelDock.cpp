@@ -43,7 +43,7 @@ void SearchPanelDock::showMatches(
         QString content;
         QSVList lines;
 
-        const auto filename = QLatin1StringView(filenameArray.data());
+        const auto filename = QL1SV(filenameArray.data());
 
         if (filename.startsWith("map"_L1)) {
             const u16 mapNumber = filename.sliced(3).toUInt();

@@ -20,9 +20,9 @@ A complete rewrite of the [original RPGMTranslate application](https://github.co
 - [x] Convenience-oriented user experience with bookmarks, shortcuts, and highly customizable features.
 - [x] Built-in batch processing of files, including batch translation, batch trim and batch text wrap.
 - [x] Integrated APIs for Google Translate, Yandex Translate, DeepL, ChatGPT, Claude, DeepSeek, Gemini, Ollama, and any OpenAI-compatible endpoints (e.g. koboldcpp).
-- [x] **WIP** Integrated Git client.
-- [x] **WIP** Integrated asset inspector, which allows to inspect images, videos, fonts, scripts and more.
+- [x] Integrated asset inspector, which allows to inspect images, videos, fonts, scripts and more.
 - [x] Integrated spell-checking and advanced linting.
+- [ ] **WIP** Integrated Git client.
 - [ ] **WIP** LanguageTool integration.
 
 **Please, request features!** It's possible to implement virtually anything in Rust and C++. Request features that you and others would benefit from, and we will implement them.
@@ -43,17 +43,19 @@ You can get those in **Releases** section.
 
 Built releases require AVX instructions, which means the minimum supported processors are Sandy Bridge (3th Gen) for Intel and Bulldozer for AMD (FX-4xxx, FX-6xxx, FX-8xxx).
 
+All built executables are compressed by [UPX](https://github.com/upx/upx).
+
 ### Windows
 
-Windows releases are linked statically, you don't need any DLLs.
+Windows builds are linked statically, you don't need any DLLs.
 
 Minimum supported Windows version is Windows 10.
 
 ### Linux
 
-Linux releases are linked dynamically.
+Linux builds are linked dynamically.
 
-[Dependencies you'll need](./docs/linux-deps.md).
+You will need [these dependencies](https://RPG-Maker-Translation-Tools.github.io/rpgmtranslate-qt/development#getting-development-headers-on-linux) to run the application.
 
 ## Usage
 

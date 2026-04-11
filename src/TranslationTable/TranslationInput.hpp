@@ -20,7 +20,7 @@ class TranslationInput final : public QPlainTextEdit {
 
    private:
     struct Replacement {
-        QLatin1StringView original;
+        QL1SV original;
         QStringView replacement;
         i32 position;
     };

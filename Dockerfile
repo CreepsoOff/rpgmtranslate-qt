@@ -54,7 +54,6 @@ RUN chmod +x configure
 RUN ./configure
 RUN cmake -B build -S . && cmake --build build -j
 
-
 # OpenSUSE
 FROM opensuse/tumbleweed AS opensuse-build
 
@@ -93,7 +92,6 @@ RUN chmod +x configure
 RUN ./configure
 RUN cmake -B build -S . && cmake --build build -j
 
-
 # Arch
 FROM archlinux:latest AS arch-build
 
@@ -131,7 +129,6 @@ RUN git clone --depth 1 ${REPO_URL} .
 RUN chmod +x configure
 RUN ./configure
 RUN cmake -B build -S . && cmake --build build -j
-
 
 # Alpine
 FROM alpine:latest AS alpine-build

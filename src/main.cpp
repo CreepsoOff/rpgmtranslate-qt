@@ -9,7 +9,7 @@
 static QFile logFile;
 static QTextStream logStream;
 
-static auto levelToString(const QtMsgType type) -> QLatin1StringView {
+[[nodiscard]] static auto levelToString(const QtMsgType type) -> QL1SV {
     switch (type) {
         case QtDebugMsg:
             return "DEBUG"_L1;
@@ -26,7 +26,7 @@ static auto levelToString(const QtMsgType type) -> QLatin1StringView {
     return "LOG"_L1;
 }
 
-static auto levelToColor(const QtMsgType type) -> cstr {
+[[nodiscard]] static auto levelToColor(const QtMsgType type) -> cstr {
     switch (type) {
         case QtDebugMsg:
             return "\033[36m";
@@ -42,7 +42,7 @@ static auto levelToColor(const QtMsgType type) -> cstr {
     return "\033[0m";
 }
 
-static auto shortFile(const cstr file) -> cstr {
+[[nodiscard]] static auto shortFile(const cstr file) -> cstr {
     if (file == nullptr) {
         return "";
     }

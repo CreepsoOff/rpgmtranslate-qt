@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Aliases.hpp"
-#include "Constants.hpp"
-#include "Enums.hpp"
 #include "FWD.hpp"
 #include "FileSelectMenu.hpp"
 #include "PersistentMenu.hpp"
@@ -38,28 +36,32 @@ class GlossaryMenu final : public PersistentMenu {
     void changeEvent(QEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::GlossaryMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::GlossaryMenu*;
 
-    auto makeTermInfoCell(const QString& text, const MatchModeInfo& info)
+    [[nodiscard]] auto makeTermInfoCell(
+        const QString& text,
+        const MatchModeInfo& info
+    ) -> QWidget*;
+    [[nodiscard]] auto makeNoteCell(const QString& note) -> QWidget*;
+    [[nodiscard]] auto makeActionCell(QTreeWidgetItem* item, u16 index)
         -> QWidget*;
-    auto makeNoteCell(const QString& note) -> QWidget*;
-    auto makeActionCell(QTreeWidgetItem* item, u16 row) -> QWidget*;
     void addNewEntry(
         const QString& source = QString(),
         const QString& translation = QString(),
         const QString& note = QString(),
         MatchModeInfo sourceMatchMode =
             MatchModeInfo{
-                .fuzzyThreshold = DEFAULT_FUZZY_THRESHOLD,
-                .mode = MatchMode::Exact,
-                .caseSensitive = false,
+                .mode = { 
+                          .tag = MatchMode::Tag::Exact,
+                         },
+                .case_sensitive = false,
                 .permissive = false,
             },
         MatchModeInfo translationMatchMode =
             MatchModeInfo{
-                .fuzzyThreshold = DEFAULT_FUZZY_THRESHOLD,
-                .mode = MatchMode::Exact,
-                .caseSensitive = false,
+                .mode = {  
+                    .tag = MatchMode::Tag::Exact},
+                .case_sensitive = false,
                 .permissive = false,
             },
         bool editable = true
@@ -105,7 +107,7 @@ class ActionButtonsCell final : public QWidget {
 
    public:
     explicit ActionButtonsCell(QWidget* parent = nullptr);
-    void setEditable(bool editable);
+    void setEditable(bool editable) const;
 
     QPushButton* editButton;
 

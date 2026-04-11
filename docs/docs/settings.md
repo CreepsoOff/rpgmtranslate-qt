@@ -106,7 +106,7 @@ Requires an API key and can optionally use a glossary.
 
   Your DeepL API key.
 
-### LLM endpoints (OpenAI / Claude / Gemini / DeepSeek / OpenAI-compatible / Ollama)
+### LLM endpoints
 
 These endpoints share the same configuration fields.
 
@@ -194,7 +194,7 @@ The language of the source text. Currently, available languages are only those, 
 
 The language of the translation text. Currently, available languages are only those, that are supported by our underlying [text matching library](https://github.com/savannstm/language-tokenizer/blob/master/src/lib.rs#L139).
 
-### Spell Check
+### Spell сheck
 
 You can select the desired spellcheck dictionary from the combo box in project settings.
 

@@ -1,4 +1,4 @@
-# Minimum CMake version required
+# 3.25 is a modern baseline - has LINUX macro and other stuff
 cmake_minimum_required(VERSION 3.25)
 
 # Project definition
@@ -6,18 +6,67 @@ set(PROJECT_NAME rpgmtranslate)
 set(PROJECT_VERSION "1.0.0")
 project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
-option(ENABLE_NUSPELL       "Enable Nuspell integration"       OFF)
-option(ENABLE_LANGUAGETOOL  "Enable LanguageTool integration"  OFF)
-option(ENABLE_LIBGIT2       "Enable libgit2 integration"       OFF)
+option(ENABLE_NUSPELL
+    "Nuspell integration - allows using dictionaries for spell-checking."
+    ON
+)
 
-if (LINUX)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address,undefined,leak -fsanitize-address-use-after-scope")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address,undefined,leak -fsanitize-address-use-after-scope")
-    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address,undefined,leak -fsanitize-address-use-after-scope")
-endif()
+option(ENABLE_LANGUAGETOOL
+    "LanguageTool - allows using LanguageTool for text linting."
+    ON
+)
+
+option(ENABLE_LIBGIT2
+    "libgit2 - allows using built-in Git client for managing repositories."
+    ON
+)
+
+option(ENABLE_ASSET_PLAYBACK
+    "Allows playing video and audio assets directly in the application. Requires FFmpeg and miniaudio."
+    ON
+)
+
+option(ENABLE_JSON_HIGHLIGHTING
+    "Only works if ENABLE_SYNTAX_HIGHLIGTHING=ON. Enable syntax highlighting for JSON data."
+    ON
+)
+option(ENABLE_JS_HIGHLIGTHING
+    "Only works if ENABLE_SYNTAX_HIGHLIGTHING=ON. Enable syntax highlighting for JavaScript data."
+    ON
+)
+option(ENABLE_RUBY_HIGHLIGHTING
+    "Only works if ENABLE_SYNTAX_HIGHLIGTHING=ON. Enable syntax highlighting for Ruby-lang data."
+    ON
+)
+
+option(ENABLE_ASAN
+    "Enable AddressSanitizer (ASan). If using MSVC, this will override runtime to release version."
+    OFF
+)
+option(ENABLE_UBSAN
+    "Enable UndefinedBehaviorSanitizer (UBSan)."
+    OFF
+)
+option(ENABLE_LSAN
+    "Enable LeakSanitizer (LSan)."
+    OFF
+)
+
+option(MSVC_STATIC_RUNTIME
+    "Link MSVC runtime statically (MT/MTd vs MD/MDd)."
+    ON
+)
+option(ENABLE_PIC
+    "Enable Position Independent Code."
+    ON
+)
+option(ENABLE_LTO
+    "Enable link-time optimizations."
+    OFF
+)
 
 # Set standards for C and C++
-set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,17 +79,118 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-# Configure MSVC runtime linkage (static runtime, Debug/Release aware)
-if (MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+if (ENABLE_PIC)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-if (LINUX)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if (ENABLE_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+endif()
+
+set(_san_flags "")
+
+if (ENABLE_ASAN)
+    string(APPEND _san_flags ",address")
+endif()
+
+if (ENABLE_UBSAN)
+    string(APPEND _san_flags ",undefined")
+endif()
+
+if (ENABLE_LSAN)
+    string(APPEND _san_flags ",leak")
+endif()
+
+if (_san_flags)
+    if (MSVC)
+        # MSVC debug runtime is incompatible with sanitizers. Let sanitizers take priority.
+        if (MSVC_STATIC_RUNTIME)
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        else()
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+        endif()
+    endif()
+
+    string(REGEX REPLACE "^," "" _san_flags "${_san_flags}")
+    set(_san_flags "-fsanitize=${_san_flags}")
+
+    set(CMAKE_CXX_FLAGS_DEBUG    "${CMAKE_CXX_FLAGS_DEBUG}    -O0 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls ${_san_flags} -fsanitize-address-use-after-scope")
+    set(CMAKE_C_FLAGS_DEBUG      "${CMAKE_C_FLAGS_DEBUG}      -O0 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls ${_san_flags} -fsanitize-address-use-after-scope")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} ${_san_flags} -fsanitize-address-use-after-scope")
+else()
+    if (MSVC)
+        if (MSVC_STATIC_RUNTIME)
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        else()
+            set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+        endif()
+    endif()
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent Gui Svg Network LinguistTools)
 find_package(LibArchive REQUIRED)
+
+include(FindPackageHandleStandardArgs)
+
+find_path(RAPIDHASH_INCLUDE_DIR
+    NAMES rapidhash.h
+    HINTS ${RAPIDHASH_ROOT} ${RAPIDHASH_ROOT}/include
+)
+
+find_package_handle_standard_args(rapidhash
+    REQUIRED_VARS RAPIDHASH_INCLUDE_DIR
+    FAIL_MESSAGE  "rapidhash not found. Install it or set -DRAPIDHASH_ROOT=<path>"
+)
+
+if (NOT rapidhash_FOUND)
+    message(FATAL_ERROR "Aborting: rapidhash is required.")
+endif()
+
+if (ENABLE_ASSET_PLAYBACK)
+    find_path(MINIAUDIO_INCLUDE_DIR
+        NAMES miniaudio.h
+        HINTS ${MINIAUDIO_ROOT} ${MINIAUDIO_ROOT}/include
+    )
+
+    find_package_handle_standard_args(miniaudio
+        REQUIRED_VARS MINIAUDIO_INCLUDE_DIR
+        FAIL_MESSAGE  "miniaudio not found. Install it or set -DMINIAUDIO_ROOT=<path>"
+    )
+
+    if (NOT miniaudio_FOUND)
+        message(FATAL_ERROR "Aborting: miniaudio is required for ENABLE_ASSET_PLAYBACK.")
+    endif()
+
+    find_path(FFMPEG_INCLUDE_DIR
+        NAMES libavcodec/avcodec.h
+        HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/include
+    )
+
+    foreach(_lib avfilter avformat avcodec avutil swresample swscale)
+        string(TOUPPER ${_lib} _LIB_UPPER)
+
+        find_library(${_LIB_UPPER}_LIBRARY
+            NAMES ${_lib}
+            HINTS ${FFMPEG_ROOT} ${FFMPEG_ROOT}/lib
+        )
+    endforeach()
+
+    find_package_handle_standard_args(FFmpeg
+        REQUIRED_VARS
+            FFMPEG_INCLUDE_DIR
+            AVFILTER_LIBRARY
+            AVFORMAT_LIBRARY
+            AVCODEC_LIBRARY
+            AVUTIL_LIBRARY
+            SWRESAMPLE_LIBRARY
+            SWSCALE_LIBRARY
+        FAIL_MESSAGE "FFmpeg not found. Install it or set -DFFMPEG_ROOT=<path>"
+    )
+
+    if (NOT FFmpeg_FOUND)
+        message(FATAL_ERROR "Aborting: FFmpeg is required for ENABLE_ASSET_PLAYBACK.")
+    endif()
+endif()
 
 if (ENABLE_NUSPELL)
     find_package(Nuspell REQUIRED)
@@ -48,12 +198,6 @@ endif()
 
 if (ENABLE_LIBGIT2)
     find_package(libgit2)
-endif()
-
-find_path(RAPIDHASH_INCLUDE_DIRS "rapidhash.h")
-
-if (NOT RAPIDHASH_INCLUDE_DIRS)
-    message(FATAL_ERROR "rapidhash.h not found, specify path to it using `-DRAPIDHASH_INCLUDE_DIRS=...`")
 endif()
 
 # Configure the project version header
@@ -104,11 +248,15 @@ target_compile_definitions(${PROJECT_NAME}
         $<$<BOOL:${ENABLE_NUSPELL}>:ENABLE_NUSPELL>
         $<$<BOOL:${ENABLE_LANGUAGETOOL}>:ENABLE_LANGUAGETOOL>
         $<$<BOOL:${ENABLE_LIBGIT2}>:ENABLE_LIBGIT2>
+        $<$<BOOL:${ENABLE_ASSET_PLAYBACK}>:ENABLE_ASSET_PLAYBACK>
+        $<$<BOOL:${ENABLE_JSON_HIGHLIGHTING}>:ENABLE_JSON_HIGHLIGHTING>
+        $<$<BOOL:${ENABLE_JS_HIGHLIGHTING}>:ENABLE_JS_HIGHLIGHTING>
+        $<$<BOOL:${ENABLE_RUBY_HIGHLIGHTING}>:ENABLE_RUBY_HIGHLIGHTING>
 )
 
 add_definitions(
-    -DQT_DISABLE_DEPRECATED_UP_TO=0x060800
-    -DQT_ENABLE_STRICT_MODE_UP_TO=0x060800
+    -DQT_DISABLE_DEPRECATED_UP_TO=0x060802
+    -DQT_ENABLE_STRICT_MODE_UP_TO=0x060802
     -DQT_NO_CAST_FROM_ASCII
     -DQT_NO_CAST_TO_ASCII
     -DQT_NO_CAST_FROM_BYTEARRAY
@@ -152,6 +300,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     LibArchive::LibArchive
 )
 
+if (ENABLE_ASSET_PLAYBACK)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        avfilter
+        avformat
+        avcodec
+        avutil
+        swresample
+        swscale
+    )
+endif()
+
 if (ENABLE_NUSPELL)
     target_link_libraries(${PROJECT_NAME} PRIVATE Nuspell::nuspell)
 endif()
@@ -182,9 +341,23 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Corrosion)
 
 set(RPGMTRANSLATE_RUST_FEATURES "")
+
 if (ENABLE_LANGUAGETOOL)
     list(APPEND RPGMTRANSLATE_RUST_FEATURES "languagetool")
 endif()
+
+if (ENABLE_JSON_HIGHLIGHTING)
+    list(APPEND RPGMTRANSLATE_RUST_FEATURES "json-highlighting")
+endif()
+
+if (ENABLE_JS_HIGHLIGHTING)
+    list(APPEND RPGMTRANSLATE_RUST_FEATURES "js-highlighting")
+endif()
+
+if (ENABLE_RUBY_HIGHLIGHTING)
+    list(APPEND RPGMTRANSLATE_RUST_FEATURES "ruby-highlighting")
+endif()
+
 
 corrosion_import_crate(
     MANIFEST_PATH "${RUST_CRATE_DIR}/Cargo.toml"

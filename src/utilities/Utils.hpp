@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Aliases.hpp"
+#include "rpgmtranslate.h"
 
 #include <QStringList>
 #include <QVariantMap>
@@ -10,35 +11,34 @@ struct Translation {
     u8 index;
 };
 
-auto lineParts(QStringView line, u32 lineNumber, QAnyStringView filename)
-    -> QSVList;
-auto getTranslation(const QSVList& parts) -> struct Translation;
-auto getSource(const QSVList& parts) -> QStringView;
-auto getSource(QStringView line) -> QStringView;
-auto getTranslations(const QSVList& parts) -> QSVList;
+[[nodiscard]] auto
+lineParts(QStringView line, u32 lineNumber, QAnyStringView filename) -> QSVList;
+[[nodiscard]] auto getTranslation(const QSVList& parts) -> struct Translation;
+[[nodiscard]] auto getSource(const QSVList& parts) -> QStringView;
+[[nodiscard]] auto getSource(QStringView line) -> QStringView;
+[[nodiscard]] auto getTranslations(const QSVList& parts) -> QSVList;
 
-auto qsvReplace(
-    QStringView input,
-    QLatin1StringView needle,
-    QLatin1StringView replacement
-) -> QString;
-auto qsvReplace(
-    QStringView input,
-    QStringView needle,
-    QLatin1StringView replacement
-) -> QString;
-auto qsvReplace(
-    QStringView input,
-    QLatin1StringView needle,
-    QStringView replacement
-) -> QString;
-auto qsvReplace(QStringView input, QStringView needle, QStringView replacement)
+[[nodiscard]] auto
+qsvReplace(QStringView input, QL1SV needle, QL1SV replacement) -> QString;
+[[nodiscard]] auto
+qsvReplace(QStringView input, QStringView needle, QL1SV replacement) -> QString;
+[[nodiscard]] auto
+qsvReplace(QStringView input, QL1SV needle, QStringView replacement) -> QString;
+[[nodiscard]] auto
+qsvReplace(QStringView input, QStringView needle, QStringView replacement)
     -> QString;
-auto qsvReplace(QStringView input, QChar needle, QChar replacement) -> QString;
+[[nodiscard]] auto
+qsvReplace(QStringView input, QChar needle, QChar replacement) -> QString;
 
-auto joinQSVList(const QSVList& list, QLatin1StringView separator) -> QString;
-auto joinQSVList(const QSVList& list, QStringView separator) -> QString;
-auto joinQSVList(const QSVList& list, QChar separator) -> QString;
+[[nodiscard]] auto joinQSVList(const QSVList& list, QL1SV separator) -> QString;
+[[nodiscard]] auto joinQSVList(const QSVList& list, QStringView separator)
+    -> QString;
+[[nodiscard]] auto joinQSVList(const QSVList& list, QChar separator) -> QString;
 
-auto intLen(u32 num) -> u8;
-auto intLen(i32 num) -> u8;
+[[nodiscard]] auto intLen(u32 num) -> u8;
+[[nodiscard]] auto intLen(i32 num) -> u8;
+
+[[nodiscard]] auto lastPathComponent(const QString& path) -> QStringView;
+
+auto toffistr(QByteArrayView utf8) -> FFIString;
+auto fromffistr(FFIString str) -> QUtf8SV;

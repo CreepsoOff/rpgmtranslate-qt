@@ -66,7 +66,7 @@ class PurgeMenu final : public QWidget {
     void hideEvent(QHideEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::PurgeMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::PurgeMenu*;
 
     Ui::PurgeMenu* const ui;
 

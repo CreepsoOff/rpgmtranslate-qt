@@ -1,5 +1,7 @@
 #pragma once
 
+#include <magic_enum/magic_enum.hpp>
+
 #include <QString>
 #include <atomic>
 #include <bitset>
@@ -21,9 +23,17 @@
 using namespace Qt::Literals::StringLiterals;
 using namespace std::literals::string_view_literals;
 
+using namespace magic_enum::bitwise_operators;
+
 namespace fs = std::filesystem;
 namespace views = std::views;
 namespace ranges = std::ranges;
+
+// No idea if this works
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <__MSVC_Int128.hpp>
+using __uint128_t = std::_Unsigned128;
+#endif
 
 using usize = std::size_t;
 using isize = std::intptr_t;
@@ -60,7 +70,6 @@ using std::cerr;
 using std::cout;
 using std::expected;
 using std::format;
-using std::lock_guard;
 using std::make_shared;
 using std::make_unique;
 using std::mutex;
@@ -81,6 +90,8 @@ using std::max;
 using std::min;
 
 using QSVList = QList<QStringView>;
+using QUtf8SV = QUtf8StringView;
+using QL1SV = QLatin1StringView;
 
 template <typename T, typename E>
 using result = std::expected<T, E>;

@@ -1,15 +1,33 @@
 language = "C++"
 pragma_once = true
-include_version = true
+include_version = false
+no_includes = true
 cpp_compat = true
+includes = ["cstdint", "FWD.hpp", "Enums.hpp"]
+
+braces = "SameLine"
+line_length = 80
+tab_width = 4
+documentation = true
+line_endings = "LF"
 
 [parse]
-parse_deps = false
+parse_deps = true
+include = ["language-tokenizer", "rvpacker-txt-rs-lib"]
 clean = true
 
 [export]
-include = ["FFIString", "ByteBuffer", "LogCallback"]
-exclude = ["TranslationEndpoint", "MatchModeInfo", "Bitset2048", "Selected", "ReadMode"]
+include = [
+    "FFIString",
+    "ByteBuffer",
+    "LogCallback",
+    "FileFlags",
+    "RPGMFileType",
+    "MatchMode",
+    "HighlightToken",
+    "HighlightLanguage",
+]
+exclude = ["Bitset2048", "Selected", "ReadMode"]
 item_types = ["functions", "structs", "enums", "typedefs", "constants"]
 
 [layout]
@@ -17,27 +35,30 @@ packed = "assert"
 aligned_n = "assert"
 
 [enum]
-rename_variants = "PascalCase"
 add_sentinel = false
+derive_helper_methods = false
+must_use = "[[nodiscard]]"
 
 [fn]
 rename_args = "snake_case"
-must_use = "error"
+must_use = "[[nodiscard]]"
 
 [struct]
 rename_fields = "snake_case"
 derive_constructor = false
-derive_eq = false
+derive_eq = true
 derive_neq = false
 derive_lt = false
 derive_lte = false
 derive_gt = false
 derive_gte = false
+must_use = "[[nodiscard]]"
 
 [macro_expansion]
 bitflags = true
 
 [defines]
-"target_os = windows" = "CBINDGEN_WINDOWS"
-"target_os = macos" = "CBINDGEN_MACOS"
-"target_os = linux" = "CBINDGEN_LINUX"
+"feature = languagetool" = "ENABLE_LANGUAGETOOL"
+"feature = json-highligthing" = "ENABLE_JSON_HIGHLIGHTING"
+"feature = js-highligthing" = "ENABLE_JS_HIGHLIGHTING"
+"feature = ruby-highligthing" = "ENABLE_RUBY_HIGHLIGHTING"

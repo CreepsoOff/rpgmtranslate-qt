@@ -9,7 +9,6 @@ class TranslationTableHeader final : public QHeaderView {
 
    public:
     explicit TranslationTableHeader(QWidget* parent = nullptr);
-    ~TranslationTableHeader() override;
 
    signals:
     void addButtonClicked();

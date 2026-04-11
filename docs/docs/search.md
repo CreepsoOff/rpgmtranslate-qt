@@ -30,11 +30,11 @@ Here's a quick breakdown over the regex features:
 
 - Unicode in regular expressions is fully supported.
 - The following substitutions are allowed:
-  - `` \` `` - Inserts the text before the full match.
-  - `\'` - Inserts the text after the full match.
-  - `\+` - Inserts the last captured group.
-  - `\\` - Literal `\`.
-  - `\{n}`/`\{nn}` - Inserts the captured group `n`. `\0` is reserved for the full match.
+    - `` \` `` - Inserts the text before the full match.
+    - `\'` - Inserts the text after the full match.
+    - `\+` - Inserts the last captured group.
+    - `\\` - Literal `\`.
+    - `\{n}`/`\{nn}` - Inserts the captured group `n`. `\0` is reserved for the full match.
 
 Example of searching for `\c` pattern:
 

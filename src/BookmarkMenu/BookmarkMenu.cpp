@@ -35,7 +35,7 @@ BookmarkMenu::BookmarkMenu(QWidget* const parent) :
                 const Bookmark& bookmark = bookmarkList->bookmark(row);
                 bookmarkList->setRowHidden(
                     row,
-                    QLatin1StringView(bookmark.filename.data()) != filename
+                    QL1SV(bookmark.filename.data()) != filename
                 );
             }
         }
@@ -48,7 +48,7 @@ BookmarkMenu::BookmarkMenu(QWidget* const parent) :
         bookmarkList,
         &BookmarkList::bookmarkClicked,
         this,
-        [this](const QLatin1StringView file, const u32 row) -> void {
+        [this](const QL1SV file, const u32 row) -> void {
         emit bookmarkClicked(file, row);
     }
     );
@@ -97,7 +97,7 @@ void BookmarkMenu::shiftIndices(
         for (const u32 idx : range<u32>(0, bookmarkList->rowCount())) {
             Bookmark& bookmark = bookmarkList->bookmark(idx);
 
-            if (QLatin1StringView(bookmark.filename.data()) == file &&
+            if (QL1SV(bookmark.filename.data()) == file &&
                 bookmark.row >= row) {
                 bookmark.row += 1;
             }
@@ -106,8 +106,7 @@ void BookmarkMenu::shiftIndices(
         for (const u32 idx : range<u32>(0, bookmarkList->rowCount())) {
             Bookmark& bookmark = bookmarkList->bookmark(idx);
 
-            if (QLatin1StringView(bookmark.filename.data()) == file &&
-                bookmark.row > row) {
+            if (QL1SV(bookmark.filename.data()) == file && bookmark.row > row) {
                 bookmark.row -= 1;
             }
         }

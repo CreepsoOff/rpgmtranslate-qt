@@ -2,7 +2,7 @@
 
 #include "Enums.hpp"
 #include "Utils.hpp"
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 
 #include <QApplication>
 #include <QFile>
@@ -22,12 +22,8 @@ struct ToProcess {
     i8 columnIndex;
 };
 
-auto toFFIString(const QByteArray& utf8) -> FFIString {
-    return { .ptr = utf8.data(), .len = usize(utf8.size()) };
-}
-
 auto fileLines(
-    const QLatin1StringView filename,
+    const QL1SV filename,
     const HashMap<u16, QString>& mapSections,
     const shared_ptr<ProjectSettings>& projectSettings
 ) -> result<FileLines, QString> {
@@ -45,7 +41,8 @@ auto fileLines(
         auto file = QFile(path);
 
         if (!file.open(QFile::ReadOnly)) {
-            qWarning() << "Failed to open file %1: %2"_L1.arg(path).arg(
+            qWarning() << "Failed to open file %1: %2"_L1.arg(
+                path,
                 file.errorString()
             );
             return Err(path);
@@ -60,7 +57,7 @@ auto fileLines(
 
 template <class F>
 auto modifyFile(
-    const QLatin1StringView filename,
+    const QL1SV filename,
     HashMap<u16, QString>& mapSections,
     const shared_ptr<ProjectSettings>& projectSettings,
     F&& func
@@ -179,7 +176,6 @@ void TaskWorker::stop() {
 }
 
 void TaskWorker::read(
-    const QString& projectPath,
     const QString& sourcePath,
     const QString& translationPath,
     const ReadMode readMode,
@@ -188,18 +184,18 @@ void TaskWorker::read(
     const Selected selected,
     const BaseFlags flags,
     const bool mapEvents,
-    const ByteBuffer hashes
+    const ByteBuffer hashes,
+    const QString& title
 ) {
     ByteBuffer outHashes;
 
-    const QByteArray projectPathUtf8 = projectPath.toUtf8();
+    const QByteArray titleUtf8 = title.toUtf8();
     const QByteArray sourcePathUtf8 = sourcePath.toUtf8();
     const QByteArray translationPathUtf8 = translationPath.toUtf8();
 
     const FFIString error = rpgm_read(
-        toFFIString(projectPathUtf8),
-        toFFIString(sourcePathUtf8),
-        toFFIString(translationPathUtf8),
+        toffistr(sourcePathUtf8),
+        toffistr(translationPathUtf8),
         readMode,
         engineType,
         duplicateMode,
@@ -207,6 +203,7 @@ void TaskWorker::read(
         flags,
         mapEvents,
         hashes,
+        toffistr(titleUtf8),
         &outHashes
     );
 
@@ -220,10 +217,8 @@ void TaskWorker::extractArchive(
     const QByteArray archivePathUtf8 = archivePath.toUtf8();
     const QByteArray folderUtf8 = folder.toUtf8();
 
-    const FFIString error = rpgm_extract_archive(
-        toFFIString(archivePathUtf8),
-        toFFIString(folderUtf8)
-    );
+    const FFIString error =
+        rpgm_extract_archive(toffistr(archivePathUtf8), toffistr(folderUtf8));
 
     emit extractFinished(error);
 }
@@ -238,12 +233,12 @@ void TaskWorker::write(const QString& gameTitle, const Selected selected) {
     const QByteArray gameTitleUtf8 = gameTitle.toUtf8();
 
     const FFIString error = rpgm_write(
-        toFFIString(sourcePathUtf8),
-        toFFIString(translationPathUtf8),
-        toFFIString(outputPathUtf8),
+        toffistr(sourcePathUtf8),
+        toffistr(translationPathUtf8),
+        toffistr(outputPathUtf8),
         projectSettings->engineType,
         projectSettings->duplicateMode,
-        toFFIString(gameTitleUtf8),
+        toffistr(gameTitleUtf8),
         projectSettings->flags,
         selected,
         &elapsed
@@ -362,7 +357,7 @@ void TaskWorker::search(
     u8 skippedCount = 0;
 
     for (const auto [idx, filenameArray] : views::enumerate(filenames)) {
-        const auto filename = QLatin1StringView(filenameArray.data());
+        const auto filename = QL1SV(filenameArray.data());
         const auto result = fileLines(filename, *mapSections, projectSettings);
 
         if (!result) {
@@ -447,7 +442,7 @@ void TaskWorker::search(
             QString skippedString;
 
             for (const auto filename : views::take(filenames, skippedCount)) {
-                skippedString += QLatin1StringView(filename.data());
+                skippedString += QL1SV(filename.data());
                 skippedString += u'\n';
             }
 
@@ -503,15 +498,15 @@ void TaskWorker::performBatchAction(
         emit progressChanged(Task::BatchTranslate, 0, 0);
 
         const FFIString error = rpgm_translate(
-            toFFIString(endpointSettingsJSON),
-            toFFIString(projectContext),
-            toFFIString(localContext),
-            toFFIString(translationPath),
+            toffistr(endpointSettingsJSON),
+            toffistr(projectContext),
+            toffistr(localContext),
+            toffistr(translationPath),
             projectSettings->sourceLang,
             projectSettings->translationLang,
             { .ptr = ras<const u8*>(filenames.data()),
-              .len = usize(filenames.size()) },
-            toFFIString(glossaryJSON),
+              .len = u32(filenames.size()) },
+            toffistr(glossaryJSON),
             &translatedFiles,
             &translatedFilesFFI
         );
@@ -529,7 +524,7 @@ void TaskWorker::performBatchAction(
     u16 skippedCount = 0;
 
     for (const auto [idx, filenameArray] : views::enumerate(filenames)) {
-        const auto filename = QLatin1StringView(filenameArray.data());
+        const auto filename = QL1SV(filenameArray.data());
         emit lockFile(filename);
 
         if (action == BatchAction::Trim) {
@@ -649,7 +644,7 @@ void TaskWorker::replace(
     u32 total = 0;
 
     for (const auto& [filename, matches] : searchMatches) {
-        emit lockFile(QLatin1StringView(filename.data()));
+        emit lockFile(QL1SV(filename.data()));
         total += matches.size();
 
         auto closure =
@@ -824,7 +819,7 @@ void TaskWorker::replace(
         };
 
         modifyFile(
-            QLatin1StringView(filename.data()),
+            QL1SV(filename.data()),
             *mapSections,
             projectSettings,
             closure
@@ -873,14 +868,13 @@ void TaskWorker::translateSingle(
                                             .toJson(QJsonDocument::Compact);
 
         const FFIString error = rpgm_translate_single(
-            toFFIString(endpointUtf8),
-            toFFIString(projectContext),
-            toFFIString(localContextUtf8),
+            toffistr(endpointUtf8),
+            toffistr(projectContext),
+            toffistr(localContextUtf8),
             projectSettings->sourceLang,
             projectSettings->translationLang,
-            toFFIString(textUtf8),
-            { .ptr = ras<const u8*>(glossaryJSON.data()),
-              .len = usize(glossaryJSON.size()) },
+            toffistr(textUtf8),
+            toffistr(glossaryJSON),
             &outString
         );
 
@@ -972,7 +966,7 @@ void TaskWorker::replaceSingle(
     };
 
     modifyFile(
-        QLatin1StringView(filename.toLatin1()),
+        QL1SV(filename.toLatin1()),
         *mapSections,
         projectSettings,
         closure
@@ -988,11 +982,11 @@ void TaskWorker::purge(const QString& gameTitle, const Selected selected) {
     const QByteArray gameTitleUtf8 = gameTitle.toUtf8();
 
     const FFIString error = rpgm_purge(
-        toFFIString(sourcePathUtf8),
-        toFFIString(translationPathUtf8),
+        toffistr(sourcePathUtf8),
+        toffistr(translationPathUtf8),
         projectSettings->engineType,
         projectSettings->duplicateMode,
-        toFFIString(gameTitleUtf8),
+        toffistr(gameTitleUtf8),
         projectSettings->flags,
         selected
     );

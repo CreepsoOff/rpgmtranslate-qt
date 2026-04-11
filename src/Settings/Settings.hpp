@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Constants.hpp"
-#include "Enums.hpp"
+#include "rpgmtranslate.h"
 
 #include <QJsonArray>
 #include <QJsonObject>
@@ -13,7 +13,7 @@ struct Backup {
     bool enabled = true;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> Backup;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj) -> Backup;
 };
 
 struct CoreSettings {
@@ -26,7 +26,7 @@ struct CoreSettings {
     bool firstLaunch = true;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> CoreSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj) -> CoreSettings;
 };
 
 struct AppearanceSettings {
@@ -43,14 +43,16 @@ struct AppearanceSettings {
     bool displayWordsAndCharacters = false;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> AppearanceSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> AppearanceSettings;
 };
 
 struct GoogleEndpointSettings {
     bool singleTranslation = false;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> GoogleEndpointSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> GoogleEndpointSettings;
 };
 
 struct YandexEndpointSettings {
@@ -59,7 +61,8 @@ struct YandexEndpointSettings {
     bool singleTranslation = false;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> YandexEndpointSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> YandexEndpointSettings;
 };
 
 struct DeepLEndpointSettings {
@@ -68,7 +71,8 @@ struct DeepLEndpointSettings {
     bool singleTranslation = false;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> DeepLEndpointSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> DeepLEndpointSettings;
 };
 
 struct EndpointSettings {
@@ -102,7 +106,8 @@ struct EndpointSettings {
     TranslationEndpoint type;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> EndpointSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> EndpointSettings;
 };
 
 struct LanguageToolSettings {
@@ -127,7 +132,8 @@ struct LanguageToolSettings {
     bool enabled = false;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> LanguageToolSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> LanguageToolSettings;
 };
 
 struct TranslationSettings {
@@ -150,7 +156,8 @@ struct ControlSettings {
     QString translationsMenu = u"Ctrl+S"_s;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> ControlSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> ControlSettings;
 };
 
 struct Settings {
@@ -160,5 +167,5 @@ struct Settings {
     TranslationSettings translation;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> Settings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj) -> Settings;
 };

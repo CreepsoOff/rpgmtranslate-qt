@@ -16,7 +16,7 @@ use regex::Regex;
 use rpgmad_lib::{Decrypter, ExtractError};
 use rvpacker_txt_rs_lib::{
     BaseFlags, DuplicateMode, EngineType, FileFlags, GameType, PurgerBuilder,
-    ReadMode, ReaderBuilder, WriterBuilder, constants::NEW_LINE, get_ini_title,
+    ReadMode, ReaderBuilder, WriterBuilder, constants::NEW_LINE,
     get_system_title,
 };
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,14 @@ use std::{
 };
 use thiserror::Error;
 use tiktoken_rs::o200k_base;
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+use tree_sitter_highlight::{
+    HighlightConfiguration, HighlightEvent, Highlighter,
+};
 use whatlang::detect;
 
 pub fn to_bcp47(algorithm: Algorithm) -> &'static str {
@@ -107,10 +115,11 @@ fn get_game_type(
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct MatchModeInfo {
-    pub(crate) mode: MatchMode,
-    pub(crate) case_sensitive: bool,
-    pub(crate) permissive: bool,
+#[repr(C)]
+pub struct MatchModeInfo {
+    pub mode: MatchMode,
+    pub case_sensitive: bool,
+    pub permissive: bool,
 }
 
 #[derive(Debug, Error)]
@@ -142,6 +151,8 @@ pub(crate) enum Error {
     LanguageTool(#[from] languagetool_rust::error::Error),
     #[error(transparent)]
     AssetDecrypt(#[from] rpgm_asset_decrypter_lib::Error),
+    #[error(transparent)]
+    Marshal(#[from] marshal_rs::load::LoadError),
 }
 
 #[repr(u8)]
@@ -230,7 +241,6 @@ pub(crate) fn write(
 }
 
 pub(crate) fn read(
-    project_path: &Path,
     source_path: &Path,
     translation_path: &Path,
     read_mode: ReadMode,
@@ -240,6 +250,7 @@ pub(crate) fn read(
     flags: BaseFlags,
     map_events: bool,
     hashes: Vec<u128>,
+    ini_title: &str,
 ) -> Result<Vec<u128>, Error> {
     let game_title: String = if engine_type.is_new() {
         let system_file_path = source_path.join("System.json");
@@ -247,11 +258,26 @@ pub(crate) fn read(
             .map_err(|err| Error::Io(system_file_path, err))?;
         get_system_title(&system_file_content)?
     } else {
-        let ini_file_path = Path::new(project_path).join("Game.ini");
-        let ini_file_content = fs::read(&ini_file_path)
-            .map_err(|err| Error::Io(ini_file_path, err))?;
-        let title = get_ini_title(&ini_file_content)?;
-        String::from_utf8_lossy(&title).into_owned()
+        if ini_title.is_empty() {
+            let system_file_path = source_path.join(if engine_type.is_xp() {
+                "System.rxdata"
+            } else if engine_type.is_vx() {
+                "System.rvdata"
+            } else {
+                "System.rvdata2"
+            });
+            let system_file_content = fs::read(&system_file_path)
+                .map_err(|err| Error::Io(system_file_path, err))?;
+            let value =
+                marshal_rs::load::load_utf8(&system_file_content, None)?;
+
+            value["game_title"]
+                .as_str()
+                .map(Into::into)
+                .unwrap_or(String::new())
+        } else {
+            ini_title.to_owned()
+        }
     };
 
     let game_type = get_game_type(
@@ -262,6 +288,7 @@ pub(crate) fn read(
     let mut reader = ReaderBuilder::new()
         .with_files(FileFlags::all().difference(skip_files))
         .with_flags(flags)
+        .game_title(ini_title)
         .game_type(game_type)
         .read_mode(read_mode)
         .duplicate_mode(duplicate_mode)
@@ -850,6 +877,27 @@ pub(crate) async fn translate<'a>(
     Ok(result)
 }
 
+fn fix_path_separators(raw: &mut [u8]) {
+    let mut i = 0;
+
+    while i < raw.len() {
+        let b = raw[i];
+
+        if b >= 0x80 {
+            i += 1;
+
+            if i < raw.len() {
+                i += 1;
+            }
+        } else if b == b'\\' {
+            raw[i] = b'/';
+            i += 1;
+        } else {
+            i += 1;
+        }
+    }
+}
+
 pub(crate) fn extract_archive(
     input_path: &Path,
     output_path: &Path,
@@ -863,6 +911,13 @@ pub(crate) fn extract_archive(
     let decrypted_entries = decrypter.decrypt(&mut bytes)?;
 
     for file in decrypted_entries {
+        fix_path_separators(unsafe {
+            std::slice::from_raw_parts_mut(
+                file.path.as_ptr().cast_mut(),
+                file.path.len(),
+            )
+        });
+
         let path = String::from_utf8_lossy(&file.path);
         debug!("Decrypting archive entry: {}", path);
 
@@ -958,7 +1013,6 @@ pub(crate) fn count_words(
     Ok(tokens.len() as u32)
 }
 
-// TODO
 #[cfg(feature = "languagetool")]
 pub(crate) async fn language_tool_lint(
     text: &str,
@@ -1001,4 +1055,252 @@ pub(crate) fn decrypt_asset(path: &Path) -> Result<Vec<u8>, Error> {
     decrypt_in_place(&mut file_content, file_type)?;
 
     return Ok(file_content);
+}
+
+pub(crate) fn generate_json(
+    content: &[u8],
+    filename: &str,
+) -> Result<String, Error> {
+    let json = rvpacker_txt_rs_lib::json::generate_file(content, filename)?;
+    Ok(json)
+}
+
+pub(crate) fn beautify_json(json: &str) -> String {
+    let mut deserializer = serde_json::Deserializer::from_str(json);
+
+    let mut out = Vec::new();
+    let formatter = serde_json::ser::PrettyFormatter::with_indent(b"  ");
+    let mut serializer =
+        serde_json::Serializer::with_formatter(&mut out, formatter);
+
+    unsafe {
+        serde_transcode::transcode(&mut deserializer, &mut serializer)
+            .unwrap_unchecked();
+        String::from_utf8_unchecked(out)
+    }
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+const HIGHLIGHT_TYPES: &[&str] = &[
+    "keyword",
+    "string",
+    "string.special",
+    "string.special.key",
+    "number",
+    "comment",
+    "variable",
+    "variable.builtin",
+    "property",
+    "function",
+    "function.method",
+    "function.builtin",
+    "constructor",
+    "constant",
+    "constant.builtin",
+    "operator",
+    "punctuation.bracket",
+    "punctuation.delimiter",
+];
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+#[repr(u8)]
+pub enum HighlightType {
+    Keyword,
+    String,
+    StringSpecial,
+    StringSpecialKey,
+    Number,
+    Comment,
+    Variable,
+    VariableBuiltin,
+    Property,
+    Function,
+    FunctionMethod,
+    FunctionBuiltin,
+    Constructor,
+    Constant,
+    ConstantBuiltin,
+    Operator,
+    PunctuationBracket,
+    PunctuationDelimiter,
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+#[repr(u8)]
+pub enum HighlightLanguage {
+    JS,
+    JSON,
+    Ruby,
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+#[repr(C)]
+pub struct HighlightToken {
+    pub start_utf16: u32,
+    pub end_utf16: u32,
+    pub highlight_type: HighlightType,
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+fn get_config(lang: HighlightLanguage) -> HighlightConfiguration {
+    match lang {
+        HighlightLanguage::JSON => {
+            #[cfg(feature = "json-highlighting")]
+            {
+                let mut config = HighlightConfiguration::new(
+                    tree_sitter_json::LANGUAGE.into(),
+                    "json",
+                    tree_sitter_json::HIGHLIGHTS_QUERY,
+                    "",
+                    "",
+                )
+                .unwrap();
+                config.configure(HIGHLIGHT_TYPES);
+                config
+            }
+
+            #[cfg(not(feature = "json-highlighting"))]
+            unreachable!()
+        }
+        HighlightLanguage::JS => {
+            #[cfg(feature = "js-highlighting")]
+            {
+                let mut config = HighlightConfiguration::new(
+                    tree_sitter_javascript::LANGUAGE.into(),
+                    "javascript",
+                    tree_sitter_javascript::HIGHLIGHT_QUERY,
+                    "",
+                    "",
+                )
+                .unwrap();
+                config.configure(HIGHLIGHT_TYPES);
+                config
+            }
+
+            #[cfg(not(feature = "js-highlighting"))]
+            unreachable!()
+        }
+        HighlightLanguage::Ruby => {
+            #[cfg(feature = "ruby-highlighting")]
+            {
+                let mut config = HighlightConfiguration::new(
+                    tree_sitter_ruby::LANGUAGE.into(),
+                    "ruby",
+                    tree_sitter_ruby::HIGHLIGHTS_QUERY,
+                    "",
+                    "",
+                )
+                .unwrap();
+                config.configure(HIGHLIGHT_TYPES);
+                config
+            }
+
+            #[cfg(not(feature = "ruby-highlighting"))]
+            unreachable!()
+        }
+    }
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+fn build_utf16_index_map(input: &str) -> Vec<u32> {
+    let mut map = vec![0; input.len() + 1];
+    let mut utf16_count = 0;
+
+    for (byte_idx, ch) in input.char_indices() {
+        map[byte_idx] = utf16_count;
+        utf16_count += ch.len_utf16() as u32;
+    }
+
+    map[input.len()] = utf16_count;
+    map
+}
+
+#[cfg(any(
+    feature = "json-highlighting",
+    feature = "js-highlighting",
+    feature = "ruby-highlighting"
+))]
+pub(crate) fn highlight_code(
+    input: &str,
+    lang: HighlightLanguage,
+) -> Vec<HighlightToken> {
+    let config = get_config(lang);
+    let mut highlighter = Highlighter::new();
+
+    let utf16_map = build_utf16_index_map(input);
+
+    let highlights = highlighter
+        .highlight(&config, input.as_bytes(), None, |_| None)
+        .unwrap();
+
+    let mut tokens = Vec::new();
+    let mut highlight_stack =
+        Vec::with_capacity(highlights.size_hint().1.unwrap_or(0));
+
+    for event in highlights {
+        match event {
+            Ok(HighlightEvent::HighlightStart(s)) => {
+                highlight_stack.push(s.0 as u8);
+            }
+
+            Ok(HighlightEvent::HighlightEnd) => {
+                highlight_stack.pop();
+            }
+
+            Ok(HighlightEvent::Source { start, end }) => {
+                if let Some(&highlight_type) = highlight_stack.last() {
+                    let start_utf16 = utf16_map[start];
+                    let end_utf16 = utf16_map[end];
+
+                    tokens.push(HighlightToken {
+                        start_utf16,
+                        end_utf16,
+                        highlight_type: unsafe {
+                            std::mem::transmute::<u8, HighlightType>(
+                                highlight_type,
+                            )
+                        },
+                    });
+                }
+            }
+
+            Err(err) => {
+                log::warn!("Error occurred when highlighting code: {err}")
+            }
+        }
+    }
+
+    tokens
+}
+
+pub(crate) fn get_ini_title(project_path: &str) -> Result<Vec<u8>, Error> {
+    let ini_path = Path::new(project_path).join("Game.ini");
+
+    Ok(rvpacker_txt_rs_lib::core::get_ini_title(
+        &fs::read(&ini_path).map_err(|err| Error::Io(ini_path, err))?,
+    )?)
 }

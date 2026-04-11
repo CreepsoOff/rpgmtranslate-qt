@@ -1,17 +1,10 @@
 #pragma once
 
 #include "Aliases.hpp"
-#include "Enums.hpp"
+#include "rpgmtranslate.h"
 
 #include <QJsonArray>
 #include <QJsonObject>
-
-struct MatchModeInfo {
-    f32 fuzzyThreshold;
-    MatchMode mode;
-    bool caseSensitive;
-    bool permissive;
-};
 
 struct Term {
     QString term;
@@ -25,21 +18,34 @@ struct Term {
 struct Glossary {
     vector<Term> terms;
 
-    static auto matchModeInfotoJSON(const MatchModeInfo& info) -> QJsonObject {
-        return { { u"fuzzyThreshold"_s, info.fuzzyThreshold },
-                 { u"mode"_s, u8(info.mode) },
-                 { u"caseSensitive"_s, info.caseSensitive },
+    [[nodiscard]] static auto matchModeInfotoJSON(const MatchModeInfo& info)
+        -> QJsonObject {
+        return { { u"fuzzyThreshold"_s,
+                   info.mode.tag != MatchMode::Tag::Exact
+                       ? info.mode.fuzzy.threshold
+                       : 0.0F },
+                 { u"mode"_s, u8(info.mode.tag) },
+                 { u"caseSensitive"_s, info.case_sensitive },
                  { u"permissive"_s, info.permissive } };
     }
 
-    static auto matchModeInfofromJSON(const QJsonObject& obj) -> MatchModeInfo {
-        return { .fuzzyThreshold = f32(obj["fuzzyThreshold"_L1].toDouble()),
-                 .mode = MatchMode(obj["mode"_L1].toInt()),
-                 .caseSensitive = obj["caseSensitive"_L1].toBool(),
-                 .permissive = obj["permissive"_L1].toBool() };
+    [[nodiscard]] static auto matchModeInfofromJSON(const QJsonObject& obj)
+        -> MatchModeInfo {
+        MatchModeInfo info;
+
+        info.case_sensitive = obj["caseSensitive"_L1].toBool();
+        info.permissive = obj["permissive"_L1].toBool();
+        info.mode.tag = MatchMode::Tag(obj["mode"_L1].toInt());
+
+        if (info.mode.tag != MatchMode::Tag::Exact) {
+            info.mode.fuzzy.threshold =
+                f32(obj["fuzzyThreshold"_L1].toDouble());
+        }
+
+        return info;
     }
 
-    static auto fromJSON(const QJsonArray& array) -> Glossary {
+    [[nodiscard]] static auto fromJSON(const QJsonArray& array) -> Glossary {
         Glossary glossary;
 
         for (const auto& value : array) {
@@ -252,11 +258,10 @@ struct Selected {
 
         u16 flagFileCount = 0;
 
-        for (u16 flagIdx :
-             range<u16>(0, magic_enum::enum_count<FileFlags>() - 2)) {
+        for (u16 flagIdx : range<u16>(0, (FileFlags_Scripts + 1) - 2)) {
             const auto flag = FileFlags(1 << flagIdx);
 
-            if ((flags & flag) != 0 && flag != Map) {
+            if ((flags & flag) != 0 && flag != FileFlags_Map) {
                 flagFileCount++;
             }
         }
@@ -289,8 +294,7 @@ struct Selected {
             ++dense;
         }
 
-        for (u16 flagIdx :
-             range<u16>(1, magic_enum::enum_count<FileFlags>() - 2)) {
+        for (u16 flagIdx : range<u16>(1, (FileFlags_Scripts + 1) - 2)) {
             const auto flag = FileFlags(1 << flagIdx);
 
             if ((flags & flag) == 0) {
@@ -300,49 +304,48 @@ struct Selected {
             FilenameArray name;
 
             switch (flag) {
-                case FileFlags::Actors:
+                case FileFlags_Actors:
                     memcpy(name.data(), "actors", 7);
                     break;
-                case FileFlags::Armors:
+                case FileFlags_Armors:
                     memcpy(name.data(), "armors", 7);
                     break;
-                case FileFlags::Classes:
+                case FileFlags_Classes:
                     memcpy(name.data(), "classes", 8);
                     break;
-                case FileFlags::CommonEvents:
+                case FileFlags_CommonEvents:
                     memcpy(name.data(), "commonevents", 13);
                     break;
-                case FileFlags::Enemies:
+                case FileFlags_Enemies:
                     memcpy(name.data(), "enemies", 8);
                     break;
-                case FileFlags::Items:
+                case FileFlags_Items:
                     memcpy(name.data(), "items", 6);
                     break;
-                case FileFlags::Skills:
+                case FileFlags_Skills:
                     memcpy(name.data(), "skills", 7);
                     break;
-                case FileFlags::States:
+                case FileFlags_States:
                     memcpy(name.data(), "states", 7);
                     break;
-                case FileFlags::Troops:
+                case FileFlags_Troops:
                     memcpy(name.data(), "troops", 7);
                     break;
-                case FileFlags::Weapons:
+                case FileFlags_Weapons:
                     memcpy(name.data(), "weapons", 8);
                     break;
-                case FileFlags::System:
+                case FileFlags_System:
                     memcpy(name.data(), "system", 7);
                     break;
-                case FileFlags::Scripts:
+                case FileFlags_Scripts:
                     if (engineType == EngineType::New) {
                         memcpy(name.data(), "plugins", 8);
                     } else {
                         memcpy(name.data(), "scripts", 8);
                     }
                     break;
-                case FileFlags::Map:
-                case FileFlags::Other:
-                case FileFlags::All:
+                case FileFlags_Map:
+                default:
                     std::unreachable();
             }
 

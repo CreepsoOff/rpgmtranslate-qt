@@ -31,7 +31,7 @@ class BookmarkList final : public QListView {
     void refilter() const;
 
    signals:
-    void bookmarkClicked(QLatin1StringView file, u32 row);
+    void bookmarkClicked(QL1SV file, u32 row);
 
    protected:
     void mousePressEvent(QMouseEvent* event) override;
@@ -55,7 +55,7 @@ class BookmarkListModel final : public QAbstractListModel {
         -> Qt::ItemFlags override;
 
     void removeRow(u32 row);
-    void appendRow(QStringView description, QStringView file, u32 row);
+    void appendRow(QStringView file, QStringView description, u32 row);
 
     void clear();
 

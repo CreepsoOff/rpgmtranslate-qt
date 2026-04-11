@@ -21,6 +21,6 @@ class AboutWindow final : public QDialog {
     void changeEvent(QEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::AboutWindow*;
+    [[nodiscard]] inline auto setupUi() -> Ui::AboutWindow*;
     Ui::AboutWindow* const ui;
 };

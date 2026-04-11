@@ -23,7 +23,7 @@
 #include "Types.hpp"
 #include "Utils.hpp"
 #include "WriteMenu.hpp"
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 #include "ui_MainWindow.h"
 #include "version.h"
 
@@ -229,7 +229,7 @@ MainWindow::MainWindow(QWidget* const parent) :
         bookmarkMenu,
         &BookmarkMenu::bookmarkClicked,
         this,
-        [this](const QLatin1StringView file, const u32 row) -> void {
+        [this](const QL1SV file, const u32 row) -> void {
         ui->tabPanel->changeTab(file);
 
         QTimer::singleShot(1, [this, row] -> void {
@@ -550,8 +550,7 @@ MainWindow::MainWindow(QWidget* const parent) :
 
                 for (const auto filenameArray :
                      selected.filenames(projectSettings->engineType)) {
-                    if (QLatin1StringView(filenameArray.data()) ==
-                        currentTabName) {
+                    if (QL1SV(filenameArray.data()) == currentTabName) {
                         ui->tabPanel->changeTab(QString());
                     }
                 }
@@ -711,7 +710,7 @@ MainWindow::MainWindow(QWidget* const parent) :
 
         for (const auto filenameArray :
              selected.filenames(projectSettings->engineType)) {
-            if (QLatin1StringView(filenameArray.data()) == currentTabName) {
+            if (QL1SV(filenameArray.data()) == currentTabName) {
                 ui->tabPanel->changeTab(QString());
             }
         }
@@ -769,7 +768,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                         this,
                         tr("Batch translation failed"),
                         tr("Batch translation failed with error: %1")
-                            .arg(QString::fromUtf8(error.ptr, isize(error.len)))
+                            .arg(fromffistr(error))
                     );
 
                     rpgm_string_free(error);
@@ -794,10 +793,9 @@ MainWindow::MainWindow(QWidget* const parent) :
                 for (const auto [idx, filenameArray] :
                      views::enumerate(filenames)) {
                     if (stringsArray[idx].len == 0) {
-                        qInfo()
-                            << "Translated strings array at index "_L1 << idx
-                            << "in file "_L1 << QLatin1StringView(filenameArray)
-                            << " is empty."_L1;
+                        qInfo() << "Translated strings array at index "_L1
+                                << idx << "in file "_L1 << QL1SV(filenameArray)
+                                << " is empty."_L1;
                         continue;
                     }
 
@@ -806,8 +804,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                         stringsArray[idx].len
                     );
 
-                    const auto filename =
-                        QLatin1StringView(filenameArray.data());
+                    const auto filename = QL1SV(filenameArray.data());
 
                     if (ui->tabPanel->currentTabName() == filename) {
                         ui->tabPanel->changeTab(QString());
@@ -1006,7 +1003,7 @@ MainWindow::MainWindow(QWidget* const parent) :
 
                     for (const auto filename :
                          views::take(filenames, skippedCount)) {
-                        skippedString += QLatin1StringView(filename.data());
+                        skippedString += QL1SV(filename.data());
                         skippedString += u'\n';
                     }
 
@@ -1040,7 +1037,7 @@ MainWindow::MainWindow(QWidget* const parent) :
         u16 skippedCount = 0;
 
         for (const auto [idx, filenameArray] : views::enumerate(filenames)) {
-            const auto filename = QLatin1StringView(filenameArray.data());
+            const auto filename = QL1SV(filenameArray.data());
 
             const auto result =
                 fileLines(filename, mapSections, projectSettings);
@@ -1082,7 +1079,7 @@ MainWindow::MainWindow(QWidget* const parent) :
             QString skippedString;
 
             for (const auto filename : views::take(filenames, skippedCount)) {
-                skippedString += QLatin1StringView(filename.data());
+                skippedString += QL1SV(filename.data());
                 skippedString += u'\n';
             }
 
@@ -1342,7 +1339,6 @@ MainWindow::MainWindow(QWidget* const parent) :
             taskWorker,
             &TaskWorker::read,
             Qt::QueuedConnection,
-            projectPath,
             sourcePath,
             translationPath,
             readMenu->readMode(),
@@ -1352,7 +1348,8 @@ MainWindow::MainWindow(QWidget* const parent) :
             readMenu->flags(),
             readMenu->parseMapEvents(),
             ByteBuffer{ .ptr = ras<const u8*>(projectSettings->hashes.data()),
-                        .len = projectSettings->hashes.size() }
+                        .len = u32(projectSettings->hashes.size()) },
+            readMenu->title()
         );
 
         connect(
@@ -1422,8 +1419,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 QMessageBox::information(
                     this,
                     tr("Purge failed"),
-                    tr("Purge failed with error: %1")
-                        .arg(QString::fromUtf8(error.ptr, isize(error.len)))
+                    tr("Purge failed with error: %1").arg(fromffistr(error))
                 );
 
                 rpgm_string_free(error);
@@ -1463,8 +1459,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 QMessageBox::warning(
                     this,
                     tr("Write failed"),
-                    tr("Write failed with error: %1")
-                        .arg(QString::fromUtf8(error.ptr, isize(error.len)))
+                    tr("Write failed with error: %1").arg(fromffistr(error))
                 );
                 rpgm_string_free(error);
                 return;
@@ -2210,14 +2205,6 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 
     const QString rootTranslationPath = folder + TRANSLATION_DIRECTORY;
 
-    if (QFile::exists(folder + u"/Data")) {
-        tempProjectSettings->sourceDirectory = SourceDirectory::UppercaseData;
-    }
-
-    if (QFile::exists(folder + u"/data")) {
-        tempProjectSettings->sourceDirectory = SourceDirectory::LowercaseData;
-    }
-
     const auto postRead = [this, folder, tempProjectSettings, newProject](
                               const std::tuple<FFIString, ByteBuffer> results
                           ) -> result<void, QString> {
@@ -2293,6 +2280,9 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
                 .entryInfoList({ u"*.txt"_s }, QDir::Files);
 
         vector<TabListItem> tabs;
+
+        // TODO: Explicitly notify the user about the lines that couldn't be
+        // splitted.
 
         for (const auto& fileInfo : translationFiles) {
             auto file = QFile(fileInfo.filePath());
@@ -2529,7 +2519,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             }
         }
 
-        if (projectSettings->columns.size() == 0) {
+        if (projectSettings->columns.empty()) {
             projectSettings->columns.emplace_back(
                 tr("Source"),
                 DEFAULT_COLUMN_WIDTH
@@ -2603,14 +2593,71 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             "Before working with the program, check out documentation in Help > Documentation!"
         ));
 
+        saveProjectSettings();
+
+#ifdef ENABLE_LIBGIT2
+        ui->sourceControlDock->setProjectPath(projectSettings->projectPath);
+#endif
+
+        firstReadPending = false;
+
         return {};
     };
 
-    const auto postArchive = [this,
-                              folder,
-                              rootTranslationPath,
-                              tempProjectSettings,
-                              postRead] -> result<void, QString> {
+    const auto postArchive = [this, tempProjectSettings, postRead](
+                                 const QString& sourcePath,
+                                 const QString& translationPath,
+                                 const QString& title
+                             ) {
+        QMetaObject::invokeMethod(
+            taskWorker,
+            &TaskWorker::read,
+            Qt::QueuedConnection,
+            sourcePath,
+            translationPath,
+            ReadMode::Default,
+            tempProjectSettings->engineType,
+            readMenu->duplicateMode(),
+            Selected{},
+            readMenu->flags(),
+            readMenu->parseMapEvents(),
+            ByteBuffer{ .ptr = nullptr, .len = 0 },
+            title
+        );
+
+        connect(
+            taskWorker,
+            &TaskWorker::readFinished,
+            this,
+            [this, postRead](const std::tuple<FFIString, ByteBuffer> results)
+                -> void {
+            const auto result = postRead(results);
+
+            if (!result) {
+                QMessageBox::critical(
+                    this,
+                    tr("Failed to load project"),
+                    result.error()
+                );
+            }
+
+            QTimer::singleShot(3000, [this] -> void {
+                ui->taskLabel->setText(tr("No Tasks"));
+                ui->taskProgressBar->setMaximum(0);
+                ui->taskProgressBar->setValue(0);
+                ui->taskProgressBar->setEnabled(false);
+            });
+        },
+            Qt::SingleShotConnection
+        );
+    };
+
+    const auto startOpening = [this,
+                               folder,
+                               rootTranslationPath,
+                               tempProjectSettings,
+                               postRead,
+                               postArchive] -> result<void, QString> {
         if (QFile::exists(folder + u"/Data")) {
             tempProjectSettings->sourceDirectory =
                 SourceDirectory::UppercaseData;
@@ -2651,6 +2698,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
                         );
                         copied = true;
                     } catch (const fs::filesystem_error& err) {
+                        // TODO: Add directory name
                         qWarning()
                             << u"Failed to copy directory: "_s << err.what();
                     }
@@ -2658,11 +2706,69 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             }
 
             if (!copied) {
-                if (tempProjectSettings->sourceDirectory ==
-                    SourceDirectory::None) {
-                    return Err(
-                        tr("Source files and translation do not exist.")
-                    );
+                QString archivePath;
+                bool systemExists = false;
+
+                if (QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.json"
+                    )) {
+                    tempProjectSettings->engineType = EngineType::New;
+                    systemExists = true;
+                } else if (
+                    QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.rvdata2"
+                    )
+                ) {
+                    tempProjectSettings->engineType = EngineType::VXAce;
+                    systemExists = true;
+                } else if (
+                    QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.rvdata"
+                    )
+                ) {
+                    tempProjectSettings->engineType = EngineType::VX;
+                    systemExists = true;
+                } else if (
+                    QFile::exists(
+                        tempProjectSettings->sourcePath() + u"/System.rxdata"
+                    )
+                ) {
+                    tempProjectSettings->engineType = EngineType::XP;
+                    systemExists = true;
+                }
+
+                if (!systemExists) {
+                    bool archiveExists = false;
+
+                    if (archivePath =
+                            tempProjectSettings->projectPath + u"/Game.rgssad";
+                        QFile::exists(archivePath)) {
+                        tempProjectSettings->engineType = EngineType::XP;
+                        archiveExists = true;
+                    } else if (
+                        archivePath =
+                            tempProjectSettings->projectPath + u"/Game.rgss2a";
+                        QFile::exists(archivePath)
+                    ) {
+                        tempProjectSettings->engineType = EngineType::VX;
+                        archiveExists = true;
+                    } else if (
+                        archivePath =
+                            tempProjectSettings->projectPath + u"/Game.rgss3a";
+                        QFile::exists(archivePath)
+                    ) {
+                        tempProjectSettings->engineType = EngineType::VXAce;
+                        archiveExists = true;
+                    }
+
+                    if (!archiveExists) {
+                        return Err(tr(
+                            "Source files, translation or archive file do not exist."
+                        ));
+                    }
+
+                    tempProjectSettings->sourceDirectory =
+                        SourceDirectory::UppercaseData;
                 }
 
                 firstReadPending = true;
@@ -2673,109 +2779,20 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
                     (height() / 2) - (readMenu->height() / 2)
                 );
 
-                if (readMenu->exec() != QDialog::Accepted) {
-                    firstReadPending = false;
+                if (readMenu->exec(
+                        tempProjectSettings->projectPath,
+                        tempProjectSettings->engineType
+                    ) != QDialog::Accepted) {
                     return Err(tr("Read was rejected by user."));
                 }
-
-                firstReadPending = false;
-
-                if (QFile::exists(
-                        tempProjectSettings->sourcePath() + u"/System.json"
-                    )) {
-                    tempProjectSettings->engineType = EngineType::New;
-                } else if (
-                    QFile::exists(
-                        tempProjectSettings->sourcePath() + u"/System.rvdata2"
-                    )
-                ) {
-                    tempProjectSettings->engineType = EngineType::VXAce;
-                } else if (
-                    QFile::exists(
-                        tempProjectSettings->sourcePath() + u"/System.rvdata"
-                    )
-                ) {
-                    tempProjectSettings->engineType = EngineType::VX;
-                } else if (
-                    QFile::exists(
-                        tempProjectSettings->sourcePath() + u"/System.rxdata"
-                    )
-                ) {
-                    tempProjectSettings->engineType = EngineType::XP;
-                }
-
-                const QString& projectPath = tempProjectSettings->projectPath;
-                const QString sourcePath = tempProjectSettings->sourcePath();
-                const QString translationPath =
-                    tempProjectSettings->translationPath();
-
-                QMetaObject::invokeMethod(
-                    taskWorker,
-                    &TaskWorker::read,
-                    Qt::QueuedConnection,
-                    projectPath,
-                    sourcePath,
-                    translationPath,
-                    ReadMode::Default,
-                    tempProjectSettings->engineType,
-                    readMenu->duplicateMode(),
-                    Selected{},
-                    readMenu->flags(),
-                    readMenu->parseMapEvents(),
-                    ByteBuffer{ .ptr = nullptr, .len = 0 }
-                );
-
-                connect(
-                    taskWorker,
-                    &TaskWorker::readFinished,
-                    this,
-                    [this, postRead](
-                        const std::tuple<FFIString, ByteBuffer> results
-                    ) -> void {
-                    const auto result = postRead(results);
-
-                    if (!result) {
-                        QMessageBox::critical(
-                            this,
-                            tr("Failed to load project"),
-                            result.error()
-                        );
-                    }
-
-                    QTimer::singleShot(3000, [this] -> void {
-                        ui->taskLabel->setText(tr("No Tasks"));
-                        ui->taskProgressBar->setMaximum(0);
-                        ui->taskProgressBar->setValue(0);
-                        ui->taskProgressBar->setEnabled(false);
-                    });
-                },
-                    Qt::SingleShotConnection
-                );
-            }
-        }
-
-        return postRead({ { .ptr = nullptr, .len = 0 }, {} });
-    };
-
-    if (tempProjectSettings->sourceDirectory == SourceDirectory::None) {
-        for (const QStringView archiveFilename :
-             { u"/Game.rgssad", u"/Game.rgss2a", u"/Game.rgss3a" }) {
-            const QString archivePath = folder + archiveFilename;
-
-            if (QFile::exists(archivePath)) {
-                QMetaObject::invokeMethod(
-                    taskWorker,
-                    &TaskWorker::extractArchive,
-                    Qt::QueuedConnection,
-                    archivePath,
-                    folder
-                );
 
                 connect(
                     taskWorker,
                     &TaskWorker::extractFinished,
                     this,
-                    [this, postArchive](const FFIString error) -> void {
+                    [this,
+                     tempProjectSettings,
+                     postArchive](const FFIString error) -> void {
                     if (error.ptr != nullptr) {
                         QMessageBox::critical(
                             this,
@@ -2786,25 +2803,33 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
                         return;
                     }
 
-                    const auto result = postArchive();
-
-                    if (!result) {
-                        QMessageBox::critical(
-                            this,
-                            tr("Failed to load project"),
-                            result.error()
-                        );
-                    }
+                    postArchive(
+                        tempProjectSettings->sourcePath(),
+                        tempProjectSettings->translationPath(),
+                        readMenu->title()
+                    );
                 },
                     Qt::SingleShotConnection
                 );
 
-                return;
+                if (!systemExists) {
+                    QMetaObject::invokeMethod(
+                        taskWorker,
+                        &TaskWorker::extractArchive,
+                        Qt::QueuedConnection,
+                        archivePath,
+                        folder
+                    );
+                }
+
+                emit taskWorker->extractFinished({});
             }
         }
-    }
 
-    const auto result = postArchive();
+        return postRead({ { .ptr = nullptr, .len = 0 }, {} });
+    };
+
+    const auto result = startOpening();
 
     if (!result) {
         QMessageBox::critical(
@@ -2814,12 +2839,6 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
         );
         return;
     }
-
-    saveProjectSettings();
-
-#ifdef ENABLE_LIBGIT2
-    ui->sourceControlDock->setProjectPath(projectSettings->projectPath);
-#endif
 }
 
 void MainWindow::closeEvent(QCloseEvent* const event) {
@@ -2858,11 +2877,8 @@ void MainWindow::changeTab(
             return;
         }
 
-        const auto result = fileLines(
-            QLatin1StringView(tabName.toLatin1()),
-            mapSections,
-            projectSettings
-        );
+        const auto result =
+            fileLines(QL1SV(tabName.toLatin1()), mapSections, projectSettings);
 
         if (!result) {
             QMessageBox::warning(
@@ -2940,8 +2956,6 @@ start:
                     break;
                 case 1: {
                     const QString& dir = std::get<1>(result).s;
-                    const QString filename =
-                        filePath.sliced(filePath.lastIndexOf(u'/'));
                     filePath = dir + u'/' + tabName + TXT_EXTENSION;
                     file = make_unique<QFile>(filePath);
 
@@ -3148,12 +3162,11 @@ void MainWindow::appendMatches(
     ByteBuffer matches;
 
     const FFIString error = rpgm_find_all_matches(
-        { .ptr = sourceUtf8.data(), .len = usize(sourceUtf8.size()) },
-        { .ptr = termUtf8.data(), .len = usize(termUtf8.size()) },
+        toffistr(sourceUtf8),
+        toffistr(termUtf8),
         term.sourceMatchMode,
-        { .ptr = translationUtf8.data(), .len = usize(translationUtf8.size()) },
-        { .ptr = termTranslationUtf8.data(),
-          .len = usize(termTranslationUtf8.size()) },
+        toffistr(translationUtf8),
+        toffistr(termTranslationUtf8),
         term.translationMatchMode,
         Algorithm::English,
         Algorithm::Russian,
@@ -3184,6 +3197,15 @@ void MainWindow::appendMatches(
 }
 
 void MainWindow::closeProject() {
+    glossaryMenu->hide();
+    bookmarkMenu->hide();
+    searchMenu->hide();
+    batchMenu->hide();
+    searchMenu->hide();
+    ui->matchMenu->hide();
+    translationsMenu->hide();
+    assetMenu->hide();
+
     ui->tabPanel->changeTab(QString());
 
     mapSections.clear();
@@ -3197,6 +3219,7 @@ void MainWindow::closeProject() {
     searchMenu->clear();
     ui->matchMenu->clear();
     translationsMenu->clear();
+    assetMenu->clear();
 
     ui->searchPanel->clear();
 

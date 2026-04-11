@@ -83,29 +83,29 @@ auto FileSelectMenu::selected(const bool skipped) -> Selected {
             const QString file = checkbox->text();
 
             if (file == "actors"_L1) {
-                selected.flags |= FileFlags::Actors;
+                selected.flags |= FileFlags_Actors;
             } else if (file == "armors"_L1) {
-                selected.flags |= FileFlags::Armors;
+                selected.flags |= FileFlags_Armors;
             } else if (file == "classes"_L1) {
-                selected.flags |= FileFlags::Classes;
+                selected.flags |= FileFlags_Classes;
             } else if (file == "commonevents"_L1) {
-                selected.flags |= FileFlags::CommonEvents;
+                selected.flags |= FileFlags_CommonEvents;
             } else if (file == "enemies"_L1) {
-                selected.flags |= FileFlags::Enemies;
+                selected.flags |= FileFlags_Enemies;
             } else if (file == "items"_L1) {
-                selected.flags |= FileFlags::Items;
+                selected.flags |= FileFlags_Items;
             } else if (file == "skills"_L1) {
-                selected.flags |= FileFlags::Skills;
+                selected.flags |= FileFlags_Skills;
             } else if (file == "states"_L1) {
-                selected.flags |= FileFlags::States;
+                selected.flags |= FileFlags_States;
             } else if (file == "troops"_L1) {
-                selected.flags |= FileFlags::Troops;
+                selected.flags |= FileFlags_Troops;
             } else if (file == "weapons"_L1) {
-                selected.flags |= FileFlags::Weapons;
+                selected.flags |= FileFlags_Weapons;
             } else if (file == "system"_L1) {
-                selected.flags |= FileFlags::System;
+                selected.flags |= FileFlags_System;
             } else if (file == "scripts"_L1) {
-                selected.flags |= FileFlags::Scripts;
+                selected.flags |= FileFlags_Scripts;
             } else if (file.startsWith("map"_L1)) {
                 const u16 index = QStringView(file).sliced(3).toUInt();
                 selected.validIndices[index] = true;

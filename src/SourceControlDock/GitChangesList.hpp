@@ -125,7 +125,7 @@ class GitChangesDelegate final : public QStyledItemDelegate {
         QStyledItemDelegate(parent),
         model(model) {}
 
-    constexpr auto sizeHint(
+    [[nodiscard]] constexpr auto sizeHint(
         const QStyleOptionViewItem& /* opt */,
         const QModelIndex& /* idx */
     ) const -> QSize override {
@@ -271,7 +271,8 @@ class GitChangesDelegate final : public QStyledItemDelegate {
                  CHECKBOX_SIZE };
     }
 
-    auto fileIcon(const QString& absoluteFilePath) const -> QIcon {
+    [[nodiscard]] auto fileIcon(const QString& absoluteFilePath) const
+        -> QIcon {
         QIcon icon = iconProvider.icon(QFileInfo(absoluteFilePath));
 
         if (icon.isNull()) {
@@ -286,35 +287,35 @@ class GitChangesDelegate final : public QStyledItemDelegate {
         switch (type) {
             case GIT_DELTA_MODIFIED:
                 letter = u'M';
-                color = QColor(0xE2, 0xC0, 0x8D);
+                color = qRgb(0xE2, 0xC0, 0x8D);
                 return;
             case GIT_DELTA_UNTRACKED:
                 letter = u'U';
-                color = QColor(0x73, 0xC9, 0x91);
+                color = qRgb(0x73, 0xC9, 0x91);
                 return;
             case GIT_DELTA_ADDED:
                 letter = u'A';
-                color = QColor(0x73, 0xC9, 0x91);
+                color = qRgb(0x73, 0xC9, 0x91);
                 return;
             case GIT_DELTA_DELETED:
                 letter = u'D';
-                color = QColor(0xF1, 0x4C, 0x4C);
+                color = qRgb(0xF1, 0x4C, 0x4C);
                 return;
             case GIT_DELTA_RENAMED:
                 letter = u'R';
-                color = QColor(0xE2, 0xC0, 0x8D);
+                color = qRgb(0xE2, 0xC0, 0x8D);
                 return;
             case GIT_DELTA_COPIED:
                 letter = u'C';
-                color = QColor(0x73, 0xC9, 0x91);
+                color = qRgb(0x73, 0xC9, 0x91);
                 return;
             case GIT_DELTA_CONFLICTED:
                 letter = u'!';
-                color = QColor(0xF1, 0x4C, 0x4C);
+                color = qRgb(0xF1, 0x4C, 0x4C);
                 return;
             case GIT_DELTA_IGNORED:
                 letter = u'I';
-                color = QColor(0x8C, 0x8C, 0x8C);
+                color = qRgb(0x8C, 0x8C, 0x8C);
                 return;
             case GIT_DELTA_TYPECHANGE:
                 // TODO;

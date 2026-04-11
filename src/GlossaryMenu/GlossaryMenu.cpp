@@ -371,10 +371,17 @@ void GlossaryMenu::clear() {
     const f32 fuzzyThreshold = fuzzyText.isEmpty() ? DEFAULT_FUZZY_THRESHOLD
                                                    : f32(fuzzyText.toDouble());
 
+    auto mode = MatchMode::Tag(modeSelect->currentIndex());
+
     return MatchModeInfo{
-        .fuzzyThreshold = fuzzyThreshold,
-        .mode = MatchMode(modeSelect->currentIndex()),
-        .caseSensitive = caseSensitive->isChecked(),
+        .mode = mode == MatchMode::Tag::Exact
+                    ? MatchMode{ .tag = MatchMode::Tag::Exact }
+                : mode == MatchMode::Tag::Fuzzy
+                    ? MatchMode{ .fuzzy = { .tag = MatchMode::Tag::Exact,
+                                            .threshold = fuzzyThreshold } }
+                    : MatchMode{ .both = { .tag = MatchMode::Tag::Exact,
+                                           .threshold = fuzzyThreshold } },
+        .case_sensitive = caseSensitive->isChecked(),
         .permissive = permissive->isChecked(),
     };
 }
@@ -386,17 +393,16 @@ void GlossaryMenu::clear() {
 void TermInfoCell::setFrom(const QString& text, const MatchModeInfo& info) {
     textInput->setText(text);
 
-    modeSelect->setCurrentIndex(u8(info.mode));
-    caseSensitive->setChecked(info.caseSensitive);
+    modeSelect->setCurrentIndex(u8(info.mode.tag));
+    caseSensitive->setChecked(info.case_sensitive);
     permissive->setChecked(info.permissive);
 
-    const f32 threshold = (info.fuzzyThreshold > 0.0F)
-                              ? info.fuzzyThreshold
-                              : DEFAULT_FUZZY_THRESHOLD;
+    const f64 threshold = (info.mode.tag == MatchMode::Tag::Exact)
+                              ? DEFAULT_FUZZY_THRESHOLD
+                              : info.mode.fuzzy.threshold;
     fuzzyThresholdInput->setText(QString::number(threshold));
 
-    const bool show =
-        (info.mode == MatchMode::Fuzzy || info.mode == MatchMode::Both);
+    const bool show = info.mode.tag != MatchMode::Tag::Exact;
     fuzzyThresholdInput->setVisible(show);
 }
 
@@ -447,8 +453,9 @@ TermInfoCell::TermInfoCell(QWidget* const parent) : QWidget(parent) {
     layout->addWidget(row);
 
     const auto updateThresholdVisibility = [this] -> void {
-        const auto mode = MatchMode(modeSelect->currentIndex());
-        const bool show = (mode == MatchMode::Fuzzy || mode == MatchMode::Both);
+        const auto mode = MatchMode::Tag(modeSelect->currentIndex());
+        const bool show =
+            (mode == MatchMode::Tag::Fuzzy || mode == MatchMode::Tag::Both);
         fuzzyThresholdInput->setVisible(show);
 
         if (show && fuzzyThresholdInput->text().trimmed().isEmpty()) {
@@ -517,7 +524,7 @@ ActionButtonsCell::ActionButtonsCell(QWidget* const parent) : QWidget(parent) {
     setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 }
 
-void ActionButtonsCell::setEditable(bool editable) {
+void ActionButtonsCell::setEditable(bool editable) const {
     editButton->setChecked(editable);
     editButton->setIcon(QIcon(
         editable ? u":/icons/edit_arrow_up.svg"_s

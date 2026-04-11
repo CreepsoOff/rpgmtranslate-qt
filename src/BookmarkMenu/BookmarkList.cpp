@@ -47,7 +47,7 @@ void BookmarkList::appendRow(
     const QStringView file,
     const u32 row
 ) const {
-    model_->appendRow(description, file, row);
+    model_->appendRow(file, description, row);
 }
 
 void BookmarkList::removeRow(const u32 row) const {
@@ -75,10 +75,7 @@ void BookmarkList::mousePressEvent(QMouseEvent* const event) {
         }
 
         const Bookmark& bookmark = model_->bookmark(index.row());
-        emit bookmarkClicked(
-            QLatin1StringView(bookmark.filename.data()),
-            bookmark.row
-        );
+        emit bookmarkClicked(QL1SV(bookmark.filename.data()), bookmark.row);
     }
 }
 
@@ -158,10 +155,9 @@ void BookmarkListDelegate::paint(
     const Bookmark& bookmark = src->bookmark(sourceRow);
 
     const QString& title = bookmark.description;
-    const QString subtitle =
-        tr("Row %1 / File %2")
-            .arg(bookmark.row + 1)
-            .arg(QLatin1StringView(bookmark.filename.data()));
+    const QString subtitle = tr("Row %1 / File %2")
+                                 .arg(bookmark.row + 1)
+                                 .arg(QL1SV(bookmark.filename.data()));
 
     painter->save();
     painter->setClipRect(opt.rect);

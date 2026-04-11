@@ -2,7 +2,7 @@
 
 #include "Constants.hpp"
 #include "Utils.hpp"
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 
 #include <QApplication>
 #include <QPainter>

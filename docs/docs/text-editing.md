@@ -22,7 +22,7 @@ If you configured the [LanguageTool](./settings.md#languagetool), LanguageTool w
 
 RPGMTranslate supports spell check out of the box, thanks to Nuspell library.
 
-On information about how to find, install and activate dictionaries, see [Spell Check Settings](./settings.md#spellcheck)
+On information about how to find, install and activate dictionaries, see [Spell Check Settings](./settings.md#spell-check)
 
 Note that Japanese, Chinese etc. are not yet supported, because they require segmentation before spellcheck.
 

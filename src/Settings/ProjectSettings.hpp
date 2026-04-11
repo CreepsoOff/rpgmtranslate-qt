@@ -2,7 +2,7 @@
 
 #include "Aliases.hpp"
 #include "Constants.hpp"
-#include "Enums.hpp"
+#include "rpgmtranslate.h"
 
 #include <QJsonArray>
 #include <QJsonObject>
@@ -81,5 +81,6 @@ struct ProjectSettings {
 
     [[nodiscard]] auto serializeTranslationColumns() const -> QJsonArray;
     [[nodiscard]] auto toJSON() const -> QJsonObject;
-    static auto fromJSON(const QJsonObject& obj) -> ProjectSettings;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj)
+        -> ProjectSettings;
 };

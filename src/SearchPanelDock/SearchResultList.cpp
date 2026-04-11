@@ -8,7 +8,7 @@ auto SearchResultListDelegate::computeHeight(
     const QStyleOptionViewItem& option,
     const QModelIndex& index,
     const i32 contentWidth
-) const -> i32 {
+) -> i32 {
     const QString title =
         index.data(SearchResultListRole::TitleRole).toString();
     const QString subtitle =

@@ -20,7 +20,7 @@ class BookmarkMenu final : public QWidget {
     void clear();
 
    signals:
-    void bookmarkClicked(QLatin1StringView file, u32 row);
+    void bookmarkClicked(QL1SV file, u32 row);
 
    private:
     QVBoxLayout* layout_;
