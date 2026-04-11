@@ -4,6 +4,6 @@
 /.vscode
 /.zed
 /dist
-/docs/mkdocs/site
+/docs/site
 /rust/Cargo.lock
 /rust/target
