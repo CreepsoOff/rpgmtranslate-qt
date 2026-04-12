@@ -62,8 +62,11 @@ class TranslationTable final : public QTableView {
         const QString* dictionaryPath
     ) const;
 
+    void setLineLengthLimitEnabled(const bool* enabled) const;
+
     void initPreview(
         const bool* previewEnabled,
+        const bool* previewWrapTextToLimit,
         const QList<TagRule>* customRules
     ) const;
 

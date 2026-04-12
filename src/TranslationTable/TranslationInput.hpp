@@ -8,7 +8,11 @@ class TranslationInput final : public QPlainTextEdit {
     Q_OBJECT
 
    public:
-    explicit TranslationInput(u16 hint, QWidget* parent = nullptr);
+    explicit TranslationInput(
+        u16 hint,
+        const bool* lineLengthLimitEnabled = nullptr,
+        QWidget* parent = nullptr
+    );
 
    protected:
     void keyPressEvent(QKeyEvent* event) override;
@@ -32,6 +36,7 @@ class TranslationInput final : public QPlainTextEdit {
     vector<Replacement> lastReplacements;
 
     u16 lengthHint;
+    const bool* lineLengthLimitEnabled = nullptr;
 
     i32 lastContentHeight = 0;
     bool blockTextChanged = false;

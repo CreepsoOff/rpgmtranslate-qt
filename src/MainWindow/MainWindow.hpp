@@ -205,6 +205,14 @@ class MainWindow final : public QMainWindow {
         tr("Preview Tag Filtering"),
         this
     );
+    QAction* const actionPreviewShowLineLimit = new QAction(
+        tr("Show Line Length Limit"),
+        this
+    );
+    QAction* const actionPreviewWrapTextToLimit = new QAction(
+        tr("Wrap Text To Limit"),
+        this
+    );
 
     bool firstReadPending = false;
 };

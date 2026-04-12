@@ -62,6 +62,8 @@ struct AppearanceSettings {
     bool displayPercents = false;
     bool displayTrailingWhitespace = false;
     bool displayWordsAndCharacters = false;
+    bool displayLineLengthLimit = false;
+    bool previewWrapTextToLimit = false;
     bool previewTagsEnabled = false;
 
     QList<TagRule> customTagRules;

@@ -40,6 +40,7 @@
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QStyleHints>
+#include <QToolButton>
 #include <QTranslator>
 #include <QVersionNumber>
 #include <archive.h>
@@ -87,6 +88,8 @@ MainWindow::MainWindow(QWidget* const parent) :
     addAction(actionMatchMenu);
     addAction(actionSyncSourceBaseline);
     addAction(actionPreviewMode);
+    addAction(actionPreviewShowLineLimit);
+    addAction(actionPreviewWrapTextToLimit);
 
     actionTabPanel->setEnabled(false);
     actionSave->setEnabled(false);
@@ -101,6 +104,8 @@ MainWindow::MainWindow(QWidget* const parent) :
     actionSearchPanel->setEnabled(false);
     actionSourceControl->setEnabled(false);
     actionAssets->setEnabled(false);
+    actionPreviewShowLineLimit->setEnabled(false);
+    actionPreviewWrapTextToLimit->setEnabled(false);
 
     ui->tabPanelButton->setDefaultAction(actionTabPanel);
     ui->saveButton->setDefaultAction(actionSave);
@@ -114,13 +119,22 @@ MainWindow::MainWindow(QWidget* const parent) :
     ui->bookmarksButton->setDefaultAction(actionBookmarkMenu);
     ui->sourceControlButton->setDefaultAction(actionSourceControl);
     ui->assetsButton->setDefaultAction(actionAssets);
+    if (auto* const lineLengthButton = findChild<QToolButton*>(u"lineLengthButton"_s)) {
+        lineLengthButton->setDefaultAction(actionPreviewMode);
+        auto* const previewMenu = new QMenu(this);
+        previewMenu->addAction(actionPreviewShowLineLimit);
+        previewMenu->addAction(actionPreviewWrapTextToLimit);
+        lineLengthButton->setMenu(previewMenu);
+        lineLengthButton->setPopupMode(QToolButton::MenuButtonPopup);
+    }
     ui->locateProjectDirButton->setDefaultAction(actionLocateProjectDir);
     ui->searchPanelButton->setDefaultAction(actionSearchPanel);
     ui->menuFile->insertAction(ui->actionSettings, actionSyncSourceBaseline);
-    ui->menuFile->insertAction(ui->actionSettings, actionPreviewMode);
 
     actionPreviewMode->setCheckable(true);
     actionPreviewMode->setShortcut(u"Ctrl+Shift+P"_s);
+    actionPreviewShowLineLimit->setCheckable(true);
+    actionPreviewWrapTextToLimit->setCheckable(true);
 
     connect(actionPreviewMode, &QAction::toggled, this, [this](bool checked) {
         settings->appearance.previewTagsEnabled = checked;
@@ -132,6 +146,27 @@ MainWindow::MainWindow(QWidget* const parent) :
         ui->translationTable->resizeRowsToContents();
         ui->translationTable->viewport()->update();
     });
+
+    connect(
+        actionPreviewShowLineLimit,
+        &QAction::toggled,
+        this,
+        [this](bool checked) -> void {
+        settings->appearance.displayLineLengthLimit = checked;
+        ui->translationTable->viewport()->update();
+    }
+    );
+
+    connect(
+        actionPreviewWrapTextToLimit,
+        &QAction::toggled,
+        this,
+        [this](bool checked) -> void {
+        settings->appearance.previewWrapTextToLimit = checked;
+        ui->translationTable->resizeRowsToContents();
+        ui->translationTable->viewport()->update();
+    }
+    );
 
     taskWorker->start();
 
@@ -1670,10 +1705,20 @@ void MainWindow::loadSettings() {
         );
         actionPreviewMode->setIcon(icon);
     }
+    actionPreviewShowLineLimit->setChecked(
+        settings->appearance.displayLineLengthLimit
+    );
+    actionPreviewWrapTextToLimit->setChecked(
+        settings->appearance.previewWrapTextToLimit
+    );
 
     ui->translationTable->initPreview(
         &settings->appearance.previewTagsEnabled,
+        &settings->appearance.previewWrapTextToLimit,
         &settings->appearance.customTagRules
+    );
+    ui->translationTable->setLineLengthLimitEnabled(
+        &settings->appearance.displayLineLengthLimit
     );
     ui->translationTable->resizeRowsToContents();
 
@@ -2620,6 +2665,9 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
             &settings->appearance.displayTrailingWhitespace,
             &projectSettings->spellcheckDictionary
         );
+        ui->translationTable->setLineLengthLimitEnabled(
+            &settings->appearance.displayLineLengthLimit
+        );
 
         actionTabPanel->setEnabled(true);
         actionSave->setEnabled(true);
@@ -2633,6 +2681,11 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
         actionBookmarkMenu->setEnabled(true);
         actionSourceControl->setEnabled(true);
         actionAssets->setEnabled(true);
+        actionPreviewShowLineLimit->setEnabled(true);
+        actionPreviewWrapTextToLimit->setEnabled(true);
+        if (auto* const lineLengthButton = findChild<QToolButton*>(u"lineLengthButton"_s)) {
+            lineLengthButton->setEnabled(true);
+        }
         ui->rvpackerButton->setEnabled(true);
         ui->gameTitleInput->setEnabled(true);
         actionLocateProjectDir->setEnabled(true);
@@ -3994,6 +4047,11 @@ void MainWindow::closeProject() {
     actionBookmarkMenu->setEnabled(false);
     actionSourceControl->setEnabled(false);
     actionAssets->setEnabled(false);
+    actionPreviewShowLineLimit->setEnabled(false);
+    actionPreviewWrapTextToLimit->setEnabled(false);
+    if (auto* const lineLengthButton = findChild<QToolButton*>(u"lineLengthButton"_s)) {
+        lineLengthButton->setEnabled(false);
+    }
     ui->rvpackerButton->setEnabled(false);
 
     ui->gameTitleInput->setEnabled(false);

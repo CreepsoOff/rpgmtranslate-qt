@@ -31,11 +31,17 @@ class TranslationTableDelegate final : public QStyledItemDelegate {
         this->dictionaryPath = dictionaryPath;
     }
 
+    void setLineLengthLimitEnabled(const bool* const enabled) {
+        lineLengthLimitEnabled_ = enabled;
+    }
+
     void initPreview(
         const bool* const previewEnabled,
+        const bool* const previewWrapTextToLimit,
         const QList<TagRule>* const customRules
     ) {
         previewTagsEnabled_ = previewEnabled;
+        previewWrapTextToLimit_ = previewWrapTextToLimit;
         customTagRules_ = customRules;
     }
 
@@ -78,9 +84,11 @@ class TranslationTableDelegate final : public QStyledItemDelegate {
 
     const u16* lengthHint;
     const bool* whitespaceHighlightingEnabled;
+    const bool* lineLengthLimitEnabled_ = nullptr;
     const QString* dictionaryPath;
 
     const bool* previewTagsEnabled_ = nullptr;
+    const bool* previewWrapTextToLimit_ = nullptr;
     const QList<TagRule>* customTagRules_ = nullptr;
 
     mutable QPlainTextEdit* activeInput = nullptr;

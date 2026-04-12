@@ -7,9 +7,14 @@
 #include <QTextBlock>
 #include <QTextCursor>
 
-TranslationInput::TranslationInput(const u16 hint, QWidget* const parent) :
+TranslationInput::TranslationInput(
+    const u16 hint,
+    const bool* const lineLengthLimitEnabled,
+    QWidget* const parent
+) :
     QPlainTextEdit(parent),
-    lengthHint(hint) {
+    lengthHint(hint),
+    lineLengthLimitEnabled(lineLengthLimitEnabled) {
     setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

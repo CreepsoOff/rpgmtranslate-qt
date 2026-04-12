@@ -13,8 +13,129 @@
 #include <QFileInfo>
 #include <QModelIndex>
 #include <QPainter>
+#include <QSignalBlocker>
+#include <QRegularExpression>
+#include <QStringList>
 #include <QSyntaxHighlighter>
 #include <QTimer>
+
+namespace {
+
+[[nodiscard]] auto splitLongWordByPixels(
+    const QString& word,
+    const i32 pixelLimit,
+    const QFontMetrics& fontMetrics
+) -> QStringList {
+    QStringList parts;
+
+    if (word.isEmpty()) {
+        return parts;
+    }
+
+    QString current;
+    for (const QChar ch : word) {
+        const QString candidate = current + ch;
+
+        if (!current.isEmpty() &&
+            fontMetrics.horizontalAdvance(candidate) > pixelLimit) {
+            parts.append(current);
+            current = ch;
+            continue;
+        }
+
+        current = candidate;
+    }
+
+    if (!current.isEmpty()) {
+        parts.append(current);
+    }
+
+    return parts;
+}
+
+[[nodiscard]] auto wrapTextToLimit(
+    const QString& text,
+    const i32 pixelLimit,
+    const QFontMetrics& fontMetrics
+) -> QString {
+    if (pixelLimit <= 0) {
+        return text;
+    }
+
+    QString result;
+    const QStringList lines = text.split(u'\n');
+
+    for (i32 lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
+        const QString line = lines[lineIndex];
+        const QStringList words = line.split(
+            QRegularExpression(uR"(\s+)"_s),
+            Qt::SkipEmptyParts
+        );
+
+        QStringList wrappedLines;
+        QString currentLine;
+
+        const auto flushCurrentLine = [&wrappedLines, &currentLine] -> void {
+            if (!currentLine.isEmpty()) {
+                wrappedLines.append(currentLine);
+                currentLine.clear();
+            }
+        };
+
+        for (const auto& word : words) {
+            if (currentLine.isEmpty()) {
+                if (fontMetrics.horizontalAdvance(word) <= pixelLimit) {
+                    currentLine = word;
+                    continue;
+                }
+
+                for (const auto& part :
+                     splitLongWordByPixels(word, pixelLimit, fontMetrics)) {
+                    wrappedLines.append(part);
+                }
+
+                continue;
+            }
+
+            const QString candidate = currentLine + u' ' + word;
+            if (fontMetrics.horizontalAdvance(candidate) <= pixelLimit) {
+                currentLine = candidate;
+                continue;
+            }
+
+            flushCurrentLine();
+
+            if (fontMetrics.horizontalAdvance(word) <= pixelLimit) {
+                currentLine = word;
+                continue;
+            }
+
+            for (const auto& part :
+                 splitLongWordByPixels(word, pixelLimit, fontMetrics)) {
+                wrappedLines.append(part);
+            }
+        }
+
+        flushCurrentLine();
+
+        if (lineIndex > 0) {
+            result += u'\n';
+        }
+
+        if (wrappedLines.isEmpty()) {
+            if (line.isEmpty() && lineIndex == 0 && lines.size() > 1) {
+                result += u'\n';
+            }
+            continue;
+        }
+
+        result += wrappedLines.join(u'\n');
+    }
+
+    return result;
+}
+
+}  // namespace
 
 TranslationTableDelegate::TranslationTableDelegate(QObject* const parent) :
     QStyledItemDelegate(parent) {}
@@ -30,7 +151,7 @@ auto TranslationTableDelegate::createEditor(
     const QStyleOptionViewItem& /* option */,
     const QModelIndex& index
 ) const -> QWidget* {
-    auto* const editor = new TranslationInput(*lengthHint, parent);
+    auto* const editor = new TranslationInput(*lengthHint, nullptr, parent);
 
     new TranslationHighlighter(
         *whitespaceHighlightingEnabled,
@@ -51,6 +172,20 @@ auto TranslationTableDelegate::createEditor(
         [this, editor, index] -> void {
         auto* const that = const_cast<TranslationTableDelegate*>(this);
         auto* const tableView = as<TranslationTable*>(that->parent());
+        if (auto* const model = tableView->model()) {
+            if (index.row() < 0 || index.column() < 0 ||
+                index.row() >= model->rowCount(index.parent()) ||
+                index.column() >= model->columnCount(index.parent())) {
+                return;
+            }
+
+            const QString text = editor->toPlainText();
+            const QString current = model->data(index, Qt::EditRole).toString();
+            if (current != text) {
+                model->setData(index, text, Qt::EditRole);
+            }
+        }
+
         emit that->sizeHintChanged(index);
         emit that->textChanged(editor->toPlainText());
         tableView->resizeRowToContents(index.row());
@@ -61,6 +196,9 @@ auto TranslationTableDelegate::createEditor(
         activeInput = nullptr;
     });
 
+    auto* const that = const_cast<TranslationTableDelegate*>(this);
+    emit that->inputFocused();
+
     return editor;
 }
 
@@ -68,16 +206,30 @@ void TranslationTableDelegate::setEditorData(
     QWidget* const editor,
     const QModelIndex& index
 ) const {
+    if (!index.isValid()) {
+        return;
+    }
+
+    if (index.row() < 0 || index.column() < 0 ||
+        index.row() >= index.model()->rowCount(index.parent()) ||
+        index.column() >= index.model()->columnCount(index.parent())) {
+        return;
+    }
+
     const QString value = index.model()->data(index, Qt::EditRole).toString();
     auto* const textEdit = as<TranslationInput*>(editor);
-    textEdit->setPlainText(value);
+    const bool changed = textEdit->toPlainText() != value;
+
+    if (changed) {
+        const QSignalBlocker blocker(textEdit);
+        textEdit->setPlainText(value);
+        QTextCursor cursor = textEdit->textCursor();
+        cursor.movePosition(QTextCursor::End);
+        textEdit->setTextCursor(cursor);
+    }
 
     auto* const that = const_cast<TranslationTableDelegate*>(this);
     emit that->inputFocused();
-
-    QTextCursor cursor = textEdit->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    textEdit->setTextCursor(cursor);
 }
 
 void TranslationTableDelegate::setModelData(
@@ -100,6 +252,10 @@ auto TranslationTableDelegate::sizeHint(
     const QWidget* const editor = tableView->indexWidget(index);
 
     const auto* const textEdit = qobject_cast<const TranslationInput*>(editor);
+    const auto fontMetrics = QFontMetrics(option.font);
+    const i32 pixelLimit =
+        lengthHint != nullptr ? fontMetrics.horizontalAdvance(u' ') * *lengthHint
+                              : 0;
 
     QString text = textEdit != nullptr
                        ? textEdit->toPlainText()
@@ -111,9 +267,13 @@ auto TranslationTableDelegate::sizeHint(
             text,
             customTagRules_ ? *customTagRules_ : QList<TagRule>{}
         );
+
+        if (previewWrapTextToLimit_ && *previewWrapTextToLimit_ &&
+            pixelLimit > 0) {
+            text = wrapTextToLimit(text, pixelLimit, fontMetrics);
+        }
     }
 
-    const auto fontMetrics = QFontMetrics(option.font);
     const u32 lines = text.count(u'\n') + 1;
     const u32 height = (fontMetrics.lineSpacing() * lines) + 10;
     return { fontMetrics.horizontalAdvance(text), i32(max(height, u32(30))) };
@@ -126,6 +286,7 @@ void TranslationTableDelegate::paint(
 ) const {
     QStyleOptionViewItem opt = option;
     initStyleOption(&opt, index);
+    const QString rawText = opt.text;
 
     QStyle* const style =
         (opt.widget != nullptr) ? opt.widget->style() : qApp->style();
@@ -144,7 +305,21 @@ void TranslationTableDelegate::paint(
                 opt.text,
                 customTagRules_ ? *customTagRules_ : QList<TagRule>{}
             );
+
+            const auto fontMetrics = QFontMetrics(opt.font);
+            const i32 pixelLimit =
+                lengthHint != nullptr
+                    ? fontMetrics.horizontalAdvance(u' ') * *lengthHint
+                    : 0;
+
+            if (previewWrapTextToLimit_ && *previewWrapTextToLimit_ &&
+                pixelLimit > 0) {
+                opt.text = wrapTextToLimit(opt.text, pixelLimit, fontMetrics);
+            }
         }
+
+        const bool showPreviewLineLimit = lineLengthLimitEnabled_ != nullptr &&
+                                          *lineLengthLimitEnabled_;
 
         const QRect paddedRect =
             opt.rect.adjusted(PAD_X, PAD_Y, -PAD_X, -PAD_Y);
@@ -165,6 +340,16 @@ void TranslationTableDelegate::paint(
             opt.text,
             textRole
         );
+
+        if (showPreviewLineLimit && lengthHint != nullptr && *lengthHint != 0 &&
+            index.column() != 0) {
+            const i32 charWidth = QFontMetrics(opt.font).horizontalAdvance(u' ');
+            const i32 xPos = paddedRect.left() + (charWidth * *lengthHint);
+
+            painter->setPen(QColor(255, 0, 0, 80));
+            painter->drawLine(xPos, paddedRect.top(), xPos, paddedRect.bottom());
+        }
+
         painter->restore();
     }
 }

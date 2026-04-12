@@ -76,6 +76,8 @@ auto CoreSettings::fromJSON(const QJsonObject& obj) -> CoreSettings {
              { u"displayPercents"_s, displayPercents },
              { u"displayTrailingWhitespace"_s, displayTrailingWhitespace },
              { u"displayWordsAndCharacters"_s, displayWordsAndCharacters },
+             { u"displayLineLengthLimit"_s, displayLineLengthLimit },
+             { u"previewWrapTextToLimit"_s, previewWrapTextToLimit },
              { u"previewTagsEnabled"_s, previewTagsEnabled },
              { u"customTagRules"_s, rulesArray } };
 }
@@ -96,6 +98,10 @@ auto AppearanceSettings::fromJSON(const QJsonObject& obj)
         obj["displayTrailingWhitespace"_L1].toBool(false);
     settings.displayWordsAndCharacters =
         obj["displayWordsAndCharacters"_L1].toBool(false);
+    settings.displayLineLengthLimit =
+        obj["displayLineLengthLimit"_L1].toBool(false);
+    settings.previewWrapTextToLimit =
+        obj["previewWrapTextToLimit"_L1].toBool(false);
     settings.previewTagsEnabled = obj["previewTagsEnabled"_L1].toBool(false);
 
     for (const auto& val : obj["customTagRules"_L1].toArray()) {
