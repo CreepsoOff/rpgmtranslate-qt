@@ -27,15 +27,15 @@ option(ENABLE_ASSET_PLAYBACK
 )
 
 option(ENABLE_JSON_HIGHLIGHTING
-    "Only works if ENABLE_SYNTAX_HIGHLIGTHING=ON. Enable syntax highlighting for JSON data."
+    "Only works if ENABLE_SYNTAX_HIGHLIGHTING=ON. Enable syntax highlighting for JSON data."
     ON
 )
-option(ENABLE_JS_HIGHLIGTHING
-    "Only works if ENABLE_SYNTAX_HIGHLIGTHING=ON. Enable syntax highlighting for JavaScript data."
+option(ENABLE_JS_HIGHLIGHTING
+    "Only works if ENABLE_SYNTAX_HIGHLIGHTING=ON. Enable syntax highlighting for JavaScript data."
     ON
 )
 option(ENABLE_RUBY_HIGHLIGHTING
-    "Only works if ENABLE_SYNTAX_HIGHLIGTHING=ON. Enable syntax highlighting for Ruby-lang data."
+    "Only works if ENABLE_SYNTAX_HIGHLIGHTING=ON. Enable syntax highlighting for Ruby-lang data."
     ON
 )
 
