@@ -2,7 +2,9 @@
 
 #include "FWD.hpp"
 #include "ProjectSettings.hpp"
+#include "Settings.hpp"
 
+#include <QList>
 #include <QTableView>
 
 enum RowFlags : u8 {
@@ -58,6 +60,11 @@ class TranslationTable final : public QTableView {
         const u16* hint,
         const bool* enabled,
         const QString* dictionaryPath
+    ) const;
+
+    void initPreview(
+        const bool* previewEnabled,
+        const QList<TagRule>* customRules
     ) const;
 
     void initializeDictionary() const;

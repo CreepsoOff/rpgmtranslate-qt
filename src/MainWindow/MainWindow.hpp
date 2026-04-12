@@ -200,6 +200,11 @@ class MainWindow final : public QMainWindow {
     );
     QAction* const actionSearchPanel =
         new QAction(QIcon(u":/icons/dock.svg"_s), tr("Search Panel"), this);
+    QAction* const actionPreviewMode = new QAction(
+        QIcon(u":/icons/visibility.svg"_s),
+        tr("Preview Tag Filtering"),
+        this
+    );
 
     bool firstReadPending = false;
 };

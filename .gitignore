@@ -8,3 +8,5 @@
 /rust/Cargo.lock
 /rust/target
 clear
+PLAN.md
+CLAUDE.md

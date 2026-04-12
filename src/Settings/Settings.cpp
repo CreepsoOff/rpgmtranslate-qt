@@ -1,5 +1,29 @@
 #include "Settings.hpp"
 
+auto TagRule::toJSON() const -> QJsonObject {
+    return {
+        { u"name"_s, name },
+        { u"pattern"_s, pattern },
+        { u"customReplacement"_s, customReplacement },
+        { u"replacement"_s, u8(replacement) },
+        { u"isRegex"_s, isRegex },
+        { u"caseSensitive"_s, caseSensitive },
+        { u"enabled"_s, enabled },
+    };
+}
+
+auto TagRule::fromJSON(const QJsonObject& obj) -> TagRule {
+    TagRule rule;
+    rule.name = obj["name"_L1].toString();
+    rule.pattern = obj["pattern"_L1].toString();
+    rule.customReplacement = obj["customReplacement"_L1].toString();
+    rule.replacement = TagReplacementMode(obj["replacement"_L1].toInt());
+    rule.isRegex = obj["isRegex"_L1].toBool(false);
+    rule.caseSensitive = obj["caseSensitive"_L1].toBool(false);
+    rule.enabled = obj["enabled"_L1].toBool(true);
+    return rule;
+}
+
 [[nodiscard]] auto Backup::toJSON() const -> QJsonObject {
     return { { u"enabled"_s, enabled },
              { u"period"_s, period },
@@ -39,6 +63,11 @@ auto CoreSettings::fromJSON(const QJsonObject& obj) -> CoreSettings {
 }
 
 [[nodiscard]] auto AppearanceSettings::toJSON() const -> QJsonObject {
+    QJsonArray rulesArray;
+    for (const auto& rule : customTagRules) {
+        rulesArray.append(rule.toJSON());
+    }
+
     return { { u"translationTableFont"_s, translationTableFont },
              { u"translationTableFontSize"_s, translationTableFontSize },
              { u"style"_s, style },
@@ -46,7 +75,9 @@ auto CoreSettings::fromJSON(const QJsonObject& obj) -> CoreSettings {
              { u"language"_s, u8(language) },
              { u"displayPercents"_s, displayPercents },
              { u"displayTrailingWhitespace"_s, displayTrailingWhitespace },
-             { u"displayWordsAndCharacters"_s, displayWordsAndCharacters } };
+             { u"displayWordsAndCharacters"_s, displayWordsAndCharacters },
+             { u"previewTagsEnabled"_s, previewTagsEnabled },
+             { u"customTagRules"_s, rulesArray } };
 }
 
 auto AppearanceSettings::fromJSON(const QJsonObject& obj)
@@ -61,6 +92,16 @@ auto AppearanceSettings::fromJSON(const QJsonObject& obj)
     settings.language =
         QLocale::Language(obj["language"_L1].toInt(u8(settings.language)));
     settings.displayPercents = obj["displayPercents"_L1].toBool(false);
+    settings.displayTrailingWhitespace =
+        obj["displayTrailingWhitespace"_L1].toBool(false);
+    settings.displayWordsAndCharacters =
+        obj["displayWordsAndCharacters"_L1].toBool(false);
+    settings.previewTagsEnabled = obj["previewTagsEnabled"_L1].toBool(false);
+
+    for (const auto& val : obj["customTagRules"_L1].toArray()) {
+        settings.customTagRules.append(TagRule::fromJSON(val.toObject()));
+    }
+
     return settings;
 }
 

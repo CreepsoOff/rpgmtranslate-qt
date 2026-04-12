@@ -1,6 +1,7 @@
 #include "TranslationTableDelegate.hpp"
 
 #include "Aliases.hpp"
+#include "TagFilter.hpp"
 #include "TranslationHighlighter.hpp"
 #include "TranslationInput.hpp"
 #include "TranslationTable.hpp"
@@ -100,9 +101,17 @@ auto TranslationTableDelegate::sizeHint(
 
     const auto* const textEdit = qobject_cast<const TranslationInput*>(editor);
 
-    const QString text = textEdit != nullptr
-                             ? textEdit->toPlainText()
-                             : index.data(Qt::DisplayRole).toString();
+    QString text = textEdit != nullptr
+                       ? textEdit->toPlainText()
+                       : index.data(Qt::DisplayRole).toString();
+
+    if (textEdit == nullptr && previewTagsEnabled_ && *previewTagsEnabled_ &&
+        (index.flags() & Qt::ItemIsEditable) && !text.isEmpty()) {
+        text = TagFilter::apply(
+            text,
+            customTagRules_ ? *customTagRules_ : QList<TagRule>{}
+        );
+    }
 
     const auto fontMetrics = QFontMetrics(option.font);
     const u32 lines = text.count(u'\n') + 1;
@@ -129,6 +138,14 @@ void TranslationTableDelegate::paint(
     );
 
     if (!opt.text.isEmpty()) {
+        if (previewTagsEnabled_ && *previewTagsEnabled_ &&
+            (index.flags() & Qt::ItemIsEditable)) {
+            opt.text = TagFilter::apply(
+                opt.text,
+                customTagRules_ ? *customTagRules_ : QList<TagRule>{}
+            );
+        }
+
         const QRect paddedRect =
             opt.rect.adjusted(PAD_X, PAD_Y, -PAD_X, -PAD_Y);
 

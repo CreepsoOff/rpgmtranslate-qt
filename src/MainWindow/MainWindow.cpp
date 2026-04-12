@@ -86,6 +86,7 @@ MainWindow::MainWindow(QWidget* const parent) :
     addAction(actionBookmarkMenu);
     addAction(actionMatchMenu);
     addAction(actionSyncSourceBaseline);
+    addAction(actionPreviewMode);
 
     actionTabPanel->setEnabled(false);
     actionSave->setEnabled(false);
@@ -116,6 +117,20 @@ MainWindow::MainWindow(QWidget* const parent) :
     ui->locateProjectDirButton->setDefaultAction(actionLocateProjectDir);
     ui->searchPanelButton->setDefaultAction(actionSearchPanel);
     ui->menuFile->insertAction(ui->actionSettings, actionSyncSourceBaseline);
+    ui->menuFile->insertAction(ui->actionSettings, actionPreviewMode);
+
+    actionPreviewMode->setCheckable(true);
+    actionPreviewMode->setShortcut(u"Ctrl+Shift+P"_s);
+
+    connect(actionPreviewMode, &QAction::toggled, this, [this](bool checked) {
+        settings->appearance.previewTagsEnabled = checked;
+        const QIcon icon = QIcon(
+            checked ? u":/icons/visibility.svg"_s
+                    : u":/icons/visibility_off.svg"_s
+        );
+        actionPreviewMode->setIcon(icon);
+        ui->translationTable->viewport()->update();
+    });
 
     taskWorker->start();
 
@@ -1644,6 +1659,21 @@ void MainWindow::loadSettings() {
 #endif
 
     batchMenu->setEndpoints(settings->translation.endpoints);
+
+    actionPreviewMode->setChecked(settings->appearance.previewTagsEnabled);
+    {
+        const QIcon icon = QIcon(
+            settings->appearance.previewTagsEnabled
+                ? u":/icons/visibility.svg"_s
+                : u":/icons/visibility_off.svg"_s
+        );
+        actionPreviewMode->setIcon(icon);
+    }
+
+    ui->translationTable->initPreview(
+        &settings->appearance.previewTagsEnabled,
+        &settings->appearance.customTagRules
+    );
 
     retranslate(settings->appearance.language);
 }

@@ -5,6 +5,27 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QList>
+
+enum class TagReplacementMode : u8 {
+    Remove = 0,
+    Space = 1,
+    Newline = 2,
+    Custom = 3,
+};
+
+struct TagRule {
+    QString name;
+    QString pattern;
+    QString customReplacement;
+    TagReplacementMode replacement = TagReplacementMode::Remove;
+    bool isRegex = false;
+    bool caseSensitive = false;
+    bool enabled = true;
+
+    [[nodiscard]] auto toJSON() const -> QJsonObject;
+    [[nodiscard]] static auto fromJSON(const QJsonObject& obj) -> TagRule;
+};
 
 struct Backup {
     u16 period = MIN_BACKUP_PERIOD;
@@ -41,6 +62,9 @@ struct AppearanceSettings {
     bool displayPercents = false;
     bool displayTrailingWhitespace = false;
     bool displayWordsAndCharacters = false;
+    bool previewTagsEnabled = false;
+
+    QList<TagRule> customTagRules;
 
     [[nodiscard]] auto toJSON() const -> QJsonObject;
     [[nodiscard]] static auto fromJSON(const QJsonObject& obj)

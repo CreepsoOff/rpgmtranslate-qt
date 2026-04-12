@@ -275,6 +275,13 @@ void TranslationTable::init(
 #endif
 }
 
+void TranslationTable::initPreview(
+    const bool* const previewEnabled,
+    const QList<TagRule>* const customRules
+) const {
+    delegate->initPreview(previewEnabled, customRules);
+}
+
 #ifdef ENABLE_NUSPELL
 void TranslationTable::initializeDictionary() const {
     delegate->initializeDictionary();

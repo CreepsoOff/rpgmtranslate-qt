@@ -2,11 +2,13 @@
 
 #include "Aliases.hpp"
 #include "FWD.hpp"
+#include "Settings.hpp"
 
 #ifdef ENABLE_NUSPELL
 #include <nuspell/dictionary.hxx>
 #endif
 
+#include <QList>
 #include <QStyledItemDelegate>
 
 class TranslationTableDelegate final : public QStyledItemDelegate {
@@ -27,6 +29,14 @@ class TranslationTableDelegate final : public QStyledItemDelegate {
         lengthHint = hint;
         this->whitespaceHighlightingEnabled = enabled;
         this->dictionaryPath = dictionaryPath;
+    }
+
+    void initPreview(
+        const bool* const previewEnabled,
+        const QList<TagRule>* const customRules
+    ) {
+        previewTagsEnabled_ = previewEnabled;
+        customTagRules_ = customRules;
     }
 
     void setText(const QString& text);
@@ -69,6 +79,9 @@ class TranslationTableDelegate final : public QStyledItemDelegate {
     const u16* lengthHint;
     const bool* whitespaceHighlightingEnabled;
     const QString* dictionaryPath;
+
+    const bool* previewTagsEnabled_ = nullptr;
+    const QList<TagRule>* customTagRules_ = nullptr;
 
     mutable QPlainTextEdit* activeInput = nullptr;
     mutable u32 activeRow;
