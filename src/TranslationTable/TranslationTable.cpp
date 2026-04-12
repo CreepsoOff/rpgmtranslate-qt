@@ -275,6 +275,19 @@ void TranslationTable::init(
 #endif
 }
 
+void TranslationTable::setLineLengthLimitEnabled(const bool* const enabled)
+    const {
+    delegate->setLineLengthLimitEnabled(enabled);
+}
+
+void TranslationTable::initPreview(
+    const bool* const previewEnabled,
+    const bool* const previewWrapTextToLimit,
+    const QList<TagRule>* const customRules
+) const {
+    delegate->initPreview(previewEnabled, previewWrapTextToLimit, customRules);
+}
+
 #ifdef ENABLE_NUSPELL
 void TranslationTable::initializeDictionary() const {
     delegate->initializeDictionary();

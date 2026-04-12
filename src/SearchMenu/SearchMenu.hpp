@@ -47,7 +47,7 @@ class SearchMenu final : public PersistentMenu {
     void changeEvent(QEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::SearchMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::SearchMenu*;
 
     inline void requestAction(bool replace);
 

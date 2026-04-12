@@ -25,7 +25,7 @@ class FileSelectMenu final : public PersistentMenu {
     void setFiles(const vector<TabListItem>& files);
     void addFile(const QString& filename, bool checked = false);
     void clear();
-    auto selected(bool skipped = false) -> Selected;
+    [[nodiscard]] auto selected(bool skipped = false) -> Selected;
     [[nodiscard]] auto selectedCount() const -> u16;
     [[nodiscard]] auto empty() const -> bool;
 
@@ -34,7 +34,7 @@ class FileSelectMenu final : public PersistentMenu {
     auto eventFilter(QObject* obj, QEvent* event) -> bool override;
 
    private:
-    inline auto setupUi() -> Ui::FileSelectMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::FileSelectMenu*;
 
     Ui::FileSelectMenu* const ui;
 

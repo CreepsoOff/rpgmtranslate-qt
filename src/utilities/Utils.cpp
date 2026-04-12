@@ -1,5 +1,6 @@
 #include "Utils.hpp"
 
+#include "Aliases.hpp"
 #include "Constants.hpp"
 
 auto lineParts(
@@ -25,7 +26,7 @@ auto lineParts(
     return split;
 };
 
-auto getTranslation(const QSVList& parts) -> Translation {
+auto getTranslation(const QSVList& parts) -> struct Translation {
     for (const auto [idx, part] :
          views::enumerate(views::reverse(views::drop(parts, 1)))) {
         if (!part.isEmpty()) {
@@ -34,6 +35,7 @@ auto getTranslation(const QSVList& parts) -> Translation {
     }
 
     return { .translation = QStringView(), .index = 0 };
+
 }
 
 auto getSource(const QSVList& parts) -> QStringView {
@@ -50,7 +52,7 @@ auto getTranslations(const QSVList& parts) -> QSVList {
 
 auto qsvReplace(
     const QStringView input,
-    const QLatin1StringView needle,
+    const QL1SV needle,
     const QStringView replacement
 ) -> QString {
     QString result;
@@ -77,7 +79,7 @@ auto qsvReplace(
 auto qsvReplace(
     const QStringView input,
     const QStringView needle,
-    const QLatin1StringView replacement
+    const QL1SV replacement
 ) -> QString {
     QString result;
     result.reserve(input.size());
@@ -102,8 +104,8 @@ auto qsvReplace(
 
 auto qsvReplace(
     const QStringView input,
-    const QLatin1StringView needle,
-    const QLatin1StringView replacement
+    const QL1SV needle,
+    const QL1SV replacement
 ) -> QString {
     QString result;
     result.reserve(input.size());
@@ -171,8 +173,7 @@ auto qsvReplace(
     return result;
 }
 
-auto joinQSVList(const QSVList& list, const QLatin1StringView separator)
-    -> QString {
+auto joinQSVList(const QSVList& list, const QL1SV separator) -> QString {
     u32 size = 0;
     for (const QStringView view : list) {
         size += view.size();
@@ -254,4 +255,24 @@ auto intLen(const u32 num) -> u8 {
 auto intLen(const i32 num) -> u8 {
     const u32 val = num < 0 ? -u32(num) : u32(num);
     return intLen(val) + (num < 0 ? 1 : 0);
+}
+
+auto lastPathComponent(const QString& path) -> QStringView {
+    for (u32 i = path.size() - 1; i >= 0; i--) {
+        const QChar chr = path[i];
+
+        if (chr == u'/' || chr == u'\\') {
+            return QStringView(path).mid(i + 1);
+        }
+    }
+
+    return {};
+}
+
+auto toffistr(const QByteArrayView utf8) -> FFIString {
+    return { .ptr = utf8.data(), .len = u32(utf8.size()) };
+}
+
+auto fromffistr(const FFIString str) -> QUtf8SV {
+    return { str.ptr, isize(str.len) };
 }

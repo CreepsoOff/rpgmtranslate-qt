@@ -1,8 +1,8 @@
 #include "ReadMenu.hpp"
 
-#include "Enums.hpp"
 #include "FileSelectMenu.hpp"
 #include "ProjectSettings.hpp"
+#include "rpgmtranslate.h"
 #include "ui_ReadMenu.h"
 
 #include <QMessageBox>
@@ -11,7 +11,11 @@ ReadMenu::ReadMenu(QWidget* const parent) :
     QWidget(parent),
     ui(setupUi()),
     fileSelectMenu(new FileSelectMenu(parent)) {
+    ui->iniTitleLabel->hide();
+    ui->titleEncodingSelect->hide();
+
     hide();
+
     setAttribute(Qt::WA_StyledBackground, true);
     setStyleSheet("ReadMenu { background-color: %1 }"_L1.arg(
         qApp->palette().color(QPalette::Window).name()
@@ -65,17 +69,17 @@ ReadMenu::ReadMenu(QWidget* const parent) :
                 ui->duplicateModeSelect->setEnabled(false);
 
                 ui->romanizeCheckbox->setChecked(
-                    bool(projectSettings->flags & BaseFlags::Romanize)
+                    bool(projectSettings->flags & BaseFlags_Romanize)
                 );
                 ui->romanizeCheckbox->setEnabled(false);
                 ui->trimCheckbox->setChecked(
-                    bool(projectSettings->flags & BaseFlags::Trim)
+                    bool(projectSettings->flags & BaseFlags_Trim)
                 );
                 ui->trimCheckbox->setEnabled(false);
                 ui->disableCustomProcessingCheckbox->setChecked(
                     bool(
                         projectSettings->flags &
-                        BaseFlags::DisableCustomProcessing
+                        BaseFlags_DisableCustomProcessing
                     )
                 );
                 ui->disableCustomProcessingCheckbox->setEnabled(false);
@@ -91,17 +95,17 @@ ReadMenu::ReadMenu(QWidget* const parent) :
                 ui->duplicateModeSelect->setEnabled(false);
 
                 ui->romanizeCheckbox->setChecked(
-                    bool(projectSettings->flags & BaseFlags::Romanize)
+                    bool(projectSettings->flags & BaseFlags_Romanize)
                 );
                 ui->romanizeCheckbox->setEnabled(false);
                 ui->trimCheckbox->setChecked(
-                    bool(projectSettings->flags & BaseFlags::Trim)
+                    bool(projectSettings->flags & BaseFlags_Trim)
                 );
                 ui->trimCheckbox->setEnabled(false);
                 ui->disableCustomProcessingCheckbox->setChecked(
                     bool(
                         projectSettings->flags &
-                        BaseFlags::DisableCustomProcessing
+                        BaseFlags_DisableCustomProcessing
                     )
                 );
                 ui->disableCustomProcessingCheckbox->setEnabled(false);
@@ -129,6 +133,60 @@ ReadMenu::ReadMenu(QWidget* const parent) :
                 ));
                 break;
         }
+    }
+    );
+
+    connect(
+        ui->useIniTitleCheckbox,
+        &QCheckBox::checkStateChanged,
+        this,
+        [this](const Qt::CheckState state) -> void {
+        if (state == Qt::CheckState::Checked) {
+            const FFIString error = rpgm_get_ini_title(
+                FFIString{ .ptr = projectPath.data(),
+                           .len = u32(projectPath.size()) },
+                &title_
+            );
+
+            if (error.ptr != nullptr) {
+                QMessageBox::critical(
+                    this,
+                    tr("Failed to extract INI title"),
+                    tr("Failed to extract title from the Game.ini file: %1")
+                        .arg(QUtf8SV(error.ptr, error.len))
+                );
+                rpgm_string_free(error);
+                return;
+            }
+
+            if (title_.len == 0) {
+                QMessageBox::warning(
+                    this,
+                    tr("Title is empty"),
+                    tr("Title is empty in Game.ini file.")
+                );
+                rpgm_buffer_free(title_);
+                return;
+            }
+
+            ui->titleEncodingSelect->setCurrentText(u"UTF-8"_s);
+            ui->iniTitleLabel->show();
+            ui->titleEncodingSelect->show();
+        } else {
+            ui->iniTitleLabel->hide();
+            ui->titleEncodingSelect->hide();
+        }
+    }
+    );
+
+    connect(
+        ui->titleEncodingSelect,
+        &QComboBox::currentTextChanged,
+        this,
+        [this](const QString& encoding) -> void {
+        ui->iniTitleLabel->setText(QStringDecoder(encoding).decode(
+            QByteArrayView(title_.ptr, title_.len)
+        ));
     }
     );
 
@@ -194,6 +252,17 @@ void ReadMenu::clear() {
 void ReadMenu::init(const shared_ptr<ProjectSettings>& settings) {
     projectSettings = settings;
 
+    projectPath = projectSettings->projectPath.toUtf8();
+    engineType = projectSettings->engineType;
+
+    if (engineType == EngineType::New) {
+        ui->iniTitleWidget->hide();
+        ui->iniTitleDisplayWidget->hide();
+    } else {
+        ui->iniTitleWidget->show();
+        ui->iniTitleDisplayWidget->show();
+    }
+
     ui->readModeSelect->setEnabled(true);
     ui->readModeSelect->setCurrentIndex(2);
 
@@ -201,47 +270,88 @@ void ReadMenu::init(const shared_ptr<ProjectSettings>& settings) {
     ui->skipObsoleteCheckbox->setEnabled(true);
 }
 
-[[nodiscard]] auto ReadMenu::parseMapEvents() const -> bool {
+auto ReadMenu::exec(const QString& projectPath, const EngineType engineType)
+    -> QDialog::DialogCode {
+    this->projectPath = projectPath.toUtf8();
+    this->engineType = engineType;
+
+    if (engineType == EngineType::New) {
+        ui->iniTitleWidget->hide();
+        ui->iniTitleDisplayWidget->hide();
+    } else {
+        ui->iniTitleWidget->show();
+        ui->iniTitleDisplayWidget->show();
+    }
+
+    QEventLoop loop;
+    QDialog::DialogCode code;
+
+    connect(this, &ReadMenu::accepted, &loop, [this, &loop, &code] -> void {
+        loop.quit();
+        code = QDialog::DialogCode::Accepted;
+    });
+
+    connect(this, &ReadMenu::rejected, &loop, [this, &loop, &code] -> void {
+        loop.quit();
+        code = QDialog::DialogCode::Rejected;
+    });
+
+    loop.exec();
+
+    this->projectPath = QByteArray();
+    decodedTitle = QStringDecoder(ui->titleEncodingSelect->currentText())
+                       .decode(QByteArrayView(title_.ptr, title_.len));
+    rpgm_buffer_free(title_);
+
+    return code;
+};
+
+auto ReadMenu::parseMapEvents() const -> bool {
     return ui->mapEventsCheckbox->isChecked();
 };
 
-[[nodiscard]] auto ReadMenu::readMode() const -> ReadMode {
+auto ReadMenu::readMode() const -> ReadMode {
     return ReadMode(ui->readModeSelect->currentIndex());
 };
 
-[[nodiscard]] auto ReadMenu::duplicateMode() const -> DuplicateMode {
+auto ReadMenu::duplicateMode() const -> DuplicateMode {
     return DuplicateMode(ui->duplicateModeSelect->currentIndex());
 };
 
-[[nodiscard]] auto ReadMenu::flags() const -> BaseFlags {
+auto ReadMenu::flags() const -> BaseFlags {
     auto flags = BaseFlags(0);
 
     if (ui->romanizeCheckbox->isChecked()) {
-        flags |= BaseFlags::Romanize;
+        flags |= BaseFlags_Romanize;
     }
 
     if (ui->trimCheckbox->isChecked()) {
-        flags |= BaseFlags::Trim;
+        flags |= BaseFlags_Trim;
     }
 
     if (ui->disableCustomProcessingCheckbox->isChecked()) {
-        flags |= BaseFlags::DisableCustomProcessing;
+        flags |= BaseFlags_DisableCustomProcessing;
     }
 
     if (ui->ignoreCheckbox->isChecked()) {
-        flags |= BaseFlags::Ignore;
+        flags |= BaseFlags_Ignore;
     }
 
     if (ui->skipObsoleteCheckbox->isChecked()) {
-        flags |= BaseFlags::SkipObsolete;
+        flags |= BaseFlags_SkipObsolete;
     }
 
     return flags;
 };
 
-[[nodiscard]] auto ReadMenu::selected(const bool skipped) const -> Selected {
+auto ReadMenu::selected(const bool skipped) const -> Selected {
     return fileSelectMenu->selected(skipped);
 };
+
+auto ReadMenu::title() -> QString {
+    return ui->useIniTitleCheckbox->isChecked() ? std::move(decodedTitle)
+                                                : QString();
+}
 
 void ReadMenu::setFiles(const vector<TabListItem>& files) {
     fileSelectMenu->setFiles(files);

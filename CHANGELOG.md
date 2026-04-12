@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.0.0-rc.5
+
+This release candidate introduces asset inspector support. Next release candidate will further improve user experience and correct some parts of the program. Git client will be implemented in the final v1.0.0 release.
+
+### Changes
+
+- Updated to `rvpacker-txt-rs-lib` v12.1.0:
+    - Fix EOF parsing bug: flush final translation section in initialize_translation by @CreepsoOff
+    - Changed `generate_file` function in `json` module to also accept filename argument, and have a special case for `Scripts` files.
+    - Added `set_game_title` argument to `Reader` for compatibility with RPG Maker XP/VX/VXAce. This allows user to manually decode game title from Game.ini file and pass it here as UTF-8, since system file not always contains game title.
+    - Documentation fixes.
+- Fixed wrong extraction of encrypted archives which resulted in an unreadable project.
+- When reading RPG Maker XP/VX/VXAce projects, read menu will now have option to use the game title from Game.ini file. Since Game.ini is not necessarily UTF-8 encoded, this allows user to manually find the encoding and use correct game title.
+- Fixed possible panics on read.
+- Added information about libarchive, libgit2 and FFmpeg to about window.
+- Fixed clipping text in tab panel items.
+- Massively improved documentation.
+- Implemented asset inspector: currently supports browsing through images, audio, video, scripts, and inspecting each of those, along with media player, syntax highligthing and more.
+
 ## v1.0.0-rc.4
 
 A couple more fixes.

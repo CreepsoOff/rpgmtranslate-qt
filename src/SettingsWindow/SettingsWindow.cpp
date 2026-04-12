@@ -1,9 +1,7 @@
 #include "SettingsWindow.hpp"
 
-#include "Enums.hpp"
 #include "ProjectSettings.hpp"
 #include "Settings.hpp"
-#include "rpgmtranslate.hpp"
 #include "ui_SettingsWindow.h"
 
 #include <QDir>
@@ -424,8 +422,8 @@ SettingsWindow::SettingsWindow(
 
         const FFIString error = rpgm_get_models(
             endpoint,
-            { .ptr = apiKey.data(), .len = usize(apiKey.size()) },
-            { .ptr = baseUrl.data(), .len = usize(baseUrl.size()) },
+            toffistr(apiKey),
+            toffistr(baseUrl),
             &out
         );
 
@@ -434,7 +432,7 @@ SettingsWindow::SettingsWindow(
                 this,
                 tr("Failed to validate key"),
                 tr("Getting available models failed with error: %1")
-                    .arg(QString::fromUtf8(error.ptr, isize(error.len)))
+                    .arg(fromffistr(error))
             );
             rpgm_string_free(error);
             return;

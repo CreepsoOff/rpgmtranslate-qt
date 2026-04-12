@@ -1,8 +1,20 @@
-#include "AboutWindow.hpp"
+#ifdef ENABLE_ASSET_PLAYBACK
+extern "C" {
+#define __STDC_CONSTANT_MACROS
+#include <libavutil/avutil.h>
+}
+#endif
 
+#include "AboutWindow.hpp"
 #include "Constants.hpp"
 #include "ui_AboutWindow.h"
 #include "version.h"
+
+#ifdef ENABLE_LIBGIT2
+#include <git2/common.h>
+#endif
+
+#include <archive.h>
 
 AboutWindow::AboutWindow(QWidget* const parent) :
     QDialog(parent),
@@ -11,7 +23,31 @@ AboutWindow::AboutWindow(QWidget* const parent) :
         u"RPGMTranslate v"_s + QString::fromLatin1(APP_VERSION)
     );
     ui->qtVersionLabel->setText(u"Qt "_s + QString::fromLatin1(qVersion()));
-    // TODO: Libgit2 version, Nuspell version
+
+    ui->libarchiveVersionLabel->setText(
+        QString::fromLatin1(archive_version_string())
+    );
+
+#ifdef ENABLE_LIBGIT2
+    int maj;
+    int min;
+    int pth;
+
+    git_libgit2_version(&maj, &min, &pth);
+    ui->libgit2VersionLabel->setText(u"libgit2 %1.%2.%3"_s.arg(
+        QString::number(maj),
+        QString::number(min),
+        QString::number(pth)
+    ));
+#endif
+
+#ifdef ENABLE_ASSET_PLAYBACK
+    ui->ffmpegVersionLabel->setText(
+        "FFmpeg %1"_L1.arg(QString::fromLatin1(av_version_info()))
+    );
+#endif
+
+    // TODO: Nuspell does not yet provide the version.
 }
 
 AboutWindow::~AboutWindow() {

@@ -102,7 +102,28 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_4">
+    <widget class="QLabel" name="libarchiveVersionLabel">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="libgit2VersionLabel">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="ffmpegVersionLabel">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="iconsLabel">
      <property name="text">
       <string>Icons: Google Material Symbols, licensed under Apache License 2.0</string>
      </property>
@@ -112,7 +133,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_5">
+    <widget class="QLabel" name="licenseLabel">
      <property name="text">
       <string>Licensed under [WTFPL](https://www.wtfpl.net/)</string>
      </property>
@@ -125,7 +146,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_6">
+    <widget class="QLabel" name="githubLabel">
      <property name="text">
       <string>GitHub: [rpgmtranslate-qt](https://github.com/RPG-Maker-Translation-Tools/rpgmtranslate-qt)</string>
      </property>

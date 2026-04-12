@@ -31,17 +31,18 @@ class MainWindow final : public QMainWindow {
     void closeEvent(QCloseEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::mainWindow*;
+    [[nodiscard]] inline auto setupUi() -> Ui::mainWindow*;
 
     inline void initializeSettings();
 
-    inline auto saveSettings() -> bool;
-    inline auto saveProjectSettings() -> bool;
-    inline auto saveGlossary() -> bool;
-    inline auto saveEverything() -> bool;
+    [[nodiscard]] inline auto saveSettings() -> bool;
+    [[nodiscard]] inline auto saveProjectSettings() -> bool;
+    [[nodiscard]] inline auto saveGlossary() -> bool;
+    [[nodiscard]] inline auto saveEverything() -> bool;
 
-    inline auto saveCurrentTab(QString tabName = QString()) -> bool;
-    inline auto saveMaps() -> bool;
+    [[nodiscard]] inline auto saveCurrentTab(QString tabName = QString())
+        -> bool;
+    [[nodiscard]] inline auto saveMaps() -> bool;
     inline void saveBackup();
 
     inline void loadSettings();
@@ -57,8 +58,44 @@ class MainWindow final : public QMainWindow {
     inline void checkForUpdates(bool manual = false);
     inline void retranslate(QLocale::Language language);
     inline void exit();
+    [[nodiscard]] inline auto ensureSourceBaseline(
+        const shared_ptr<ProjectSettings>& settings,
+        bool interactive
+    ) -> bool;
+    [[nodiscard]] inline auto syncSourceBaselineFromGameData(
+        bool appendForceRead
+    ) -> bool;
+    inline void promptForChangedGameData();
+    [[nodiscard]] inline auto currentGameDataPath(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto defaultSourceBaselinePath(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto sourceLockRootPath(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto latestSourceBaselineBackupPath(
+        const shared_ptr<ProjectSettings>& settings,
+        const QString& leafDirName
+    ) const -> QString;
+    [[nodiscard]] inline auto fingerprintGameSource(
+        const shared_ptr<ProjectSettings>& settings
+    ) const -> QString;
+    [[nodiscard]] inline auto syncBaselineSupplementaryFiles(
+        const shared_ptr<ProjectSettings>& settings,
+        QString* error = nullptr
+    ) const -> bool;
+    [[nodiscard]] inline auto fingerprintDirectory(
+        const QString& path
+    ) const -> QString;
+    [[nodiscard]] inline auto copyDirectoryRecursive(
+        const QString& sourcePath,
+        const QString& targetPath,
+        QString* error = nullptr
+    ) const -> bool;
 
-    inline auto search(
+    [[nodiscard]] inline auto search(
         Selected selected,
         const QString& searchText,
         SearchLocation searchLocation,
@@ -89,6 +126,7 @@ class MainWindow final : public QMainWindow {
     shared_ptr<ProjectSettings> projectSettings;
 
     QTimer backupTimer;
+    bool sourceSyncInFlight = false;
 
     // UI
     Ui::mainWindow* const ui;
@@ -122,6 +160,11 @@ class MainWindow final : public QMainWindow {
         new QAction(QIcon(u":/icons/save.svg"_s), tr("Save"), this);
     QAction* const actionWrite =
         new QAction(QIcon(u":/icons/manufacturing.svg"_s), tr("Write"), this);
+    QAction* const actionSyncSourceBaseline = new QAction(
+        QIcon(u":/icons/refresh.svg"_s),
+        tr("Sync Source Baseline From Game Data"),
+        this
+    );
     QAction* const actionSearch =
         new QAction(QIcon(u":/icons/search.svg"_s), tr("Search"), this);
     QAction* const actionBatchMenu = new QAction(
@@ -157,6 +200,19 @@ class MainWindow final : public QMainWindow {
     );
     QAction* const actionSearchPanel =
         new QAction(QIcon(u":/icons/dock.svg"_s), tr("Search Panel"), this);
+    QAction* const actionPreviewMode = new QAction(
+        QIcon(u":/icons/visibility.svg"_s),
+        tr("Preview Tag Filtering"),
+        this
+    );
+    QAction* const actionPreviewShowLineLimit = new QAction(
+        tr("Show Line Length Limit"),
+        this
+    );
+    QAction* const actionPreviewWrapTextToLimit = new QAction(
+        tr("Wrap Text To Limit"),
+        this
+    );
 
     bool firstReadPending = false;
 };

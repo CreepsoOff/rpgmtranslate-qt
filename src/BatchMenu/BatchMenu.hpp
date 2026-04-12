@@ -45,7 +45,7 @@ class BatchMenu final : public PersistentMenu {
     void changeEvent(QEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::BatchMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::BatchMenu*;
 
     Ui::BatchMenu* const ui;
 

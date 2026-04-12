@@ -1,6 +1,6 @@
 #include "MatchMenu.hpp"
 
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 
 #include <QPushButton>
 

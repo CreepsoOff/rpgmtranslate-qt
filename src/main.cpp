@@ -4,12 +4,52 @@
 #include <QDir>
 #include <QLockFile>
 #include <QLoggingCategory>
+#include <QStringList>
 #include <print>
+#include <cstdio>
+
+#ifdef Q_OS_WINDOWS
+#include <windows.h>
+#endif
 
 static QFile logFile;
 static QTextStream logStream;
 
-static auto levelToString(const QtMsgType type) -> QLatin1StringView {
+#ifdef Q_OS_WINDOWS
+static auto shouldOpenConsole(const QStringList& args) -> bool {
+    for (const auto& arg : args) {
+        const auto lower = arg.toLower();
+
+        if (lower == u"-dev"_s || lower == u"--dev"_s ||
+            lower == u"-console"_s || lower == u"--console"_s ||
+            lower == u"-console=true"_s || lower == u"--console=true"_s ||
+            lower == u"-console=enabled"_s ||
+            lower == u"--console=enabled"_s) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void openConsoleIfRequested(const QStringList& args) {
+    if (!shouldOpenConsole(args)) {
+        return;
+    }
+
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
+        AllocConsole();
+    }
+
+    FILE* stream = nullptr;
+    freopen_s(&stream, "CONOUT$", "w", stdout);
+    freopen_s(&stream, "CONOUT$", "w", stderr);
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    setvbuf(stderr, nullptr, _IONBF, 0);
+}
+#endif
+
+[[nodiscard]] static auto levelToString(const QtMsgType type) -> QL1SV {
     switch (type) {
         case QtDebugMsg:
             return "DEBUG"_L1;
@@ -26,7 +66,7 @@ static auto levelToString(const QtMsgType type) -> QLatin1StringView {
     return "LOG"_L1;
 }
 
-static auto levelToColor(const QtMsgType type) -> cstr {
+[[nodiscard]] static auto levelToColor(const QtMsgType type) -> cstr {
     switch (type) {
         case QtDebugMsg:
             return "\033[36m";
@@ -42,7 +82,7 @@ static auto levelToColor(const QtMsgType type) -> cstr {
     return "\033[0m";
 }
 
-static auto shortFile(const cstr file) -> cstr {
+[[nodiscard]] static auto shortFile(const cstr file) -> cstr {
     if (file == nullptr) {
         return "";
     }
@@ -98,6 +138,10 @@ static void messageHandler(
 
 auto main(i32 argCount, char* args[]) -> i32 {
     const auto app = QApplication(argCount, args);
+
+#ifdef Q_OS_WINDOWS
+    openConsoleIfRequested(app.arguments());
+#endif
 
     const QString lockFilePath = QDir::tempPath() + u"/rpgmtranslate.lock";
     auto lockFile = QLockFile(lockFilePath);

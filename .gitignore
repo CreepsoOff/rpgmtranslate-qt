@@ -4,6 +4,10 @@
 /.vscode
 /.zed
 /dist
-/docs/mkdocs/site
+/docs/site
 /rust/Cargo.lock
 /rust/target
+clear
+PLAN.md
+CLAUDE.md
+build-vscode/

@@ -14,7 +14,7 @@ class MatchMenu final : public QDockWidget {
 
     void appendMatch(
         const QString& filename,
-        u32 lineNumber,
+        u32 lineIndex,
         const QString& termSource,
         const QString& termTranslation,
         QStringView source,

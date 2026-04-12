@@ -47,18 +47,58 @@ class QGridLayout;
 class QPlainTextEdit;
 class QTableWidget;
 
-struct ColumnInfo;
-class ProjectSettings;
+class AboutWindow;
 
-class Settings;
-class CoreSettings;
+class AssetMenu;
+class AssetPreviewWidget;
+class CodeViewer;
+class GraphicsAssetViewer;
+class MediaPlayer;
+class TreeSitterHighlighter;
+class LineNumberArea;
 
 class AutoUpdater;
 
-class TranslationTable;
-class TranslationTableModel;
-class TranslationTableHeader;
-class TranslationTableDelegate;
+class BatchMenu;
+
+class BookmarkMenu;
+
+class CBSLIWidget;
+
+class FFILogger;
+
+class FileSelectMenu;
+
+struct MatchModeInfo;
+struct Term;
+struct Glossary;
+class GlossaryMenu;
+
+class MainWindow;
+
+class MatchMenu;
+
+class PersistentMenu;
+
+class PopupInput;
+
+class PurgeMenu;
+
+class ReadMenu;
+
+class SearchMenu;
+
+class SearchPanelDock;
+
+struct ColumnInfo;
+class ProjectSettings;
+class TranslationSettings;
+class AppearanceSettings;
+class ControlSettings;
+class CoreSettings;
+class Settings;
+
+class SettingsWindow;
 
 class GitChangesList;
 class GitCommitList;
@@ -70,23 +110,14 @@ class TabListDelegate;
 class TabList;
 class TabPanel;
 
-class SearchPanelDock;
+class TaskWorker;
 
-class FileSelectMenu;
-class SearchMenu;
-class BatchMenu;
-class GlossaryMenu;
 class TranslationsMenu;
-class BookmarkMenu;
-class ReadMenu;
-class WriteMenu;
-class PurgeMenu;
-class MatchMenu;
-class AssetMenu;
 
-struct MatchModeInfo;
-struct Term;
-struct Glossary;
+class TranslationTable;
+class TranslationTableModel;
+class TranslationTableHeader;
+class TranslationTableDelegate;
 
 struct FFIString;
 struct ByteBuffer;
@@ -107,3 +138,5 @@ class BookmarkList;
 class MatchTable;
 class MatchTableModel;
 class MatchTableDelegate;
+
+class WriteMenu;

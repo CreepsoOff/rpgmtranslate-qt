@@ -8,7 +8,7 @@
 #include "SearchPanelDock.hpp"
 #include "Settings.hpp"
 #include "Types.hpp"
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 
 #include <QObject>
 #include <QThread>
@@ -19,14 +19,14 @@ struct FileLines {
 };
 
 auto fileLines(
-    QLatin1StringView filename,
+    QL1SV filename,
     const HashMap<u16, QString>& mapSections,
     const shared_ptr<ProjectSettings>& projectSettings
 ) -> result<FileLines, QString>;
 
 template <class F>
 auto modifyFile(
-    QLatin1StringView filename,
+    QL1SV filename,
     HashMap<u16, QString>& mapSections,
     const shared_ptr<ProjectSettings>& projectSettings,
     F&& func
@@ -54,7 +54,6 @@ class TaskWorker final : public QObject {
     void extractArchive(const QString& archivePath, const QString& folder);
 
     void read(
-        const QString& projectPath,
         const QString& sourcePath,
         const QString& translationPath,
         ReadMode readMode,
@@ -63,7 +62,8 @@ class TaskWorker final : public QObject {
         Selected selected,
         BaseFlags flags,
         bool mapEvents,
-        ByteBuffer hashes
+        ByteBuffer hashes,
+        const QString& title
     );
 
     void write(const QString& gameTitle, Selected selected);

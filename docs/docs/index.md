@@ -6,9 +6,12 @@ For advanced usage, refer to:
 
 - [Search Features](search.md)
 - [Text Editing](text-editing.md)
-  - [Batch Processing](batch-processing.md)
-- [Settings](settings.md)
+    - [Batch Processing](batch-processing.md)
 - [CAT features and the glossary](glossary.md)
+- [Git client](git.md)
+- [Settings](settings.md)
+- [Asset inspector](asset-inspector.md)
+- [Development](development.md)
 
 **Also, help us improve [the docs](https://github.com/RPG-Maker-Translation-Tools/rpgmtranslate-qt/tree/main/docs/docs/en)!**
 
@@ -18,8 +21,8 @@ Download the latest release from [GitHub](https://github.com/RPG-Maker-Translati
 
 Right now, program is available as:
 
-- Portable version for Windows (rpgmtranslate.7z).
-- Portable version for Linux (rpgmtranslate.tar.xz).
+- Portable version for Windows (rpgmtranslate.exe).
+- Portable version for Linux (rpgmtranslate).
 
 ## Interface
 
@@ -33,9 +36,9 @@ Once the project is opened, the whole UI will become available to you. Overall, 
 
 ## Opening a Project
 
-1.  Click the "Open Folder" button
-2.  Select your RPG Maker game folder.
-3.  If the folder already contains an `.rpgmtranslate` directory, project will be loaded right away. Else, you will be prompted with the dialog to read game files.
-4.  Project will open, from here you can start your translation.
+1. Click the "Open Folder" button
+2. Select your RPG Maker game folder.
+3. If the folder already contains an `.rpgmtranslate` directory, project will be loaded right away. Else, you will be prompted with the dialog to read game files.
+4. Project will open, from here you can start your translation.
 
 In case of crashes or incorrect behavior, the application provides the log file beside the executable.

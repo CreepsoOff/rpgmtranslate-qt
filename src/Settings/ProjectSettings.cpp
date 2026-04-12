@@ -63,6 +63,10 @@ auto tou128(const QString& str) -> u128 {
         { u"sourceColumnWidth"_s, sourceColumnWidth },
         { u"translationColumns"_s, serializeTranslationColumns() },
         { u"sourceDirectory"_s, u8(sourceDirectory) },
+        { u"sourceLockPath"_s, sourceLockPath },
+        { u"lastSeenGameDataFingerprint"_s, lastSeenGameDataFingerprint },
+        { u"lastPromptedGameDataFingerprint"_s,
+          lastPromptedGameDataFingerprint },
         { u"spellcheckDictionaryPath"_s, spellcheckDictionary },
         { u"projectContext"_s, projectContext },
         { u"fileContexts"_s, contexts },
@@ -90,8 +94,25 @@ auto ProjectSettings::fromJSON(const QJsonObject& obj) -> ProjectSettings {
     settings.lineLengthHint = obj["lineLengthHint"_L1].toInt();
     settings.sourceColumnWidth = obj["sourceColumnWidth"_L1].toInt();
 
-    settings.sourceDirectory =
-        SourceDirectory(obj["sourceDirectory"_L1].toInt());
+    switch (obj["sourceDirectory"_L1].toInt()) {
+        case i32(SourceDirectory::UppercaseData):
+            settings.sourceDirectory = SourceDirectory::UppercaseData;
+            break;
+        case i32(SourceDirectory::LowercaseData):
+            settings.sourceDirectory = SourceDirectory::LowercaseData;
+            break;
+        case i32(SourceDirectory::WwwLowercaseData):
+            settings.sourceDirectory = SourceDirectory::WwwLowercaseData;
+            break;
+        default:
+            settings.sourceDirectory = SourceDirectory::None;
+            break;
+    }
+    settings.sourceLockPath = obj["sourceLockPath"_L1].toString();
+    settings.lastSeenGameDataFingerprint =
+        obj["lastSeenGameDataFingerprint"_L1].toString();
+    settings.lastPromptedGameDataFingerprint =
+        obj["lastPromptedGameDataFingerprint"_L1].toString();
 
     settings.spellcheckDictionary =
         obj["spellcheckDictionaryPath"_L1].toString();

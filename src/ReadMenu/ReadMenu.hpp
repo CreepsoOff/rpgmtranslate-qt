@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Aliases.hpp"
-#include "Enums.hpp"
 #include "FWD.hpp"
+#include "rpgmtranslate.h"
 
 #include <QDialog>
 #include <QEventLoop>
@@ -32,26 +32,12 @@ class ReadMenu final : public QWidget {
     [[nodiscard]] auto duplicateMode() const -> DuplicateMode;
     [[nodiscard]] auto flags() const -> BaseFlags;
     [[nodiscard]] auto selected(bool skipped = false) const -> Selected;
+    [[nodiscard]] auto title() -> QString;
 
     void init(const shared_ptr<ProjectSettings>& settings);
 
-    auto exec() -> QDialog::DialogCode {
-        QEventLoop loop;
-        QDialog::DialogCode code;
-
-        connect(this, &ReadMenu::accepted, &loop, [this, &loop, &code] -> void {
-            loop.quit();
-            code = QDialog::DialogCode::Accepted;
-        });
-
-        connect(this, &ReadMenu::rejected, &loop, [this, &loop, &code] -> void {
-            loop.quit();
-            code = QDialog::DialogCode::Rejected;
-        });
-
-        loop.exec();
-        return code;
-    };
+    auto exec(const QString& projectPath, EngineType engineType)
+        -> QDialog::DialogCode;
 
    signals:
     void accepted();
@@ -62,10 +48,16 @@ class ReadMenu final : public QWidget {
     void hideEvent(QHideEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::ReadMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::ReadMenu*;
+
+    QByteArray projectPath;
+    QString decodedTitle;
+    ByteBuffer title_;
 
     Ui::ReadMenu* const ui;
 
     FileSelectMenu* const fileSelectMenu;
     shared_ptr<ProjectSettings> projectSettings;
+
+    EngineType engineType;
 };

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Aliases.hpp"
-#include "Enums.hpp"
 #include "FWD.hpp"
 #include "Settings.hpp"
+#include "rpgmtranslate.h"
 
 #include <QDialog>
 
@@ -33,7 +33,7 @@ class SettingsWindow final : public QDialog {
     auto eventFilter(QObject* watched, QEvent* event) -> bool override;
 
    private:
-    inline auto setupUi() -> Ui::SettingsWindow*;
+    [[nodiscard]] inline auto setupUi() -> Ui::SettingsWindow*;
     inline void saveCurrentEndpoint(EndpointSettings& settings);
     inline void refreshSpellcheckDictionarySelect();
     inline void setDefaultBaseURL(TranslationEndpoint endpoint);

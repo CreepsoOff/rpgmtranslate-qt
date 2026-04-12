@@ -11,6 +11,8 @@
 // TODO: Add button to use the value from settings for wrapping
 // TODO: Add some kind of safety mechanism to avoid wrapping to more of 4 lines
 // of text
+// TODO: Wrapping also malforms the tags, like from Yanfly Message Core. That
+// needs to be addressed.
 
 BatchMenu::BatchMenu(QWidget* const parent) :
     PersistentMenu(parent, Qt::FramelessWindowHint),

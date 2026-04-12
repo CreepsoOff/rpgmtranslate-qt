@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "Aliases.hpp"
@@ -20,7 +19,7 @@ enum SearchResultListRole : i16 {
 struct SearchResultListItem {
     QString title;
     QString subtitle;
-    QLatin1StringView filename;
+    QL1SV filename;
     CellMatch cellMatch;
     bool replaced;
     bool hidden;
@@ -48,11 +47,11 @@ class SearchResultListDelegate final : public QStyledItemDelegate {
     ) const override;
 
    private:
-    [[nodiscard]] auto computeHeight(
+    [[nodiscard]] static auto computeHeight(
         const QStyleOptionViewItem& option,
         const QModelIndex& index,
         i32 contentWidth
-    ) const -> i32;
+    ) -> i32;
 
     constexpr static u8 PAD_X = 8;
     constexpr static u8 PAD_Y = 8;
@@ -80,6 +79,11 @@ class SearchResultListModel final : public QAbstractListModel {
     void setItems(vector<SearchResultListItem>&& items);
 
     [[nodiscard]] constexpr auto item(const i32 row) -> SearchResultListItem& {
+        return items[row];
+    };
+
+    [[nodiscard]] constexpr auto item(const i32 row) const
+        -> const SearchResultListItem& {
         return items[row];
     };
 

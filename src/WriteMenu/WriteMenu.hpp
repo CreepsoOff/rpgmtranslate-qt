@@ -31,7 +31,7 @@ class WriteMenu final : public QDialog {
     void hideEvent(QHideEvent* event) override;
 
    private:
-    inline auto setupUi() -> Ui::WriteMenu*;
+    [[nodiscard]] inline auto setupUi() -> Ui::WriteMenu*;
 
     Ui::WriteMenu* const ui;
 

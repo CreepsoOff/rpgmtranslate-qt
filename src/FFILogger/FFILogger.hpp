@@ -1,9 +1,7 @@
 #pragma once
 
 #include "Aliases.hpp"
-#include "Enums.hpp"
-#include "Types.hpp"
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 
 #include <QObject>
 

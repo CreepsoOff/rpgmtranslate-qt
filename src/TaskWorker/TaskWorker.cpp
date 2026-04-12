@@ -2,7 +2,7 @@
 
 #include "Enums.hpp"
 #include "Utils.hpp"
-#include "rpgmtranslate.hpp"
+#include "rpgmtranslate.h"
 
 #include <QApplication>
 #include <QFile>
@@ -22,12 +22,8 @@ struct ToProcess {
     i8 columnIndex;
 };
 
-auto toFFIString(const QByteArray& utf8) -> FFIString {
-    return { .ptr = utf8.data(), .len = usize(utf8.size()) };
-}
-
 auto fileLines(
-    const QLatin1StringView filename,
+    const QL1SV filename,
     const HashMap<u16, QString>& mapSections,
     const shared_ptr<ProjectSettings>& projectSettings
 ) -> result<FileLines, QString> {
@@ -45,7 +41,8 @@ auto fileLines(
         auto file = QFile(path);
 
         if (!file.open(QFile::ReadOnly)) {
-            qWarning() << "Failed to open file %1: %2"_L1.arg(path).arg(
+            qWarning() << "Failed to open file %1: %2"_L1.arg(
+                path,
                 file.errorString()
             );
             return Err(path);
@@ -60,7 +57,7 @@ auto fileLines(
 
 template <class F>
 auto modifyFile(
-    const QLatin1StringView filename,
+    const QL1SV filename,
     HashMap<u16, QString>& mapSections,
     const shared_ptr<ProjectSettings>& projectSettings,
     F&& func
@@ -179,7 +176,6 @@ void TaskWorker::stop() {
 }
 
 void TaskWorker::read(
-    const QString& projectPath,
     const QString& sourcePath,
     const QString& translationPath,
     const ReadMode readMode,
@@ -188,18 +184,18 @@ void TaskWorker::read(
     const Selected selected,
     const BaseFlags flags,
     const bool mapEvents,
-    const ByteBuffer hashes
+    const ByteBuffer hashes,
+    const QString& title
 ) {
     ByteBuffer outHashes;
 
-    const QByteArray projectPathUtf8 = projectPath.toUtf8();
+    const QByteArray titleUtf8 = title.toUtf8();
     const QByteArray sourcePathUtf8 = sourcePath.toUtf8();
     const QByteArray translationPathUtf8 = translationPath.toUtf8();
 
     const FFIString error = rpgm_read(
-        toFFIString(projectPathUtf8),
-        toFFIString(sourcePathUtf8),
-        toFFIString(translationPathUtf8),
+        toffistr(sourcePathUtf8),
+        toffistr(translationPathUtf8),
         readMode,
         engineType,
         duplicateMode,
@@ -207,6 +203,7 @@ void TaskWorker::read(
         flags,
         mapEvents,
         hashes,
+        toffistr(titleUtf8),
         &outHashes
     );
 
@@ -220,10 +217,8 @@ void TaskWorker::extractArchive(
     const QByteArray archivePathUtf8 = archivePath.toUtf8();
     const QByteArray folderUtf8 = folder.toUtf8();
 
-    const FFIString error = rpgm_extract_archive(
-        toFFIString(archivePathUtf8),
-        toFFIString(folderUtf8)
-    );
+    const FFIString error =
+        rpgm_extract_archive(toffistr(archivePathUtf8), toffistr(folderUtf8));
 
     emit extractFinished(error);
 }
@@ -231,19 +226,20 @@ void TaskWorker::extractArchive(
 void TaskWorker::write(const QString& gameTitle, const Selected selected) {
     f32 elapsed;
 
-    const QByteArray sourcePathUtf8 = projectSettings->sourcePath().toUtf8();
+    const QByteArray sourcePathUtf8 =
+        projectSettings->resolvedSourcePath().toUtf8();
     const QByteArray translationPathUtf8 =
         projectSettings->translationPath().toUtf8();
     const QByteArray outputPathUtf8 = projectSettings->outputPath().toUtf8();
     const QByteArray gameTitleUtf8 = gameTitle.toUtf8();
 
     const FFIString error = rpgm_write(
-        toFFIString(sourcePathUtf8),
-        toFFIString(translationPathUtf8),
-        toFFIString(outputPathUtf8),
+        toffistr(sourcePathUtf8),
+        toffistr(translationPathUtf8),
+        toffistr(outputPathUtf8),
         projectSettings->engineType,
         projectSettings->duplicateMode,
-        toFFIString(gameTitleUtf8),
+        toffistr(gameTitleUtf8),
         projectSettings->flags,
         selected,
         &elapsed
@@ -310,20 +306,46 @@ void TaskWorker::search(
             return;
         }
 
+        const MatchIndex matchIndex(
+            rowIndex,
+            action == SearchMenu::Action::Put ? searchColumnIndex : columnIndex
+        );
+
+        auto& fileMatches =
+            searchMatches.try_emplace(filename, vector<CellMatch>()).first->second;
+
+        if ((searchFlags & SearchFlags::Put) != 0) {
+            for (const auto& match : matches) {
+                const u32 start = match.capturedStart();
+                const u32 length = match.capturedLength();
+
+                if (start != 0 || length != line.size()) {
+                    continue;
+                }
+
+                auto cellMatches = CellMatch{ .matches = new TextMatch[1],
+                                              .matchesCount = 1,
+                                              .matchIndex = matchIndex };
+
+                cellMatches.matches[0] = TextMatch(0, 0, false);
+                fileMatches.push_back(cellMatches);
+                return;
+            }
+
+            return;
+        }
+
         u32 capturedCount = 0;
         vector<QRegularExpressionMatch> matchesVec;
 
         for (const auto& match : matches) {
             capturedCount += match.lastCapturedIndex() + 1;
-            matchesVec.emplace_back(
-                std::move(const_cast<QRegularExpressionMatch&>(match))
-            );
+            matchesVec.emplace_back(match);
         }
 
-        const MatchIndex matchIndex(
-            rowIndex,
-            action == SearchMenu::Action::Put ? searchColumnIndex : columnIndex
-        );
+        if (capturedCount == 0) {
+            return;
+        }
 
         auto cellMatches = CellMatch{ .matches = new TextMatch[capturedCount],
                                       .matchesCount = capturedCount,
@@ -331,28 +353,17 @@ void TaskWorker::search(
         u32 matchesPos = 0;
 
         for (const auto& match : matchesVec) {
-            if ((searchFlags & SearchFlags::Put) != 0) {
-                const u32 start = match.capturedStart();
-                const u32 length = match.capturedLength();
-
-                if (start == 0 && length == line.size()) {
-                    cellMatches.matches[matchesPos++] = TextMatch(0, 0, false);
-                } else {
-                    break;
-                }
-            } else {
-                for (const i32 idx : range(0, match.lastCapturedIndex() + 1)) {
-                    cellMatches.matches[matchesPos++] = TextMatch(
-                        match.capturedStart(idx),
-                        match.capturedLength(idx),
-                        idx > 0
-                    );
-                }
+            for (const i32 idx : range(0, match.lastCapturedIndex() + 1)) {
+                cellMatches.matches[matchesPos++] = TextMatch(
+                    match.capturedStart(idx),
+                    match.capturedLength(idx),
+                    idx > 0
+                );
             }
         }
 
-        searchMatches.emplace(filename, vector<CellMatch>());
-        searchMatches.find(filename)->second.push_back(cellMatches);
+        cellMatches.matchesCount = matchesPos;
+        fileMatches.push_back(cellMatches);
     };
 
     u32 count = 0;
@@ -362,7 +373,7 @@ void TaskWorker::search(
     u8 skippedCount = 0;
 
     for (const auto [idx, filenameArray] : views::enumerate(filenames)) {
-        const auto filename = QLatin1StringView(filenameArray.data());
+        const auto filename = QL1SV(filenameArray.data());
         const auto result = fileLines(filename, *mapSections, projectSettings);
 
         if (!result) {
@@ -447,7 +458,7 @@ void TaskWorker::search(
             QString skippedString;
 
             for (const auto filename : views::take(filenames, skippedCount)) {
-                skippedString += QLatin1StringView(filename.data());
+                skippedString += QL1SV(filename.data());
                 skippedString += u'\n';
             }
 
@@ -492,8 +503,7 @@ void TaskWorker::performBatchAction(
 
         const QByteArray projectContext =
             projectSettings->projectContext.toUtf8();
-        const QByteArray localContext =
-            projectSettings->projectContext.toUtf8();
+        const QByteArray localContext = context.toUtf8();
         const QByteArray translationPath =
             projectSettings->translationPath().toUtf8();
 
@@ -503,15 +513,15 @@ void TaskWorker::performBatchAction(
         emit progressChanged(Task::BatchTranslate, 0, 0);
 
         const FFIString error = rpgm_translate(
-            toFFIString(endpointSettingsJSON),
-            toFFIString(projectContext),
-            toFFIString(localContext),
-            toFFIString(translationPath),
+            toffistr(endpointSettingsJSON),
+            toffistr(projectContext),
+            toffistr(localContext),
+            toffistr(translationPath),
             projectSettings->sourceLang,
             projectSettings->translationLang,
             { .ptr = ras<const u8*>(filenames.data()),
-              .len = usize(filenames.size()) },
-            toFFIString(glossaryJSON),
+              .len = u32(filenames.size()) },
+            toffistr(glossaryJSON),
             &translatedFiles,
             &translatedFilesFFI
         );
@@ -529,7 +539,7 @@ void TaskWorker::performBatchAction(
     u16 skippedCount = 0;
 
     for (const auto [idx, filenameArray] : views::enumerate(filenames)) {
-        const auto filename = QLatin1StringView(filenameArray.data());
+        const auto filename = QL1SV(filenameArray.data());
         emit lockFile(filename);
 
         if (action == BatchAction::Trim) {
@@ -556,25 +566,24 @@ void TaskWorker::performBatchAction(
                     }
 
                     if ((trimFlags & BatchMenu::TrimFlags::Leading) != 0) {
-                        for (const auto [idx, chr] :
-                             views::enumerate(parts[columnIndex])) {
-                            if (!chr.isSpace()) {
-                                parts[columnIndex] =
-                                    parts[columnIndex].sliced(idx);
+                        const auto value = parts[columnIndex];
+                        for (qsizetype i = 0; i < value.size(); ++i) {
+                            if (!value.at(i).isSpace()) {
+                                if (i > 0) {
+                                    parts[columnIndex] = value.sliced(i);
+                                }
                                 break;
                             }
                         }
                     }
 
                     if ((trimFlags & BatchMenu::TrimFlags::Trailing) != 0) {
-                        for (const auto [idx, chr] : views::enumerate(
-                                 views::reverse(parts[columnIndex])
-                             )) {
-                            if (!chr.isSpace()) {
-                                parts[columnIndex] = parts[columnIndex].sliced(
-                                    0,
-                                    parts[columnIndex].size() - idx
-                                );
+                        const auto value = parts[columnIndex];
+                        for (qsizetype i = value.size(); i > 0; --i) {
+                            if (!value.at(i - 1).isSpace()) {
+                                if (i < value.size()) {
+                                    parts[columnIndex] = value.sliced(0, i);
+                                }
                                 break;
                             }
                         }
@@ -605,7 +614,7 @@ void TaskWorker::performBatchAction(
                 joined.reserve(content.size() * 2);
 
                 for (const auto [idx, line] : views::enumerate(lines)) {
-                    const QSVList parts = lineParts(line, idx, filename);
+                    QSVList parts = lineParts(line, idx, filename);
 
                     if (parts.size() < columnIndex) {
                         joined += joinQSVList(parts, SEPARATORL1);
@@ -615,7 +624,8 @@ void TaskWorker::performBatchAction(
 
                     const QString wrapped =
                         wrapText(parts[columnIndex], wrapLength);
-                    joined += wrapped;
+                    parts[columnIndex] = wrapped;
+                    joined += joinQSVList(parts, SEPARATORL1);
                     joined += u'\n';
                 }
 
@@ -649,7 +659,7 @@ void TaskWorker::replace(
     u32 total = 0;
 
     for (const auto& [filename, matches] : searchMatches) {
-        emit lockFile(QLatin1StringView(filename.data()));
+        emit lockFile(QL1SV(filename.data()));
         total += matches.size();
 
         auto closure =
@@ -824,7 +834,7 @@ void TaskWorker::replace(
         };
 
         modifyFile(
-            QLatin1StringView(filename.data()),
+            QL1SV(filename.data()),
             *mapSections,
             projectSettings,
             closure
@@ -873,14 +883,13 @@ void TaskWorker::translateSingle(
                                             .toJson(QJsonDocument::Compact);
 
         const FFIString error = rpgm_translate_single(
-            toFFIString(endpointUtf8),
-            toFFIString(projectContext),
-            toFFIString(localContextUtf8),
+            toffistr(endpointUtf8),
+            toffistr(projectContext),
+            toffistr(localContextUtf8),
             projectSettings->sourceLang,
             projectSettings->translationLang,
-            toFFIString(textUtf8),
-            { .ptr = ras<const u8*>(glossaryJSON.data()),
-              .len = usize(glossaryJSON.size()) },
+            toffistr(textUtf8),
+            toffistr(glossaryJSON),
             &outString
         );
 
@@ -972,7 +981,7 @@ void TaskWorker::replaceSingle(
     };
 
     modifyFile(
-        QLatin1StringView(filename.toLatin1()),
+        QL1SV(filename.toLatin1()),
         *mapSections,
         projectSettings,
         closure
@@ -982,17 +991,18 @@ void TaskWorker::replaceSingle(
 }
 
 void TaskWorker::purge(const QString& gameTitle, const Selected selected) {
-    const QByteArray sourcePathUtf8 = projectSettings->sourcePath().toUtf8();
+    const QByteArray sourcePathUtf8 =
+        projectSettings->resolvedSourcePath().toUtf8();
     const QByteArray translationPathUtf8 =
         projectSettings->translationPath().toUtf8();
     const QByteArray gameTitleUtf8 = gameTitle.toUtf8();
 
     const FFIString error = rpgm_purge(
-        toFFIString(sourcePathUtf8),
-        toFFIString(translationPathUtf8),
+        toffistr(sourcePathUtf8),
+        toffistr(translationPathUtf8),
         projectSettings->engineType,
         projectSettings->duplicateMode,
-        toFFIString(gameTitleUtf8),
+        toffistr(gameTitleUtf8),
         projectSettings->flags,
         selected
     );

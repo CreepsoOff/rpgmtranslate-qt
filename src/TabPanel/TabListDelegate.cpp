@@ -4,7 +4,6 @@
 #include "Constants.hpp"
 #include "TabList.hpp"
 #include "TabListModel.hpp"
-#include "Utils.hpp"
 
 #include <QApplication>
 #include <QPainter>
@@ -33,15 +32,16 @@ void TabListDelegate::paint(
             const u16 spaceAdvance = fontMetrics.horizontalAdvance(u' ');
             maxCachedNameWidth = max<u16>(
                 maxCachedNameWidth,
-                fontMetrics.horizontalAdvance(tab.name) + spaceAdvance
+                fontMetrics.horizontalAdvance(tab.name) + (spaceAdvance * 2) + 2
             );
 
-            const u16 zeroAdvance = fontMetrics.horizontalAdvance(u'0');
+            const QString progressSample = QString::number(tab.translated) +
+                                           u'/' + QString::number(tab.total);
+
             maxCachedProgressWidth = max<u16>(
                 maxCachedProgressWidth,
-                (zeroAdvance * intLen(tab.translated)) +
-                    fontMetrics.horizontalAdvance(u'/') +
-                    (zeroAdvance * intLen(tab.total)) + (spaceAdvance * 2)
+                fontMetrics.horizontalAdvance(progressSample) +
+                    (spaceAdvance * 2) + 2
             );
         }
     }
@@ -71,10 +71,14 @@ void TabListDelegate::paint(
     const u32 translated = tab.translated;
 
     const QRect rect = opt.rect;
-    constexpr u8 MARGIN = 4;
+    constexpr u8 MARGIN = 8;
 
-    const QRect textRect =
-        rect.adjusted(MARGIN, 0, -rect.width() + maxCachedNameWidth, 0);
+    const QRect textRect = rect.adjusted(
+        rect.left() + MARGIN,
+        0,
+        -rect.width() + maxCachedNameWidth,
+        0
+    );
     painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, name);
 
     QStyleOptionProgressBar progressBar;
