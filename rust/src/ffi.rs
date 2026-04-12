@@ -8,7 +8,7 @@ use rvpacker_txt_rs_lib::{
 use std::{
     collections::HashMap,
     ffi::c_char,
-    fs::{self, read_to_string},
+    fs::read_to_string,
     mem::{self},
     path::Path,
     ptr::{self},
@@ -534,8 +534,8 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
     let translation_path = ffi_to_str(translation_path);
     let endpoint_settings = ffi_to_str(endpoint_settings);
 
-    let map_content = String::new();
-    let mut sections: Vec<&str> = Vec::new();
+    let mut map_sections_by_id: HashMap<String, Vec<String>> = HashMap::new();
+    let mut ordered_filenames: Vec<String> = Vec::new();
 
     let result = (|| -> Result<_, Error> {
         let filenames = std::slice::from_raw_parts::<[u8; 13]>(
@@ -551,18 +551,67 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
             let filename = &filename
                 [..=filename.rfind(|chr| chr != '\0').unwrap_unchecked()];
 
+            ordered_filenames.push(filename.to_string());
+
             if filename.starts_with("map") {
-                if map_content.is_empty() {
+                if map_sections_by_id.is_empty() {
                     let path = Path::new(translation_path).join("maps.txt");
+                    let map_content =
+                        read_to_string(&path).map_err(|err| Error::Io(path, err))?;
 
-                    #[allow(invalid_reference_casting)]
-                    unsafe {
-                        *(&mut *(&map_content as *const String
-                            as *mut String)) = read_to_string(&path)
-                            .map_err(|err| Error::Io(path, err))?;
+                    let sections = split_into_sections(&map_content);
+                    map_sections_by_id.reserve(sections.len());
+
+                    for &section in &sections {
+                        let id_line =
+                            &section[..section.find('\n').unwrap_or(section.len())];
+                        let id_part =
+                            &id_line[id_line.find("<#>").unwrap_or(id_line.len()) + 3..];
+
+                        let mut parsed_lines = Vec::new();
+
+                        for (i, line) in section.split('\n').enumerate() {
+                            if line.is_empty() {
+                                continue;
+                            }
+
+                            if i == 0 {
+                                parsed_lines.push(line.to_string());
+                                continue;
+                            }
+
+                            let not_name = !line.starts_with("<!-- NAME");
+                            let not_in_game_name =
+                                !line.starts_with("<!-- IN-GAME");
+                            let not_map_name = !line.starts_with("<!-- MAP NAME");
+
+                            if line.starts_with("<!--")
+                                && not_name
+                                && not_in_game_name
+                                && not_map_name
+                            {
+                                continue;
+                            }
+
+                            if not_name && not_in_game_name && not_map_name {
+                                if let Some(separator_pos) = line.find("<#>") {
+                                    parsed_lines.push(
+                                        line[..separator_pos].to_string()
+                                    );
+                                } else {
+                                    log::error!(
+                                        "Failed to split line {i} in map section {id_part}"
+                                    );
+                                }
+                            } else {
+                                parsed_lines.push(line.to_string());
+                            }
+                        }
+
+                        map_sections_by_id
+                            .entry(id_part.to_string())
+                            .or_insert(parsed_lines);
                     }
-
-                    sections = split_into_sections(&map_content);
                 }
 
                 files.insert(filename, Vec::new());
@@ -570,51 +619,8 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
                     unsafe { files.get_mut(filename).unwrap_unchecked() };
                 let id = &filename[3..];
 
-                for &section in &sections {
-                    let id_line =
-                        &section[..section.find('\n').unwrap_or(section.len())];
-                    let id_part = &id_line
-                        [id_line.find("<#>").unwrap_or(id_line.len()) + 3..];
-
-                    if id_part != id {
-                        continue;
-                    }
-
-                    for (i, line) in section.split('\n').enumerate() {
-                        if line.is_empty() {
-                            continue;
-                        }
-
-                        if i == 0 {
-                            entry.push(line.to_string());
-                            continue;
-                        }
-
-                        let not_name = !line.starts_with("<!-- NAME");
-                        let not_in_game_name =
-                            !line.starts_with("<!-- IN-GAME");
-                        let not_map_name = !line.starts_with("<!-- MAP NAME");
-
-                        if line.starts_with("<!--")
-                            && not_name
-                            && not_in_game_name
-                            && not_map_name
-                        {
-                            continue;
-                        }
-
-                        if not_name && not_in_game_name && not_map_name {
-                            if let Some(separator_pos) = line.find("<#>") {
-                                entry.push(line[..separator_pos].to_string());
-                            } else {
-                                log::error!(
-                                    "Failed to split line {i} in file {filename}"
-                                );
-                            }
-                        } else {
-                            entry.push(line.to_string());
-                        }
-                    }
+                if let Some(lines) = map_sections_by_id.get(id) {
+                    entry.extend(lines.iter().cloned());
                 }
             } else {
                 let path = Path::new(&translation_path)
@@ -668,10 +674,16 @@ pub unsafe extern "C" fn rpgm_translate<'a>(
         })?;
 
         let mut translations: Vec<Vec<String>> =
-            Vec::with_capacity(results.len());
+            Vec::with_capacity(ordered_filenames.len());
 
-        for translated in results.into_values() {
-            translations.push(translated);
+        let mut results = results;
+        for filename in &ordered_filenames {
+            if let Some(translated) = results.remove(filename.as_str()) {
+                translations.push(translated);
+            } else {
+                // Keep positional alignment with input filenames.
+                translations.push(Vec::new());
+            }
         }
 
         Ok(translations)

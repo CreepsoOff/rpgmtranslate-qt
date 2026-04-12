@@ -306,20 +306,46 @@ void TaskWorker::search(
             return;
         }
 
+        const MatchIndex matchIndex(
+            rowIndex,
+            action == SearchMenu::Action::Put ? searchColumnIndex : columnIndex
+        );
+
+        auto& fileMatches =
+            searchMatches.try_emplace(filename, vector<CellMatch>()).first->second;
+
+        if ((searchFlags & SearchFlags::Put) != 0) {
+            for (const auto& match : matches) {
+                const u32 start = match.capturedStart();
+                const u32 length = match.capturedLength();
+
+                if (start != 0 || length != line.size()) {
+                    continue;
+                }
+
+                auto cellMatches = CellMatch{ .matches = new TextMatch[1],
+                                              .matchesCount = 1,
+                                              .matchIndex = matchIndex };
+
+                cellMatches.matches[0] = TextMatch(0, 0, false);
+                fileMatches.push_back(cellMatches);
+                return;
+            }
+
+            return;
+        }
+
         u32 capturedCount = 0;
         vector<QRegularExpressionMatch> matchesVec;
 
         for (const auto& match : matches) {
             capturedCount += match.lastCapturedIndex() + 1;
-            matchesVec.emplace_back(
-                std::move(const_cast<QRegularExpressionMatch&>(match))
-            );
+            matchesVec.emplace_back(match);
         }
 
-        const MatchIndex matchIndex(
-            rowIndex,
-            action == SearchMenu::Action::Put ? searchColumnIndex : columnIndex
-        );
+        if (capturedCount == 0) {
+            return;
+        }
 
         auto cellMatches = CellMatch{ .matches = new TextMatch[capturedCount],
                                       .matchesCount = capturedCount,
@@ -327,28 +353,17 @@ void TaskWorker::search(
         u32 matchesPos = 0;
 
         for (const auto& match : matchesVec) {
-            if ((searchFlags & SearchFlags::Put) != 0) {
-                const u32 start = match.capturedStart();
-                const u32 length = match.capturedLength();
-
-                if (start == 0 && length == line.size()) {
-                    cellMatches.matches[matchesPos++] = TextMatch(0, 0, false);
-                } else {
-                    break;
-                }
-            } else {
-                for (const i32 idx : range(0, match.lastCapturedIndex() + 1)) {
-                    cellMatches.matches[matchesPos++] = TextMatch(
-                        match.capturedStart(idx),
-                        match.capturedLength(idx),
-                        idx > 0
-                    );
-                }
+            for (const i32 idx : range(0, match.lastCapturedIndex() + 1)) {
+                cellMatches.matches[matchesPos++] = TextMatch(
+                    match.capturedStart(idx),
+                    match.capturedLength(idx),
+                    idx > 0
+                );
             }
         }
 
-        searchMatches.emplace(filename, vector<CellMatch>());
-        searchMatches.find(filename)->second.push_back(cellMatches);
+        cellMatches.matchesCount = matchesPos;
+        fileMatches.push_back(cellMatches);
     };
 
     u32 count = 0;
@@ -488,8 +503,7 @@ void TaskWorker::performBatchAction(
 
         const QByteArray projectContext =
             projectSettings->projectContext.toUtf8();
-        const QByteArray localContext =
-            projectSettings->projectContext.toUtf8();
+        const QByteArray localContext = context.toUtf8();
         const QByteArray translationPath =
             projectSettings->translationPath().toUtf8();
 
@@ -601,7 +615,7 @@ void TaskWorker::performBatchAction(
                 joined.reserve(content.size() * 2);
 
                 for (const auto [idx, line] : views::enumerate(lines)) {
-                    const QSVList parts = lineParts(line, idx, filename);
+                    QSVList parts = lineParts(line, idx, filename);
 
                     if (parts.size() < columnIndex) {
                         joined += joinQSVList(parts, SEPARATORL1);
@@ -611,7 +625,8 @@ void TaskWorker::performBatchAction(
 
                     const QString wrapped =
                         wrapText(parts[columnIndex], wrapLength);
-                    joined += wrapped;
+                    parts[columnIndex] = wrapped;
+                    joined += joinQSVList(parts, SEPARATORL1);
                     joined += u'\n';
                 }
 

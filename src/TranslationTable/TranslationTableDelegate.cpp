@@ -21,6 +21,11 @@
 
 namespace {
 
+[[nodiscard]] auto whitespaceRegex() -> const QRegularExpression& {
+    static const QRegularExpression re(uR"(\s+)"_s);
+    return re;
+}
+
 [[nodiscard]] auto splitLongWordByPixels(
     const QString& word,
     const i32 pixelLimit,
@@ -67,10 +72,8 @@ namespace {
 
     for (i32 lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
         const QString line = lines[lineIndex];
-        const QStringList words = line.split(
-            QRegularExpression(uR"(\s+)"_s),
-            Qt::SkipEmptyParts
-        );
+        const QStringList words =
+            line.split(whitespaceRegex(), Qt::SkipEmptyParts);
 
         QStringList wrappedLines;
         QString currentLine;
