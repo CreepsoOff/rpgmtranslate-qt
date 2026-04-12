@@ -1,3 +1,5 @@
+# ⚠️ UNSTABLE FORK, USE AT YOUR OWN RISK
+
 # rpgmtranslate-qt
 
 [README на русском (в работе)](./README-ru.md)
