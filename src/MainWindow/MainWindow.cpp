@@ -129,6 +129,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                     : u":/icons/visibility_off.svg"_s
         );
         actionPreviewMode->setIcon(icon);
+        ui->translationTable->resizeRowsToContents();
         ui->translationTable->viewport()->update();
     });
 
@@ -1674,6 +1675,7 @@ void MainWindow::loadSettings() {
         &settings->appearance.previewTagsEnabled,
         &settings->appearance.customTagRules
     );
+    ui->translationTable->resizeRowsToContents();
 
     retranslate(settings->appearance.language);
 }
