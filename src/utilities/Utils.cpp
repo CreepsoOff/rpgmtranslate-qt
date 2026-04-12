@@ -258,7 +258,11 @@ auto intLen(const i32 num) -> u8 {
 }
 
 auto lastPathComponent(const QString& path) -> QStringView {
-    for (u32 i = path.size() - 1; i >= 0; i--) {
+    if (path.isEmpty()) {
+        return {};
+    }
+
+    for (qsizetype i = path.size() - 1; i >= 0; --i) {
         const QChar chr = path[i];
 
         if (chr == u'/' || chr == u'\\') {
