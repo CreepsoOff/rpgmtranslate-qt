@@ -58,6 +58,10 @@ path = "tests/read.rs"
 name = "write"
 path = "tests/write.rs"
 
+[[test]]
+name = "write_regression"
+path = "tests/write_regression.rs"
+
 [dependencies.bitflags]
 version = "2.11.0"
 features = ["serde"]

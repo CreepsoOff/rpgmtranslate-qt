@@ -50,4 +50,5 @@ auto WriteMenu::selected(const bool skipped) const -> Selected {
 
 void WriteMenu::setFiles(const vector<TabListItem>& files) {
     fileSelectMenu->setFiles(files);
+    fileSelectMenu->selectAll();
 }

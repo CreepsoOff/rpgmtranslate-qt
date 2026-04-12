@@ -1132,6 +1132,8 @@ impl<'a> Base {
         for (i, line) in translation_lines {
             if line.starts_with(ID_COMMENT) {
                 if id != 0 {
+                    let mut skip_prev_id = false;
+
                     if self.translation_map.is_empty() {
                         let metadata_entry = self.metadata.entry(id).or_insert(
                             replace(&mut comments, smallvec![String::new(); 3]),
@@ -1143,16 +1145,18 @@ impl<'a> Base {
                             && (display_name.is_empty()
                                 || display_name.ends_with(SEPARATOR))
                         {
-                            continue;
+                            skip_prev_id = true;
+                        } else {
+                            self.translation_maps
+                                .entry(id)
+                                .or_insert(TranslationMap::with_capacity(512));
                         }
-
-                        self.translation_maps
-                            .entry(id)
-                            .or_insert(TranslationMap::with_capacity(512));
                     }
 
-                    self.translation_maps
-                        .insert(id, self.translation_map.drain(..).collect());
+                    if !skip_prev_id {
+                        self.translation_maps
+                            .insert(id, self.translation_map.drain(..).collect());
+                    }
                 }
 
                 id = line
@@ -1247,6 +1251,23 @@ impl<'a> Base {
                 (source, translation)
             };
 
+            // Backward compatibility for legacy `system.txt` files that may
+            // contain unsectioned `source<#>translation` lines before any
+            // `<!-- ID -->` marker. Store them in a dedicated fallback map.
+            if self.file_type.is_system() && id == 0 && self.mode.is_write() {
+                self.translation_maps
+                    .entry(u16::MAX)
+                    .or_insert(TranslationMap::with_capacity(256))
+                    .insert(
+                        source.into(),
+                        TranslationEntry {
+                            comments: Vec::new(),
+                            translation: translation.into(),
+                        },
+                    );
+                continue;
+            }
+
             if first {
                 self.top_level_comments
                     .insert(id, top_level_comments.drain(..).collect());
@@ -1325,6 +1346,13 @@ impl<'a> Base {
     /// - [`ControlFlow::Continue`] - In other situations.
     ///
     fn get_translation_map(&mut self, id: u16) -> ControlFlow<()> {
+        let has_system_fallback = self.mode.is_write()
+            && self.file_type.is_system()
+            && self
+                .translation_maps
+                .get(&u16::MAX)
+                .is_some_and(|map| !map.is_empty());
+
         let entry = self.translation_maps.entry(id);
 
         // Move a map from `translation_maps` to `translation_map`.
@@ -1332,7 +1360,7 @@ impl<'a> Base {
             match entry {
                 Entry::Occupied(entry) => entry.into_mut(),
                 Entry::Vacant(entry) => {
-                    if self.mode.is_write() {
+                    if self.mode.is_write() && !has_system_fallback {
                         return ControlFlow::Break(());
                     }
 
@@ -1514,7 +1542,15 @@ impl<'a> Base {
     ///
     fn get_key(&self, key: &str) -> Option<&TranslationEntry> {
         if self.duplicate_mode.is_allow() {
-            self.translation_map.get(key)
+            self.translation_map.get(key).or_else(|| {
+                if self.file_type.is_system() {
+                    self.translation_maps
+                        .get(&u16::MAX)
+                        .and_then(|map| map.get(key))
+                } else {
+                    None
+                }
+            })
         } else {
             for translation_map in self.translation_maps.values() {
                 let option = translation_map.get(key);

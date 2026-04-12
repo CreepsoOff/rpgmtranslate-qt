@@ -210,18 +210,33 @@ impl Processor {
                         translation.as_deref(),
                     )?;
 
-                    if base.mode.is_write() {
-                        if let Some(result) = result {
-                            let output_path = data_output_path.join(filename);
-                            write(&output_path, result)
-                                .map_err(|e| Error::Io(output_path, e))?;
-                        }
-                    }
-
-                    if !skipped {
-                        info!("{filename}: {post_msg}");
-                    } else {
+                    if skipped {
                         info!("{filename}: Skipped.");
+                    } else if base.mode.is_write() {
+                        match result {
+                            Some(result) => {
+                                let output_path =
+                                    data_output_path.join(filename);
+
+                                if result.as_ref() != content.as_slice() {
+                                    write(&output_path, result).map_err(
+                                        |e| Error::Io(output_path, e),
+                                    )?;
+                                    info!("{filename}: {post_msg}");
+                                } else {
+                                    info!(
+                                        "{filename}: No effective translated changes. Skipped output."
+                                    );
+                                }
+                            }
+                            None => {
+                                info!(
+                                    "{filename}: No translated entries. Skipped output."
+                                );
+                            }
+                        }
+                    } else {
+                        info!("{filename}: {post_msg}");
                     }
                 }
 
@@ -283,18 +298,31 @@ impl Processor {
                         translation.as_deref(),
                     )?;
 
-                    let output_file_path = if base.mode.is_write() {
-                        data_output_path.join(filename)
-                    } else {
-                        translation_file_path
-                    };
-
                     if let Some(data) = data {
-                        write(&output_file_path, data)
-                            .map_err(|e| Error::Io(output_file_path, e))?;
+                        if base.mode.is_write() {
+                            if data.as_ref() != content.as_slice() {
+                                let output_file_path =
+                                    data_output_path.join(filename);
+                                write(&output_file_path, data).map_err(
+                                    |e| Error::Io(output_file_path, e),
+                                )?;
+                                info!("{filename}: {post_msg}");
+                            } else {
+                                info!(
+                                    "{filename}: No effective translated changes. Skipped output."
+                                );
+                            }
+                        } else {
+                            write(&translation_file_path, data).map_err(|e| {
+                                Error::Io(translation_file_path.clone(), e)
+                            })?;
+                            info!("{filename}: {post_msg}");
+                        }
+                    } else if base.mode.is_write() {
+                        info!(
+                            "{filename}: No translated entries. Skipped output."
+                        );
                     }
-
-                    info!("{filename}: {post_msg}");
                 }
             }
         }
@@ -323,18 +351,29 @@ impl Processor {
                     let data = system_base
                         .process(&content, translation.as_deref())?;
 
-                    let output_path = if base.mode.is_write() {
-                        data_output_path.join(&filename)
-                    } else {
-                        translation_file_path
-                    };
-
                     if let Some(data) = data {
-                        write(&output_path, data)
-                            .map_err(|e| Error::Io(output_path, e))?;
+                        if base.mode.is_write() {
+                            if data.as_ref() != content.as_slice() {
+                                let output_path = data_output_path.join(&filename);
+                                write(&output_path, data)
+                                    .map_err(|e| Error::Io(output_path, e))?;
+                                info!("{filename}: {post_msg}");
+                            } else {
+                                info!(
+                                    "{filename}: No effective translated changes. Skipped output."
+                                );
+                            }
+                        } else {
+                            write(&translation_file_path, data).map_err(|e| {
+                                Error::Io(translation_file_path.clone(), e)
+                            })?;
+                            info!("{filename}: {post_msg}");
+                        }
+                    } else if base.mode.is_write() {
+                        info!(
+                            "{filename}: No translated entries. Skipped output."
+                        );
                     }
-
-                    info!("{filename}: {post_msg}");
                 }
             }
         }
@@ -367,21 +406,36 @@ impl Processor {
                         let data = plugin_base
                             .process(&content, translation.as_deref())?;
 
-                        let output_path = if base.mode.is_write() {
-                            let js_output_path = output_path.join("js");
-                            create_dir_all(&js_output_path)
-                                .map_err(|e| Error::Io(js_output_path, e))?;
-                            output_path.join("js/plugins.js")
-                        } else {
-                            translation_file_path
-                        };
-
                         if let Some(data) = data {
-                            write(&output_path, data)
-                                .map_err(|e| Error::Io(output_path, e))?;
-                        }
+                            if base.mode.is_write() {
+                                if data.as_ref() != content.as_slice() {
+                                    let js_output_path = output_path.join("js");
+                                    create_dir_all(&js_output_path).map_err(
+                                        |e| Error::Io(js_output_path, e),
+                                    )?;
 
-                        info!("plugins.js: {post_msg}");
+                                    let output_path =
+                                        output_path.join("js/plugins.js");
+                                    write(&output_path, data).map_err(
+                                        |e| Error::Io(output_path, e),
+                                    )?;
+                                    info!("plugins.js: {post_msg}");
+                                } else {
+                                    info!(
+                                        "plugins.js: No effective translated changes. Skipped output."
+                                    );
+                                }
+                            } else {
+                                write(&translation_file_path, data).map_err(
+                                    |e| Error::Io(translation_file_path.clone(), e),
+                                )?;
+                                info!("plugins.js: {post_msg}");
+                            }
+                        } else if base.mode.is_write() {
+                            info!(
+                                "plugins.js: No translated entries. Skipped output."
+                            );
+                        }
                     }
                 }
             } else {
@@ -410,18 +464,31 @@ impl Processor {
                         let data = script_base
                             .process(&content, translation.as_deref())?;
 
-                        let output_path = if base.mode.is_write() {
-                            data_output_path.join(&filename)
-                        } else {
-                            translation_file_path
-                        };
-
                         if let Some(data) = data {
-                            write(&output_path, data)
-                                .map_err(|e| Error::Io(output_path, e))?;
+                            if base.mode.is_write() {
+                                if data.as_ref() != content.as_slice() {
+                                    let output_path =
+                                        data_output_path.join(&filename);
+                                    write(&output_path, data).map_err(
+                                        |e| Error::Io(output_path, e),
+                                    )?;
+                                    info!("{filename}: {post_msg}");
+                                } else {
+                                    info!(
+                                        "{filename}: No effective translated changes. Skipped output."
+                                    );
+                                }
+                            } else {
+                                write(&translation_file_path, data).map_err(
+                                    |e| Error::Io(translation_file_path.clone(), e),
+                                )?;
+                                info!("{filename}: {post_msg}");
+                            }
+                        } else if base.mode.is_write() {
+                            info!(
+                                "{filename}: No translated entries. Skipped output."
+                            );
                         }
-
-                        info!("{filename}: {post_msg}");
                     }
                 }
             }

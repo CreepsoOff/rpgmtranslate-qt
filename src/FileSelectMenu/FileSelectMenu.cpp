@@ -72,6 +72,13 @@ void FileSelectMenu::clear() {
     }
 }
 
+void FileSelectMenu::selectAll() {
+    for (auto* const widget : views::drop(ui->gridWidget->children(), 1)) {
+        auto* const checkbox = as<QCheckBox*>(widget);
+        checkbox->setChecked(true);
+    }
+}
+
 auto FileSelectMenu::selected(const bool skipped) -> Selected {
     Selected selected;
 

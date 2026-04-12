@@ -368,48 +368,16 @@ MainWindow::MainWindow(QWidget* const parent) :
         }
 
         const QString gameTitle = ui->gameTitleInput->placeholderText();
-        Selected selectedAll;
-
-        for (const QString& tabNameRaw : ui->tabPanel->tabs()) {
-            const QString tabName = tabNameRaw.trimmed().toLower();
-
-            if (tabName == "actors"_L1) {
-                selectedAll.flags |= FileFlags::Actors;
-            } else if (tabName == "armors"_L1) {
-                selectedAll.flags |= FileFlags::Armors;
-            } else if (tabName == "classes"_L1) {
-                selectedAll.flags |= FileFlags::Classes;
-            } else if (tabName == "commonevents"_L1) {
-                selectedAll.flags |= FileFlags::CommonEvents;
-            } else if (tabName == "enemies"_L1) {
-                selectedAll.flags |= FileFlags::Enemies;
-            } else if (tabName == "items"_L1) {
-                selectedAll.flags |= FileFlags::Items;
-            } else if (tabName == "skills"_L1) {
-                selectedAll.flags |= FileFlags::Skills;
-            } else if (tabName == "states"_L1) {
-                selectedAll.flags |= FileFlags::States;
-            } else if (tabName == "troops"_L1) {
-                selectedAll.flags |= FileFlags::Troops;
-            } else if (tabName == "weapons"_L1) {
-                selectedAll.flags |= FileFlags::Weapons;
-            } else if (tabName == "system"_L1) {
-                selectedAll.flags |= FileFlags::System;
-            } else if (tabName == "scripts"_L1 || tabName == "plugins"_L1) {
-                selectedAll.flags |= FileFlags::Scripts;
-            } else if (tabName.startsWith("map"_L1)) {
-                const u16 mapIndex = QStringView(tabName).sliced(3).toUInt();
-                selectedAll.validIndices[mapIndex] = true;
-                selectedAll.mapIndices[selectedAll.mapCount++] = true;
-            }
-        }
+        // Rust FFI interprets `Selected.file_flags` as skip flags.
+        // Main "Write" must write everything, so pass an empty skip selection.
+        const Selected skipNone;
 
         QMetaObject::invokeMethod(
             taskWorker,
             &TaskWorker::write,
             Qt::QueuedConnection,
             gameTitle,
-            selectedAll
+            skipNone
         );
 
         connect(
