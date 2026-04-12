@@ -18,6 +18,9 @@ constexpr QL1SV TEMP_MAPS_DIRECTORY = "/temp-maps"_L1;
 constexpr QL1SV LOG_FILE = "/replacement-log.json"_L1;
 constexpr QL1SV PROJECT_SETTINGS_FILE = "/project-settings.json"_L1;
 constexpr QL1SV BACKUP_DIRECTORY = "/backups"_L1;
+constexpr QL1SV SOURCE_BASELINE_DIRECTORY = "/source-baseline"_L1;
+constexpr QL1SV SOURCE_BASELINE_BACKUPS_DIRECTORY =
+    "/source-baseline-backups"_L1;
 constexpr QL1SV GLOSSARY_FILE = "/glossary.json"_L1;
 constexpr QL1SV OUTPUT_DIRECTORY = "/output"_L1;
 constexpr QL1SV RVPACKER_METADATA_FILE = "/.rvpacker-metadata"_L1;

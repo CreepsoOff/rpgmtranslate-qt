@@ -226,7 +226,8 @@ void TaskWorker::extractArchive(
 void TaskWorker::write(const QString& gameTitle, const Selected selected) {
     f32 elapsed;
 
-    const QByteArray sourcePathUtf8 = projectSettings->sourcePath().toUtf8();
+    const QByteArray sourcePathUtf8 =
+        projectSettings->resolvedSourcePath().toUtf8();
     const QByteArray translationPathUtf8 =
         projectSettings->translationPath().toUtf8();
     const QByteArray outputPathUtf8 = projectSettings->outputPath().toUtf8();
@@ -976,7 +977,8 @@ void TaskWorker::replaceSingle(
 }
 
 void TaskWorker::purge(const QString& gameTitle, const Selected selected) {
-    const QByteArray sourcePathUtf8 = projectSettings->sourcePath().toUtf8();
+    const QByteArray sourcePathUtf8 =
+        projectSettings->resolvedSourcePath().toUtf8();
     const QByteArray translationPathUtf8 =
         projectSettings->translationPath().toUtf8();
     const QByteArray gameTitleUtf8 = gameTitle.toUtf8();

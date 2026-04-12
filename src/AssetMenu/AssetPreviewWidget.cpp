@@ -424,7 +424,7 @@ void AssetPreviewWidget::loadAudioAsset(const QString& path) {
     }
 #else
     showPage(
-        Page::Empty,
+        Page::Error,
         tr("Asset playback is disabled. You can open asset in the default app.")
     );
 #endif
@@ -441,7 +441,7 @@ void AssetPreviewWidget::loadVideoAsset(const QString& path) {
     }
 #else
     showPage(
-        Page::Empty,
+        Page::Error,
         tr("Asset playback is disabled. You can open asset in the default app.")
     );
 #endif

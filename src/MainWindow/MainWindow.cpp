@@ -29,12 +29,16 @@
 
 #include <QCheckBox>
 #include <QCloseEvent>
+#include <QCryptographicHash>
+#include <QDateTime>
 #include <QDesktopServices>
+#include <QDirIterator>
 #include <QFileDialog>
 #include <QJsonParseError>
 #include <QMessageBox>
 #include <QProcess>
 #include <QProgressDialog>
+#include <QPushButton>
 #include <QStyleHints>
 #include <QTranslator>
 #include <QVersionNumber>
@@ -81,10 +85,12 @@ MainWindow::MainWindow(QWidget* const parent) :
     addAction(actionSearch);
     addAction(actionBookmarkMenu);
     addAction(actionMatchMenu);
+    addAction(actionSyncSourceBaseline);
 
     actionTabPanel->setEnabled(false);
     actionSave->setEnabled(false);
     actionWrite->setEnabled(false);
+    actionSyncSourceBaseline->setEnabled(false);
     actionSearch->setEnabled(false);
     actionBatchMenu->setEnabled(false);
     actionGlossaryMenu->setEnabled(false);
@@ -109,6 +115,7 @@ MainWindow::MainWindow(QWidget* const parent) :
     ui->assetsButton->setDefaultAction(actionAssets);
     ui->locateProjectDirButton->setDefaultAction(actionLocateProjectDir);
     ui->searchPanelButton->setDefaultAction(actionSearchPanel);
+    ui->menuFile->insertAction(ui->actionSettings, actionSyncSourceBaseline);
 
     taskWorker->start();
 
@@ -328,7 +335,11 @@ MainWindow::MainWindow(QWidget* const parent) :
     });
 
     connect(actionWrite, &QAction::triggered, this, [this] -> void {
-        const QString sourcePath = projectSettings->sourcePath();
+        if (!saveCurrentTab() || !saveMaps()) {
+            return;
+        }
+
+        const QString sourcePath = projectSettings->resolvedSourcePath();
 
         if (!QFile::exists(sourcePath)) {
             QMessageBox::warning(
@@ -346,8 +357,7 @@ MainWindow::MainWindow(QWidget* const parent) :
             &TaskWorker::write,
             Qt::QueuedConnection,
             gameTitle,
-            // TODO: Right now, no mechanism for specifying skipped files for
-            // write
+            // Empty selection means "skip nothing", i.e. write all.
             Selected()
         );
 
@@ -373,6 +383,7 @@ MainWindow::MainWindow(QWidget* const parent) :
                 );
 
                 rpgm_string_free(error);
+                return;
             }
 
             QMessageBox::information(
@@ -1326,13 +1337,23 @@ MainWindow::MainWindow(QWidget* const parent) :
         openProject(dir, true);
     });
 
+    connect(
+        actionSyncSourceBaseline,
+        &QAction::triggered,
+        this,
+        [this] -> void {
+        const bool started = syncSourceBaselineFromGameData(true);
+        Q_UNUSED(started);
+    }
+    );
+
     connect(readMenu, &ReadMenu::accepted, this, [this] -> void {
         if (firstReadPending) {
             return;
         }
 
         const QString& projectPath = projectSettings->projectPath;
-        const QString sourcePath = projectSettings->sourcePath();
+        const QString sourcePath = projectSettings->resolvedSourcePath();
         const QString translationPath = projectSettings->translationPath();
 
         QMetaObject::invokeMethod(
@@ -1433,6 +1454,20 @@ MainWindow::MainWindow(QWidget* const parent) :
     });
 
     connect(writeMenu, &WriteMenu::accepted, this, [this] -> void {
+        if (!saveCurrentTab() || !saveMaps()) {
+            return;
+        }
+
+        const QString sourcePath = projectSettings->resolvedSourcePath();
+        if (!QFile::exists(sourcePath)) {
+            QMessageBox::warning(
+                this,
+                tr("No source files"),
+                tr("Cannot write, source files are absent.")
+            );
+            return;
+        }
+
         QMetaObject::invokeMethod(
             taskWorker,
             &TaskWorker::write,
@@ -2267,6 +2302,12 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
         projectSettings->projectPath = folder;
         settings->core.projectPath = folder;
 
+        if (!ensureSourceBaseline(projectSettings, true)) {
+            return Err(
+                tr("Failed to initialize or recover source baseline.")
+            );
+        }
+
         QDir().mkdir(projectSettings->backupPath());
         QDir().mkdir(projectSettings->translationPath());
 
@@ -2551,6 +2592,7 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
         actionTabPanel->setEnabled(true);
         actionSave->setEnabled(true);
         actionWrite->setEnabled(true);
+        actionSyncSourceBaseline->setEnabled(true);
         actionSearch->setEnabled(true);
         actionBatchMenu->setEnabled(true);
         actionGlossaryMenu->setEnabled(true);
@@ -2600,6 +2642,10 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
 #endif
 
         firstReadPending = false;
+
+        QTimer::singleShot(0, this, [this] -> void {
+            promptForChangedGameData();
+        });
 
         return {};
     };
@@ -2666,6 +2712,19 @@ void MainWindow::openProject(const QString& folder, const bool newProject) {
         if (QFile::exists(folder + u"/data")) {
             tempProjectSettings->sourceDirectory =
                 SourceDirectory::LowercaseData;
+        }
+
+        if (tempProjectSettings->sourceDirectory == SourceDirectory::None &&
+            QFile::exists(folder + u"/www/data")) {
+            tempProjectSettings->sourceDirectory =
+                SourceDirectory::WwwLowercaseData;
+        }
+
+        if (tempProjectSettings->sourceDirectory != SourceDirectory::None &&
+            !ensureSourceBaseline(tempProjectSettings, true)) {
+            return Err(
+                tr("Failed to initialize source baseline from game data.")
+            );
         }
 
         if (!QFile::exists(
@@ -3104,18 +3163,38 @@ start:
 }
 
 void MainWindow::saveBackup() {
-    const auto saveSuccess = saveCurrentTab();
+    if (projectSettings == nullptr || !settings->core.backup.enabled) {
+        return;
+    }
 
-    if (!saveSuccess) {
+    if (!saveCurrentTab() || !saveMaps()) {
         return;
     }
 
     const QString backupPath = projectSettings->backupPath();
-    const QList<QFileInfo> entries =
-        QDir(backupPath).entryInfoList(QDir::Dirs, QDir::Time);
+    QDir backupDir(backupPath);
 
-    if (entries.size() > settings->core.backup.max) {
-        QFile::remove(entries.first().filePath());
+    if (!backupDir.exists() && !QDir().mkpath(backupPath)) {
+        qWarning() << u"Failed to create backup directory: "_s << backupPath;
+        return;
+    }
+
+    const i32 maxBackups = std::max<i32>(1, settings->core.backup.max);
+    const QList<QFileInfo> entries = backupDir.entryInfoList(
+        QDir::Dirs | QDir::NoDotAndDotDot,
+        QDir::Time
+    );
+
+    const i32 entriesSize = i32(entries.size());
+    const i32 trimBegin =
+        (maxBackups - 1 < entriesSize) ? (maxBackups - 1) : entriesSize;
+
+    for (const i32 idx : range<i32>(trimBegin, entriesSize)) {
+        QDir dir(entries[idx].filePath());
+        if (!dir.removeRecursively()) {
+            qWarning() << u"Failed to remove old backup directory: "_s
+                       << entries[idx].filePath();
+        }
     }
 
     const auto date = QDate::currentDate();
@@ -3145,6 +3224,650 @@ void MainWindow::saveBackup() {
     ui->statusBar->showMessage(
         tr("Backup %1 created.").arg(backupDirName.slice(1))
     );
+}
+
+auto MainWindow::currentGameDataPath(
+    const shared_ptr<ProjectSettings>& settings_
+) const -> QString {
+    if (settings_ == nullptr) {
+        return {};
+    }
+
+    return settings_->sourcePath();
+}
+
+auto MainWindow::defaultSourceBaselinePath(
+    const shared_ptr<ProjectSettings>& settings_
+) const -> QString {
+    if (settings_ == nullptr) {
+        return {};
+    }
+
+    const QString gameDataPath = currentGameDataPath(settings_);
+
+    if (gameDataPath.isEmpty()) {
+        return {};
+    }
+
+    const QString leaf = QFileInfo(gameDataPath).fileName();
+    return settings_->programDataPath() + SOURCE_BASELINE_DIRECTORY + u'/' +
+           leaf;
+}
+
+auto MainWindow::sourceLockRootPath(
+    const shared_ptr<ProjectSettings>& settings_
+) const -> QString {
+    if (settings_ == nullptr || settings_->sourceLockPath.isEmpty()) {
+        return {};
+    }
+
+    return QFileInfo(settings_->sourceLockPath).dir().absolutePath();
+}
+
+auto MainWindow::latestSourceBaselineBackupPath(
+    const shared_ptr<ProjectSettings>& settings_,
+    const QString& leafDirName
+) const -> QString {
+    if (settings_ == nullptr || leafDirName.isEmpty()) {
+        return {};
+    }
+
+    const QString backupsRoot =
+        settings_->programDataPath() + SOURCE_BASELINE_BACKUPS_DIRECTORY;
+    QDir backupsDir(backupsRoot);
+
+    if (!backupsDir.exists()) {
+        return {};
+    }
+
+    const QFileInfoList entries = backupsDir.entryInfoList(
+        QDir::Dirs | QDir::NoDotAndDotDot,
+        QDir::Time
+    );
+
+    for (const QFileInfo& entry : entries) {
+        const QString candidate = entry.filePath() + u'/' + leafDirName;
+        QDir candidateDir(candidate);
+
+        if (candidateDir.exists() &&
+            !candidateDir
+                 .entryList(QDir::AllEntries | QDir::NoDotAndDotDot)
+                 .isEmpty()) {
+            return candidate;
+        }
+    }
+
+    return {};
+}
+
+auto MainWindow::fingerprintDirectory(const QString& path) const -> QString {
+    QDir root(path);
+
+    if (!root.exists()) {
+        return {};
+    }
+
+    QStringList files;
+    QDirIterator it(path, QDir::Files, QDirIterator::Subdirectories);
+
+    while (it.hasNext()) {
+        files.append(it.next());
+    }
+
+    std::sort(files.begin(), files.end());
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+
+    for (const QString& absolutePath : files) {
+        const QString relativePath = root.relativeFilePath(absolutePath);
+        hash.addData(relativePath.toUtf8());
+
+        QFile file(absolutePath);
+
+        if (!file.open(QFile::ReadOnly)) {
+            hash.addData("!io");
+            continue;
+        }
+
+        while (!file.atEnd()) {
+            hash.addData(file.read(1 << 20));
+        }
+    }
+
+    return QString::fromLatin1(hash.result().toHex());
+}
+
+auto MainWindow::fingerprintGameSource(
+    const shared_ptr<ProjectSettings>& settings_
+) const -> QString {
+    if (settings_ == nullptr) {
+        return {};
+    }
+
+    const QString gameDataPath = currentGameDataPath(settings_);
+    const QString dataFingerprint = fingerprintDirectory(gameDataPath);
+
+    if (dataFingerprint.isEmpty()) {
+        return {};
+    }
+
+    const QString gameRoot = QFileInfo(gameDataPath).dir().absolutePath();
+    const QString jsFingerprint = fingerprintDirectory(gameRoot + u"/js");
+
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    hash.addData(dataFingerprint.toUtf8());
+    hash.addData(jsFingerprint.toUtf8());
+    return QString::fromLatin1(hash.result().toHex());
+}
+
+auto MainWindow::copyDirectoryRecursive(
+    const QString& sourcePath,
+    const QString& targetPath,
+    QString* const error
+) const -> bool {
+    try {
+        const fs::path source(sourcePath.toStdU16String());
+        const fs::path target(targetPath.toStdU16String());
+
+        if (!fs::exists(source) || !fs::is_directory(source)) {
+            if (error != nullptr) {
+                *error = tr("Source directory does not exist: %1").arg(
+                    sourcePath
+                );
+            }
+
+            return false;
+        }
+
+        if (fs::exists(target)) {
+            fs::remove_all(target);
+        }
+
+        fs::create_directories(target.parent_path());
+        fs::copy(
+            source,
+            target,
+            fs::copy_options::recursive | fs::copy_options::overwrite_existing
+        );
+
+        return true;
+    } catch (const fs::filesystem_error& filesystemError) {
+        if (error != nullptr) {
+            *error = QString::fromUtf8(filesystemError.what());
+        }
+
+        return false;
+    }
+}
+
+auto MainWindow::syncBaselineSupplementaryFiles(
+    const shared_ptr<ProjectSettings>& settings_,
+    QString* const error
+) const -> bool {
+    if (settings_ == nullptr) {
+        return false;
+    }
+
+    const QString gameDataPath = currentGameDataPath(settings_);
+    const QString sourceRoot = sourceLockRootPath(settings_);
+
+    if (gameDataPath.isEmpty() || sourceRoot.isEmpty()) {
+        return true;
+    }
+
+    const QString gameRoot = QFileInfo(gameDataPath).dir().absolutePath();
+    const QString sourceJsPath = gameRoot + u"/js";
+    const QString targetJsPath = sourceRoot + u"/js";
+
+    if (QDir(sourceJsPath).exists()) {
+        return copyDirectoryRecursive(sourceJsPath, targetJsPath, error);
+    }
+
+    if (QDir(targetJsPath).exists()) {
+        try {
+            fs::remove_all(fs::path(targetJsPath.toStdU16String()));
+        } catch (const fs::filesystem_error& filesystemError) {
+            if (error != nullptr) {
+                *error = QString::fromUtf8(filesystemError.what());
+            }
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+auto MainWindow::ensureSourceBaseline(
+    const shared_ptr<ProjectSettings>& settings_,
+    const bool interactive
+) -> bool {
+    if (settings_ == nullptr) {
+        return false;
+    }
+
+    QDir().mkpath(settings_->programDataPath());
+
+    const QString gameDataPath = currentGameDataPath(settings_);
+
+    if (settings_->sourceLockPath.isEmpty()) {
+        settings_->sourceLockPath = defaultSourceBaselinePath(settings_);
+    }
+
+    if (settings_->sourceLockPath.isEmpty()) {
+        return false;
+    }
+
+    QDir sourceLockDir(settings_->sourceLockPath);
+    const bool sourceLockValid =
+        sourceLockDir.exists() &&
+        !sourceLockDir.entryList(QDir::AllEntries | QDir::NoDotAndDotDot)
+             .isEmpty();
+
+    if (sourceLockValid) {
+        return true;
+    }
+
+    const bool gameDataExists = !gameDataPath.isEmpty() &&
+                                QFileInfo::exists(gameDataPath);
+    QString copyError;
+
+    if (gameDataExists &&
+        copyDirectoryRecursive(
+            gameDataPath,
+            settings_->sourceLockPath,
+            &copyError
+        ) &&
+        syncBaselineSupplementaryFiles(settings_, &copyError)) {
+        return true;
+    }
+
+    const QString leafDirName = QFileInfo(settings_->sourceLockPath).fileName();
+    const QString latestBackupPath =
+        latestSourceBaselineBackupPath(settings_, leafDirName);
+    const bool backupExists = !latestBackupPath.isEmpty();
+
+    if (!interactive) {
+        if (backupExists &&
+            copyDirectoryRecursive(
+                latestBackupPath,
+                settings_->sourceLockPath,
+                &copyError
+            )) {
+            const QString sourceRoot = sourceLockRootPath(settings_);
+            const QString backupRoot =
+                QFileInfo(latestBackupPath).dir().absolutePath();
+            const QString backupJsPath = backupRoot + u"/js";
+
+            if (QDir(backupJsPath).exists() &&
+                !copyDirectoryRecursive(
+                    backupJsPath,
+                    sourceRoot + u"/js",
+                    &copyError
+                )) {
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    QMessageBox prompt(this);
+    prompt.setIcon(QMessageBox::Warning);
+    prompt.setWindowTitle(tr("Source Baseline Missing"));
+    prompt.setText(tr("Source baseline is missing or invalid."));
+    prompt.setInformativeText(tr(
+        "Choose how to recover the locked source used for Read/Write/Purge."
+    ));
+
+    QPushButton* const rebuildButton = gameDataExists
+                                           ? prompt.addButton(
+                                                 tr("Rebuild From Game Data"),
+                                                 QMessageBox::AcceptRole
+                                             )
+                                           : nullptr;
+    QPushButton* const restoreButton = backupExists
+                                           ? prompt.addButton(
+                                                 tr("Restore Latest Backup"),
+                                                 QMessageBox::ActionRole
+                                             )
+                                           : nullptr;
+    QPushButton* const cancelButton =
+        prompt.addButton(tr("Cancel"), QMessageBox::RejectRole);
+
+    prompt.setDefaultButton(rebuildButton != nullptr ? rebuildButton
+                                                     : cancelButton);
+    prompt.exec();
+
+    const auto* const clicked = prompt.clickedButton();
+
+    if (clicked == rebuildButton) {
+        if (copyDirectoryRecursive(
+                gameDataPath,
+                settings_->sourceLockPath,
+                &copyError
+            ) &&
+            syncBaselineSupplementaryFiles(settings_, &copyError)) {
+            return true;
+        }
+
+        QMessageBox::critical(
+            this,
+            tr("Baseline recovery failed"),
+            tr("Failed to rebuild baseline from game data: %1").arg(copyError)
+        );
+        return false;
+    }
+
+    if (clicked == restoreButton) {
+        if (copyDirectoryRecursive(
+                latestBackupPath,
+                settings_->sourceLockPath,
+                &copyError
+            )) {
+            const QString sourceRoot = sourceLockRootPath(settings_);
+            const QString backupRoot =
+                QFileInfo(latestBackupPath).dir().absolutePath();
+            const QString backupJsPath = backupRoot + u"/js";
+
+            if (QDir(backupJsPath).exists() &&
+                !copyDirectoryRecursive(
+                    backupJsPath,
+                    sourceRoot + u"/js",
+                    &copyError
+                )) {
+                QMessageBox::critical(
+                    this,
+                    tr("Baseline recovery failed"),
+                    tr("Failed to restore baseline backup: %1").arg(copyError)
+                );
+                return false;
+            }
+
+            return true;
+        }
+
+        QMessageBox::critical(
+            this,
+            tr("Baseline recovery failed"),
+            tr("Failed to restore baseline backup: %1").arg(copyError)
+        );
+        return false;
+    }
+
+    return false;
+}
+
+auto MainWindow::syncSourceBaselineFromGameData(const bool appendForceRead)
+    -> bool {
+    if (projectSettings == nullptr || sourceSyncInFlight) {
+        return false;
+    }
+
+    if (!saveCurrentTab() || !saveMaps()) {
+        return false;
+    }
+
+    const QString gameDataPath = currentGameDataPath(projectSettings);
+
+    if (gameDataPath.isEmpty() || !QFileInfo::exists(gameDataPath)) {
+        QMessageBox::warning(
+            this,
+            tr("Sync failed"),
+            tr("Game data folder is missing.")
+        );
+        return false;
+    }
+
+    if (!ensureSourceBaseline(projectSettings, true)) {
+        return false;
+    }
+
+    const QString currentFingerprint = fingerprintGameSource(projectSettings);
+    const bool sourceUnchanged =
+        !currentFingerprint.isEmpty() &&
+        currentFingerprint == projectSettings->lastSeenGameDataFingerprint;
+
+    if (sourceUnchanged) {
+        projectSettings->lastPromptedGameDataFingerprint.clear();
+        saveProjectSettings();
+        ui->statusBar->showMessage(
+            tr("Source baseline already up to date. Nothing to sync.")
+        );
+        return true;
+    }
+
+    const QString sourceLockPath = projectSettings->sourceLockPath;
+    const QString timestamp =
+        QDateTime::currentDateTimeUtc().toString(u"yyyyMMdd-HHmmss-zzz");
+    const QString backupTargetRoot =
+        projectSettings->programDataPath() + SOURCE_BASELINE_BACKUPS_DIRECTORY +
+        u'/' + timestamp;
+    const QString backupTarget =
+        backupTargetRoot + u'/' + QFileInfo(sourceLockPath).fileName();
+    const QString sourceRoot = sourceLockRootPath(projectSettings);
+    const QString backupJsTarget = backupTargetRoot + u"/js";
+
+    QString copyError;
+
+    if (QDir(sourceLockPath).exists() &&
+        !copyDirectoryRecursive(sourceLockPath, backupTarget, &copyError)) {
+        QMessageBox::warning(
+            this,
+            tr("Backup failed"),
+            tr("Failed to backup current source baseline: %1").arg(copyError)
+        );
+        return false;
+    }
+
+    const QString sourceJsPath = sourceRoot + u"/js";
+    if (QDir(sourceJsPath).exists() &&
+        !copyDirectoryRecursive(sourceJsPath, backupJsTarget, &copyError)) {
+        QMessageBox::warning(
+            this,
+            tr("Backup failed"),
+            tr("Failed to backup current source baseline: %1").arg(copyError)
+        );
+        return false;
+    }
+
+    if (!copyDirectoryRecursive(gameDataPath, sourceLockPath, &copyError)) {
+        QMessageBox::warning(
+            this,
+            tr("Sync failed"),
+            tr("Failed to sync source baseline from game data: %1")
+                .arg(copyError)
+        );
+        return false;
+    }
+
+    if (!syncBaselineSupplementaryFiles(projectSettings, &copyError)) {
+        QMessageBox::warning(
+            this,
+            tr("Sync failed"),
+            tr("Failed to sync source baseline from game data: %1")
+                .arg(copyError)
+        );
+        return false;
+    }
+
+    projectSettings->lastSeenGameDataFingerprint = currentFingerprint;
+    projectSettings->lastPromptedGameDataFingerprint.clear();
+
+    if (!appendForceRead) {
+        saveProjectSettings();
+        ui->statusBar->showMessage(tr("Source baseline synced."));
+        return true;
+    }
+
+    sourceSyncInFlight = true;
+    actionSyncSourceBaseline->setEnabled(false);
+
+    const QString sourcePath = projectSettings->resolvedSourcePath();
+    const QString translationPath = projectSettings->translationPath();
+    const QString title = readMenu->title();
+    const BaseFlags readFlags =
+        BaseFlags(projectSettings->flags & ~BaseFlags_SkipObsolete);
+    Selected skipMissingSelection;
+
+    const auto markMissing = [&translationPath, &skipMissingSelection](
+                                 const QLatin1StringView filename,
+                                 const FileFlags flag
+                             ) -> void {
+        if (!QFile::exists(translationPath + u'/' + filename)) {
+            skipMissingSelection.flags |= flag;
+        }
+    };
+
+    markMissing("maps.txt"_L1, FileFlags_Map);
+    markMissing("actors.txt"_L1, FileFlags_Actors);
+    markMissing("armors.txt"_L1, FileFlags_Armors);
+    markMissing("classes.txt"_L1, FileFlags_Classes);
+    markMissing("commonevents.txt"_L1, FileFlags_CommonEvents);
+    markMissing("enemies.txt"_L1, FileFlags_Enemies);
+    markMissing("items.txt"_L1, FileFlags_Items);
+    markMissing("skills.txt"_L1, FileFlags_Skills);
+    markMissing("states.txt"_L1, FileFlags_States);
+    markMissing("troops.txt"_L1, FileFlags_Troops);
+    markMissing("weapons.txt"_L1, FileFlags_Weapons);
+    markMissing("system.txt"_L1, FileFlags_System);
+
+    if (projectSettings->engineType == EngineType::New) {
+        markMissing("plugins.txt"_L1, FileFlags_Scripts);
+        if (!QFile::exists(
+                QFileInfo(sourcePath).dir().absolutePath() + u"/js/plugins.js"
+            )) {
+            skipMissingSelection.flags |= FileFlags_Scripts;
+        }
+    } else {
+        markMissing("scripts.txt"_L1, FileFlags_Scripts);
+    }
+
+    QMetaObject::invokeMethod(
+        taskWorker,
+        &TaskWorker::read,
+        Qt::QueuedConnection,
+        sourcePath,
+        translationPath,
+        ReadMode::AppendForce,
+        projectSettings->engineType,
+        projectSettings->duplicateMode,
+        skipMissingSelection,
+        readFlags,
+        false,
+        ByteBuffer{ .ptr = ras<const u8*>(projectSettings->hashes.data()),
+                    .len = u32(projectSettings->hashes.size()) },
+        title
+    );
+
+    connect(
+        taskWorker,
+        &TaskWorker::readFinished,
+        this,
+        [this](const std::tuple<FFIString, ByteBuffer> results) -> void {
+        sourceSyncInFlight = false;
+        actionSyncSourceBaseline->setEnabled(projectSettings != nullptr);
+
+        QTimer::singleShot(3000, [this] -> void {
+            ui->taskLabel->setText(tr("No Tasks"));
+            ui->taskProgressBar->setMaximum(0);
+            ui->taskProgressBar->setValue(0);
+            ui->taskProgressBar->setEnabled(false);
+        });
+
+        const auto [error, hashes] = results;
+
+        if (error.ptr != nullptr) {
+            QMessageBox::warning(
+                this,
+                tr("Sync failed"),
+                tr("Append read failed: %1")
+                    .arg(QString::fromUtf8(error.ptr, isize(error.len)))
+            );
+            rpgm_string_free(error);
+            return;
+        }
+
+        if (hashes.ptr != nullptr) {
+            const u128* const input = ras<const u128*>(hashes.ptr);
+
+            projectSettings->hashes.resize(hashes.len);
+            memcpy(
+                projectSettings->hashes.data(),
+                input,
+                hashes.len * sizeof(u128)
+            );
+
+            rpgm_buffer_free(hashes);
+        }
+
+        saveProjectSettings();
+        openProject(projectSettings->projectPath, false);
+    },
+        Qt::SingleShotConnection
+    );
+
+    return true;
+}
+
+void MainWindow::promptForChangedGameData() {
+    if (projectSettings == nullptr || sourceSyncInFlight || firstReadPending) {
+        return;
+    }
+
+    const QString gameDataPath = currentGameDataPath(projectSettings);
+
+    if (gameDataPath.isEmpty() || !QFileInfo::exists(gameDataPath)) {
+        return;
+    }
+
+    const QString currentFingerprint = fingerprintGameSource(projectSettings);
+
+    if (currentFingerprint.isEmpty()) {
+        return;
+    }
+
+    if (projectSettings->lastSeenGameDataFingerprint.isEmpty()) {
+        projectSettings->lastSeenGameDataFingerprint = currentFingerprint;
+        projectSettings->lastPromptedGameDataFingerprint.clear();
+        saveProjectSettings();
+        return;
+    }
+
+    if (currentFingerprint == projectSettings->lastSeenGameDataFingerprint ||
+        currentFingerprint ==
+            projectSettings->lastPromptedGameDataFingerprint) {
+        return;
+    }
+
+    QMessageBox prompt(this);
+    prompt.setIcon(QMessageBox::Question);
+    prompt.setWindowTitle(tr("Game Data Changed"));
+    prompt.setText(tr("Detected changes in game Data/data files."));
+    prompt.setInformativeText(tr(
+        "Do you want to sync source baseline and run AppendForce read now?"
+    ));
+
+    QPushButton* const syncButton =
+        prompt.addButton(tr("Sync + AppendForce"), QMessageBox::AcceptRole);
+    QPushButton* const ignoreButton =
+        prompt.addButton(tr("Ignore"), QMessageBox::RejectRole);
+
+    prompt.setDefaultButton(syncButton);
+    prompt.exec();
+
+    if (prompt.clickedButton() == syncButton) {
+        const bool started = syncSourceBaselineFromGameData(true);
+        Q_UNUSED(started);
+        return;
+    }
+
+    if (prompt.clickedButton() == ignoreButton) {
+        projectSettings->lastPromptedGameDataFingerprint = currentFingerprint;
+        saveProjectSettings();
+    }
 }
 
 void MainWindow::appendMatches(
@@ -3230,6 +3953,7 @@ void MainWindow::closeProject() {
     actionTabPanel->setEnabled(false);
     actionSave->setEnabled(false);
     actionWrite->setEnabled(false);
+    actionSyncSourceBaseline->setEnabled(false);
     actionSearch->setEnabled(false);
     actionBatchMenu->setEnabled(false);
     actionGlossaryMenu->setEnabled(false);
@@ -3259,6 +3983,7 @@ void MainWindow::closeProject() {
     ui->statusBar->clearMessage();
 
     backupTimer.stop();
+    sourceSyncInFlight = false;
 
     projectSettings.reset();
 }

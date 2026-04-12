@@ -82,6 +82,11 @@ class SearchResultListModel final : public QAbstractListModel {
         return items[row];
     };
 
+    [[nodiscard]] constexpr auto item(const i32 row) const
+        -> const SearchResultListItem& {
+        return items[row];
+    };
+
    private:
     vector<SearchResultListItem> items;
 };

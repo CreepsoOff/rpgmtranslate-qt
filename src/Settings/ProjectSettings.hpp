@@ -17,6 +17,7 @@ enum class SourceDirectory : u8 {
     None,
     UppercaseData,
     LowercaseData,
+    WwwLowercaseData,
 };
 
 struct ProjectSettings {
@@ -27,6 +28,9 @@ struct ProjectSettings {
 
     QString projectPath;
     QString spellcheckDictionary;
+    QString sourceLockPath;
+    QString lastSeenGameDataFingerprint;
+    QString lastPromptedGameDataFingerprint;
 
     QString projectContext;
     HashMap<QString, QString> fileContexts;
@@ -54,9 +58,15 @@ struct ProjectSettings {
                 return projectPath + u"/Data";
             case SourceDirectory::LowercaseData:
                 return projectPath + u"/data";
+            case SourceDirectory::WwwLowercaseData:
+                return projectPath + u"/www/data";
             default:
                 return {};
         }
+    }
+
+    [[nodiscard]] auto resolvedSourcePath() const -> QString {
+        return sourceLockPath.isEmpty() ? sourcePath() : sourceLockPath;
     }
 
     [[nodiscard]] auto translationPath() const -> QString {

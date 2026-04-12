@@ -1,14 +1,18 @@
+#ifdef ENABLE_ASSET_PLAYBACK
 extern "C" {
 #define __STDC_CONSTANT_MACROS
 #include <libavutil/avutil.h>
 }
+#endif
 
 #include "AboutWindow.hpp"
 #include "Constants.hpp"
 #include "ui_AboutWindow.h"
 #include "version.h"
 
+#ifdef ENABLE_LIBGIT2
 #include <git2/common.h>
+#endif
 
 #include <archive.h>
 

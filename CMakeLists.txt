@@ -8,7 +8,7 @@ project(${PROJECT_NAME} VERSION ${PROJECT_VERSION} LANGUAGES C CXX)
 
 option(ENABLE_NUSPELL
     "Nuspell integration - allows using dictionaries for spell-checking."
-    ON
+    OFF
 )
 
 option(ENABLE_LANGUAGETOOL
@@ -18,12 +18,12 @@ option(ENABLE_LANGUAGETOOL
 
 option(ENABLE_LIBGIT2
     "libgit2 - allows using built-in Git client for managing repositories."
-    ON
+    OFF
 )
 
 option(ENABLE_ASSET_PLAYBACK
     "Allows playing video and audio assets directly in the application. Requires FFmpeg and miniaudio."
-    ON
+    OFF
 )
 
 option(ENABLE_JSON_HIGHLIGHTING
@@ -144,6 +144,24 @@ find_package_handle_standard_args(rapidhash
 
 if (NOT rapidhash_FOUND)
     message(FATAL_ERROR "Aborting: rapidhash is required.")
+endif()
+
+find_path(MAGIC_ENUM_INCLUDE_DIR
+    NAMES magic_enum/magic_enum.hpp magic_enum.hpp
+    HINTS
+        ${MAGIC_ENUM_ROOT}
+        ${MAGIC_ENUM_ROOT}/include
+        ${CMAKE_SOURCE_DIR}/deps
+        ${CMAKE_SOURCE_DIR}/deps/magic_enum
+)
+
+find_package_handle_standard_args(magic_enum
+    REQUIRED_VARS MAGIC_ENUM_INCLUDE_DIR
+    FAIL_MESSAGE  "magic_enum not found. Install it or set -DMAGIC_ENUM_ROOT=<path>"
+)
+
+if (NOT magic_enum_FOUND)
+    message(FATAL_ERROR "Aborting: magic_enum is required.")
 endif()
 
 if (ENABLE_ASSET_PLAYBACK)
@@ -286,8 +304,9 @@ file(GLOB ICONS icons/*)
 # Include paths
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${SUBDIRS}
-    ${RAPIDHASH_INCLUDE_DIRS}
-    ${MINIAUDIO_INCLUDE_DIRS}
+    ${RAPIDHASH_INCLUDE_DIR}
+    ${MAGIC_ENUM_INCLUDE_DIR}
+    ${MINIAUDIO_INCLUDE_DIR}
 )
 
 # Link libraries

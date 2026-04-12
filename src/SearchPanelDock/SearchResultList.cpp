@@ -93,8 +93,14 @@ void SearchResultListDelegate::paint(
     auto textLayout = QTextLayout(title, option.font);
     textLayout.setTextOption(textOption);
 
-    const auto spans = index.data(SearchResultListRole::SpansRole)
-                           .value<span<const TextMatch>>();
+    const QModelIndex sourceIndex = proxy_->mapToSource(index);
+    const auto* const sourceModel =
+        as<const SearchResultListModel*>(proxy_->sourceModel());
+    const auto& item = sourceModel->item(sourceIndex.row());
+    const auto spans = span<const TextMatch>(
+        item.cellMatch.matches,
+        item.cellMatch.matchesCount
+    );
 
     QList<QTextLayout::FormatRange> formatRanges;
     formatRanges.reserve(isize(spans.size()));
@@ -230,13 +236,6 @@ void SearchResultListModel::setItems(vector<SearchResultListItem>&& items) {
             return item.title;
         case SearchResultListRole::SubtitleRole:
             return item.subtitle;
-        case SearchResultListRole::SpansRole:
-            return QVariant::fromValue(
-                std::span<const TextMatch>(
-                    item.cellMatch.matches,
-                    item.cellMatch.matchesCount
-                )
-            );
         default:
             return {};
     }
