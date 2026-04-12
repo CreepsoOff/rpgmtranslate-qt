@@ -566,25 +566,24 @@ void TaskWorker::performBatchAction(
                     }
 
                     if ((trimFlags & BatchMenu::TrimFlags::Leading) != 0) {
-                        for (const auto [idx, chr] :
-                             views::enumerate(parts[columnIndex])) {
-                            if (!chr.isSpace()) {
-                                parts[columnIndex] =
-                                    parts[columnIndex].sliced(idx);
+                        const auto value = parts[columnIndex];
+                        for (qsizetype i = 0; i < value.size(); ++i) {
+                            if (!value.at(i).isSpace()) {
+                                if (i > 0) {
+                                    parts[columnIndex] = value.sliced(i);
+                                }
                                 break;
                             }
                         }
                     }
 
                     if ((trimFlags & BatchMenu::TrimFlags::Trailing) != 0) {
-                        for (const auto [idx, chr] : views::enumerate(
-                                 views::reverse(parts[columnIndex])
-                             )) {
-                            if (!chr.isSpace()) {
-                                parts[columnIndex] = parts[columnIndex].sliced(
-                                    0,
-                                    parts[columnIndex].size() - idx
-                                );
+                        const auto value = parts[columnIndex];
+                        for (qsizetype i = value.size(); i > 0; --i) {
+                            if (!value.at(i - 1).isSpace()) {
+                                if (i < value.size()) {
+                                    parts[columnIndex] = value.sliced(0, i);
+                                }
                                 break;
                             }
                         }
