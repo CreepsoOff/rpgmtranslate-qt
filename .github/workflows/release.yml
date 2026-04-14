@@ -1,0 +1,200 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional release tag (example: v1.2.3). If empty, uses latest.'
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: 'Mark release as pre-release'
+        required: false
+        type: boolean
+        default: false
+      check_only:
+        description: 'Build/package only, do not publish a release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  QT_VERSION: '6.8.2'
+  APP_NAME: 'rpgmtranslate'
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+      check_only: ${{ steps.resolve.outputs.check_only }}
+      make_latest: ${{ steps.resolve.outputs.make_latest }}
+    steps:
+      - name: Resolve release parameters
+        id: resolve
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            PRERELEASE="false"
+            CHECK_ONLY="false"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+            PRERELEASE="${{ github.event.inputs.prerelease }}"
+            CHECK_ONLY="${{ github.event.inputs.check_only }}"
+
+            if [[ -z "$TAG" ]]; then
+              TAG="latest"
+            fi
+          fi
+
+          if [[ "$TAG" == "latest" ]]; then
+            MAKE_LATEST="true"
+          else
+            MAKE_LATEST="legacy"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "check_only=$CHECK_ONLY" >> "$GITHUB_OUTPUT"
+          echo "make_latest=$MAKE_LATEST" >> "$GITHUB_OUTPUT"
+
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: metadata
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build build-essential pkg-config \
+            libarchive-dev libssl-dev \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools qt6-svg-dev qt6-wayland-dev
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cbindgen
+        run: cargo install --locked cbindgen --version 0.29.2
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DENABLE_NUSPELL=OFF \
+            -DENABLE_LIBGIT2=OFF \
+            -DENABLE_ASSET_PLAYBACK=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Linux artifact
+        run: |
+          mkdir -p dist
+          cp build/target/bin/${APP_NAME} dist/${APP_NAME}-linux-x64
+          tar -C dist -czf ${APP_NAME}-linux-x64.tar.gz ${APP_NAME}-linux-x64
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: ${APP_NAME}-linux-x64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    needs: metadata
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cbindgen
+        shell: pwsh
+        run: cargo install --locked cbindgen --version 0.29.2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          cache: true
+
+      - name: Install libarchive with vcpkg
+        shell: pwsh
+        run: |
+          vcpkg install libarchive:x64-windows
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DMSVC_STATIC_RUNTIME=OFF `
+            -DENABLE_NUSPELL=OFF `
+            -DENABLE_LIBGIT2=OFF `
+            -DENABLE_ASSET_PLAYBACK=OFF `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Windows artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item "build/target/bin/${env:APP_NAME}.exe" "dist/${env:APP_NAME}-windows-x64.exe"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: dist/${{ env.APP_NAME }}-windows-x64.exe
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - metadata
+      - build-linux
+      - build-windows
+    if: ${{ needs.metadata.outputs.check_only != 'true' }}
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-package
+          path: release-assets
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-package
+          path: release-assets
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.metadata.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ needs.metadata.outputs.prerelease == 'true' }}
+          make_latest: ${{ needs.metadata.outputs.make_latest }}
+          generate_release_notes: true
+          files: |
+            release-assets/*.tar.gz
+            release-assets/*.exe
