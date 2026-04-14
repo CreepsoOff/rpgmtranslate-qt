@@ -80,7 +80,18 @@ jobs:
           sudo apt-get install -y \
             cmake ninja-build build-essential pkg-config \
             libarchive-dev libssl-dev \
-            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools qt6-svg-dev qt6-wayland-dev
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools qt6-svg-dev qt6-wayland-dev \
+            libgit2-dev \
+            libnuspell-dev libicu-dev \
+            libavcodec-dev libavformat-dev libavutil-dev \
+            libswresample-dev libswscale-dev libavfilter-dev
+
+      - name: Fetch miniaudio header
+        run: |
+          mkdir -p /tmp/miniaudio
+          curl -fsSL \
+            https://raw.githubusercontent.com/mackron/miniaudio/master/miniaudio.h \
+            -o /tmp/miniaudio/miniaudio.h
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -92,9 +103,10 @@ jobs:
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DENABLE_NUSPELL=OFF \
-            -DENABLE_LIBGIT2=OFF \
-            -DENABLE_ASSET_PLAYBACK=OFF
+            -DENABLE_NUSPELL=ON \
+            -DENABLE_LIBGIT2=ON \
+            -DENABLE_ASSET_PLAYBACK=ON \
+            -DMINIAUDIO_ROOT=/tmp/miniaudio
 
       - name: Build
         run: cmake --build build --config Release --parallel
@@ -134,10 +146,15 @@ jobs:
           arch: win64_msvc2019_64
           cache: true
 
-      - name: Install libarchive with vcpkg
+      - name: Install libarchive, libgit2, nuspell, ffmpeg, miniaudio with vcpkg
         shell: pwsh
         run: |
-          vcpkg install libarchive:x64-windows
+          vcpkg install `
+            libarchive:x64-windows `
+            libgit2:x64-windows `
+            nuspell:x64-windows `
+            ffmpeg:x64-windows `
+            miniaudio:x64-windows
 
       - name: Configure
         shell: pwsh
@@ -145,9 +162,9 @@ jobs:
           cmake -S . -B build -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DMSVC_STATIC_RUNTIME=OFF `
-            -DENABLE_NUSPELL=OFF `
-            -DENABLE_LIBGIT2=OFF `
-            -DENABLE_ASSET_PLAYBACK=OFF `
+            -DENABLE_NUSPELL=ON `
+            -DENABLE_LIBGIT2=ON `
+            -DENABLE_ASSET_PLAYBACK=ON `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=x64-windows
 
